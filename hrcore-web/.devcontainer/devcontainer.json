@@ -1,0 +1,46 @@
+{
+  "name": "hrcore-web-dev",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  "workspaceFolder": "/hrcore-web",
+
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/hrcore-web,type=bind,consistency=cached",
+    "source=hrcore-web-node-modules,target=/hrcore-web/node_modules,type=volume"
+  ],
+
+  "forwardPorts": [
+    4200
+  ],
+
+  "runArgs": [
+    "--network=hrcore-system_hrcore-net",
+    "--env-file=../.env",
+    "--hostname=thunder"
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "angular.ng-template",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit",
+          "source.organizeImports": "explicit"
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "npm install",
+
+  "remoteUser": "node"
+}

@@ -1,0 +1,86 @@
+services:
+  serv-hrcore-db:
+    image: postgres:16
+
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_HOST_PORT}:5432"
+    volumes:
+      - hrcore_db_data:/var/lib/postgresql/data
+    networks:
+      - hrcore-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: hrcore_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - hrcore-net
+
+  serv-hrcore-api:
+    build:
+      context: ./hrcore-api
+      dockerfile: Dockerfile.dev
+
+    restart: unless-stopped
+    depends_on:
+      serv-hrcore-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      PG_DUMP_PATH: /usr/lib/postgresql/16/bin/pg_dump
+      PG_RESTORE_PATH: /usr/lib/postgresql/16/bin/pg_restore
+      PSQL_PATH: /usr/lib/postgresql/16/bin/psql
+    ports:
+      - "${BACKEND_PORT}:8080"
+    volumes:
+      - ./hrcore-api:/app
+      - maven_cache:/root/.m2
+      - ./backups:/storage/backups
+    working_dir: /app
+    networks:
+      - hrcore-net
+
+
+  serv-hrcore-web:
+    build:
+      context: ./hrcore-web
+      dockerfile: Dockerfile.dev
+
+    restart: unless-stopped
+    depends_on:
+      - serv-hrcore-api
+    #Poll declara en package.json scripts start
+    ports:
+      - "${FRONTEND_PORT}:4200"
+    volumes:
+      - ./hrcore-web:/app
+      - node_modules:/app/node_modules
+    networks:
+      - hrcore-net
+
+volumes:
+  hrcore_db_data:
+  maven_cache:
+  node_modules:
+
+networks:
+  hrcore-net:
+    # custom network name (avoid auto-generated compose name)
+    name: hrcore-system_hrcore-net
+    driver: bridge

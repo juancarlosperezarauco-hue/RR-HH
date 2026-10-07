@@ -1,0 +1,32 @@
+{
+  "name": "hrcore-api-dev",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/hrcore-api",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/hrcore-api,type=bind,consistency=cached",
+    "source=hrcore-maven-cache,target=/home/vscode/.m2,type=volume"
+  ],
+  "forwardPorts": [8080],
+  "runArgs": [
+    "--network=hrcore-system_hrcore-net",
+    "--env-file=../.env",
+    "--hostname=thunder"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-boot-dev-pack",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "interactive",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline",
+  "remoteUser": "vscode"
+}

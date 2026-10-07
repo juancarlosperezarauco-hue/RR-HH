@@ -1,0 +1,8 @@
+# Ignorar Variables de entorno
+.env
+
+scripts/
+
+hrcore-api-all.md
+
+claude/

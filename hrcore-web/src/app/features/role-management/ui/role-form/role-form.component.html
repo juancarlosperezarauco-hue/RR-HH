@@ -1,0 +1,140 @@
+<form [formGroup]="roleForm" (ngSubmit)="onSubmit()" class="flex h-full flex-col bg-white">
+  
+  <div class="flex-1 space-y-6 overflow-y-auto p-6">
+    <!-- Información General -->
+    <section class="space-y-4">
+      <h4 class="border-b border-[#E8F2E2] pb-2 text-sm font-bold uppercase tracking-[0.14em] text-[#6B7D6C]">Información general</h4>
+      
+      <div>
+        <label for="name" class="mb-1 block text-sm font-semibold text-[#567157]">Nombre del rol</label>
+        <input 
+          id="name" 
+          type="text" 
+          formControlName="name"
+          class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-3 py-2 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
+          [class.border-red-300]="isFieldInvalid('name')"
+          placeholder="Ej: Administrador de RR. HH.">
+        @if (isFieldInvalid('name')) {
+          <span class="mt-1 block text-xs text-red-600">El nombre es requerido (máx 100 caracteres).</span>
+        }
+      </div>
+
+      <div>
+        <label for="description" class="mb-1 block text-sm font-semibold text-[#567157]">Descripción</label>
+        <textarea 
+          id="description" 
+          rows="2"
+          formControlName="description"
+          class="w-full resize-none rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-3 py-2 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
+          placeholder="Ej: Tiene acceso total a los módulos de contabilidad..."></textarea>
+      </div>
+    </section>
+
+    <!-- Permisos Agrupados -->
+    <section class="space-y-4">
+      <h4 class="border-b border-[#E8F2E2] pb-2 text-sm font-bold uppercase tracking-[0.14em] text-[#6B7D6C]">Asignación de permisos</h4>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#DDEED8] bg-[#F7FBF3] px-4 py-3">
+        <div>
+          <p class="text-sm font-semibold text-[#1B5E20]">Seleccionar todos los permisos</p>
+          <p class="text-xs text-[#6B7D6C]">Marca o quita todos los permisos del rol de una sola vez.</p>
+        </div>
+        <label class="flex cursor-pointer items-center gap-3">
+          <span class="text-xs font-semibold text-[#6B7D6C]">
+            @if (areAllPermissionsSelected()) {
+              Todos
+            } @else if (areSomePermissionsSelected()) {
+              Parcial
+            } @else {
+              Ninguno
+            }
+          </span>
+          <div class="relative">
+            <input
+              type="checkbox"
+              class="peer sr-only"
+              [checked]="areAllPermissionsSelected()"
+              [indeterminate]="areSomePermissionsSelected()"
+              (change)="toggleAllPermissions($event)">
+            <div class="block h-5 w-10 rounded-full bg-[#DDEED8] transition-colors duration-300 peer-checked:bg-[#2E7D32]"></div>
+            <div class="absolute left-1 top-1 h-3.5 w-3.5 rounded-full bg-white transition-transform duration-300 peer-checked:translate-x-4.5"></div>
+          </div>
+        </label>
+      </div>
+      
+      @if (groupedPermissions.length === 0) {
+        <div class="rounded-2xl border border-dashed border-[#DDEED8] p-4 text-center text-sm text-[#6B7D6C]">
+          No hay permisos disponibles para cargar.
+        </div>
+      }
+
+      <div class="space-y-5">
+        @for (group of groupedPermissions; track group.module) {
+          <div class="overflow-hidden rounded-2xl border border-[#DDEED8] bg-[#FAFCF8]">
+            <!-- Header del Módulo -->
+            <div class="flex items-center justify-between border-b border-[#E8F2E2] bg-[#F7FBF3] px-4 py-3">
+              <span class="font-semibold capitalize text-[#1B5E20]">{{ group.module }}</span>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <span class="text-xs font-semibold text-[#6B7D6C]">Seleccionar todo</span>
+                <!-- Switch nativo estilizado -->
+                <div class="relative">
+                  <input
+                    type="checkbox"
+                    class="peer sr-only"
+                    [checked]="isModuleFullySelected(group.permissions)"
+                    [indeterminate]="isModuleIndeterminate(group.permissions)"
+                    (change)="toggleModule(group.permissions, $event)">
+                  <div class="block h-5 w-10 rounded-full bg-[#DDEED8] transition-colors duration-300 peer-checked:bg-[#2E7D32]"></div>
+                  <div class="absolute left-1 top-1 bg-white w-3.5 h-3.5 rounded-full transition-transform duration-300 peer-checked:translate-x-4.5"></div>
+                </div>
+              </label>
+            </div>
+            
+            <!-- Lista de Permisos -->
+            <div class="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+              @for (perm of group.permissions; track perm.code) {
+                <label class="group flex cursor-pointer items-start gap-3">
+                  <div class="relative flex items-center justify-center mt-0.5">
+                    <input type="checkbox" class="peer sr-only" [checked]="isPermissionSelected(perm.code)" (change)="togglePermission(perm.code, $event)">
+                    <div class="block h-5 w-9 rounded-full bg-[#DDEED8] transition-colors duration-300 group-hover:bg-[#CFE6CB] peer-checked:bg-[#2E7D32]"></div>
+                    <div class="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform duration-300 peer-checked:translate-x-4"></div>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-[#1B5E20]">{{ perm.code }}</p>
+                    <p class="text-xs text-[#6B7D6C]">{{ perm.description }}</p>
+                  </div>
+                </label>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Footer / Actions -->
+  <div class="mt-auto flex items-center justify-end gap-3 border-t border-[#E8F2E2] bg-[#FAFCF8] p-6">
+    <button 
+      type="button" 
+      (click)="onCancel()"
+      [disabled]="status === 'loading'"
+      class="cursor-pointer rounded-full border border-[#DDEED8] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors duration-200 hover:bg-[#F1F8E9] disabled:cursor-not-allowed disabled:opacity-50">
+      Cancelar
+    </button>
+    <button 
+      type="submit" 
+      [disabled]="status === 'loading'"
+      class="cursor-pointer flex min-w-[120px] items-center justify-center rounded-full bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#256428] disabled:cursor-not-allowed disabled:opacity-50">
+      
+      @if (status === 'loading') {
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Guardando...
+      } @else {
+        {{ roleToEdit ? 'Actualizar Rol' : 'Crear Rol' }}
+      }
+    </button>
+  </div>
+</form>

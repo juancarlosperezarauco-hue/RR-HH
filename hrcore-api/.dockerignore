@@ -1,0 +1,10 @@
+# Ignorar el archivo generado de java
+target/
+.git/
+.github/
+.idea/
+.vscode/
+*.log
+
+.env
+.env.*

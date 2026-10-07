@@ -1,0 +1,56 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
+
+WORKDIR /build
+
+COPY pom.xml .
+COPY .mvn .mvn
+COPY mvnw .
+
+RUN chmod +x mvnw
+
+# Precarga dependencias para aprovechar la caché de Docker.
+RUN ./mvnw -B dependency:go-offline
+
+COPY src src
+
+# Genera el JAR de producción.
+RUN ./mvnw -B clean package -DskipTests
+
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+# Instala PostgreSQL Client 16 para pg_dump, pg_restore y psql.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    gnupg \
+  && install -d /usr/share/postgresql-common/pgdg \
+  && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    | gpg --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg \
+  && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+    > /etc/apt/sources.list.d/pgdg.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends \
+    postgresql-client-16 \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+# Usuario no root para ejecutar la aplicación.
+RUN groupadd --system app \
+  && useradd --system \
+    --gid app \
+    --home-dir /app \
+    app
+
+COPY --from=builder --chown=app:app \
+  /build/target/hrcore-api-0.0.1-SNAPSHOT.jar \
+  app.jar
+
+USER app
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

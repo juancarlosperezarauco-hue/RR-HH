@@ -1,0 +1,79 @@
+<div class="flex flex-col h-full">
+  <div class="flex-1 overflow-y-auto p-6 space-y-6">
+    
+    @if (user) {
+      <div class="rounded-2xl border border-[#C8E6C9] bg-[#F7FBF3] p-4 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-[#2E7D32]/10 flex items-center justify-center text-[#2E7D32] font-bold text-lg border border-[#2E7D32]/20">
+          {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+        </div>
+        <div>
+          <h4 class="font-semibold text-[#1B5E20]">{{ user.firstName }} {{ user.lastName }}</h4>
+          <p class="text-sm text-[#6B7D6C]">{{ user.email }}</p>
+        </div>
+      </div>
+    }
+
+    <div class="space-y-3">
+      <h4 class="text-sm font-bold uppercase tracking-[0.14em] text-[#6B7D6C] border-b border-[#E8F2E2] pb-2">Roles disponibles</h4>
+      
+      @if (status === 'loading' && availableRoles.length === 0) {
+        <div class="py-8 flex justify-center text-[#6B7D6C]">Cargando roles...</div>
+      }
+
+      @if (availableRoles.length === 0 && status !== 'loading') {
+        <div class="p-4 border border-dashed border-[#DDEED8] rounded-2xl text-center text-[#6B7D6C] text-sm">
+          No hay roles activos disponibles en este tenant.
+        </div>
+      }
+
+      <div class="grid grid-cols-1 gap-3 mt-2">
+        @for (role of availableRoles; track role.id) {
+          <label class="flex items-start gap-3 p-3 rounded-2xl border border-[#DDEED8] hover:bg-[#F1F8E9] cursor-pointer transition-colors"
+                 [class.bg-[#F7FBF3]]="hasRole(role.id)"
+                 [class.border-[#2E7D32]/30]="hasRole(role.id)">
+            <div class="relative flex items-center justify-center mt-1">
+              <input type="checkbox" class="peer sr-only" [checked]="hasRole(role.id)" (change)="toggleRole(role.id, $event)">
+              <div class="block w-10 h-5.5 rounded-full bg-[#DDEED8] peer-checked:bg-[#2E7D32] transition-colors duration-300"></div>
+              <div class="absolute left-1 top-1 bg-white w-3.5 h-3.5 rounded-full transition-transform duration-300 peer-checked:translate-x-4.5"></div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-[#1B5E20]">{{ role.name }}</span>
+                @if (hasRole(role.id)) {
+                  <span class="text-[10px] uppercase font-bold text-[#2E7D32] bg-[#E8F5E9] px-2 py-0.5 rounded-full">Asignado</span>
+                }
+              </div>
+              <p class="text-xs text-[#6B7D6C] mt-0.5 line-clamp-2">{{ role.description }}</p>
+            </div>
+          </label>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="p-6 border-t border-[#E8F2E2] bg-white flex items-center justify-end gap-3 mt-auto">
+    <button 
+      type="button" 
+      (click)="onCancel()"
+      [disabled]="status === 'loading'"
+      class="cursor-pointer px-4 py-2 text-sm font-medium text-[#2E7D32] bg-white border border-[#DDEED8] rounded-full hover:bg-[#F1F8E9] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+      Cancelar
+    </button>
+    <button 
+      type="button" 
+      (click)="onSubmit()"
+      [disabled]="status === 'loading'"
+      class="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-[#2E7D32] rounded-full hover:bg-[#256428] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center min-w-[120px] justify-center">
+      
+      @if (status === 'loading') {
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Guardando...
+      } @else {
+        Asignar roles
+      }
+    </button>
+  </div>
+</div>

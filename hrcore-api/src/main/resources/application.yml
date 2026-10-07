@@ -1,0 +1,124 @@
+# ============================================================
+# ARCHIVO: hrcore-api/src/main/resources/application.yml
+# ============================================================
+
+spring:
+  application:
+    name: hrcore-api
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: ${SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE:10MB}
+      max-request-size: ${SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE:10MB}
+
+server:
+  port: ${BACKEND_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    org.flywaydb.core.internal.sqlscript.DefaultSqlScriptExecutor: WARN
+
+app:
+  billing:
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY:}
+      webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+      success-url: ${STRIPE_SUCCESS_URL:http://localhost:4200/billing/success?session_id={CHECKOUT_SESSION_ID}}
+      cancel-url: ${STRIPE_CANCEL_URL:http://localhost:4200/billing/cancel}
+      customer-portal-return-url: ${STRIPE_CUSTOMER_PORTAL_RETURN_URL:http://localhost:4200/settings/billing}
+
+  security:
+    jwt:
+      secret: ${JWT_SECRET:4a2d6b9f8e7c1a5d3f2b4c6e8a0d9f1b3c5e7a9d2f4b6c8e0a1d3f5b7c9e2a4}
+      access-expiration-ms: ${JWT_ACCESS_EXPIRATION:900000}
+      refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:604800000}
+
+  bootstrap:
+    superadmin:
+      email: ${PLATFORM_SUPERADMIN_EMAIL:superadmin@hrcore.local}
+      password: ${PLATFORM_SUPERADMIN_PASSWORD:SuperAdmin123!}
+      first-name: ${PLATFORM_SUPERADMIN_FIRST_NAME:Platform}
+      last-name: ${PLATFORM_SUPERADMIN_LAST_NAME:Admin}
+    sample-data:
+      enabled: ${APP_BOOTSTRAP_SAMPLE_DATA_ENABLED:false}
+
+  mail:
+    from: ${MAIL_FROM:no-reply@hrcore.local}
+    public-base-url: ${API_BASE_URL:http://localhost:8080}
+
+  notifications:
+    password-reset:
+      expiration-minutes: ${PASSWORD_RESET_EXPIRATION_MINUTES:30}
+      reset-url-base: ${PASSWORD_RESET_URL_BASE:http://localhost:4200/reset-password}
+      frontend-url-base: ${FRONTEND_URL_BASE:http://localhost:4200}
+      reset-url-path: ${PASSWORD_RESET_URL_PATH:/reset-password}
+
+    account-activation:
+      expiration-minutes: ${EMAIL_VERIFICATION_EXPIRATION_MINUTES:1440}
+      frontend-url-base: ${FRONTEND_URL_BASE:http://localhost:4200}
+      activation-url-path: ${EMAIL_VERIFICATION_URL_PATH:/verify-email}
+
+    push:
+      enabled: ${NOTIFICATIONS_PUSH_ENABLED:false}
+      provider: ${NOTIFICATIONS_PROVIDER:FIREBASE}
+      firebase:
+        credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase/service-account.example.json}
+        type: ${FIREBASE_TYPE:service_account}
+        project-id: ${FIREBASE_PROJECT_ID:hrcore-system-dev}
+        private-key-id: ${FIREBASE_PRIVATE_KEY_ID:}
+        private-key: ${FIREBASE_PRIVATE_KEY:}
+        client-email: ${FIREBASE_CLIENT_EMAIL:}
+        client-id: ${FIREBASE_CLIENT_ID:}
+        auth-uri: ${FIREBASE_AUTH_URI:https://accounts.google.com/o/oauth2/auth}
+        token-uri: ${FIREBASE_TOKEN_URI:https://oauth2.googleapis.com/token}
+        auth-provider-x509-cert-url: ${FIREBASE_AUTH_PROVIDER_X509_CERT_URL:https://www.googleapis.com/oauth2/v1/certs}
+        client-x509-cert-url: ${FIREBASE_CLIENT_X509_CERT_URL:}
+        universe-domain: ${FIREBASE_UNIVERSE_DOMAIN:googleapis.com}
+
+  auth:
+    face-recognition:
+      enabled: ${FACEPP_ENABLED:true}
+      api-key: ${FACEPP_API_KEY:}
+      api-secret: ${FACEPP_API_SECRET:}
+      base-url: ${FACEPP_BASE_URL:https://api-us.faceplusplus.com/facepp/v3}
+      fallback-base-url: ${FACEPP_FALLBACK_BASE_URL:}
+      confidence-threshold: ${FACEPP_CONFIDENCE_THRESHOLD:80.0}
+      timeout-ms: ${FACEPP_TIMEOUT_MS:15000}
+
+  storage:
+    profile-photos:
+      root-dir: ${PROFILE_PHOTO_STORAGE_ROOT_DIR:uploads/profile-photos}
+
+  tenancy:
+    header-name: ${TENANT_HEADER_NAME:X-Tenant-Slug}
+    public-schema: ${PUBLIC_SCHEMA:public}
+    tenant-schema-prefix: tenant_
+    public-paths:
+      - /swagger-ui.html
+      - /swagger-ui/**
+      - /api-docs
+      - /api-docs/**
+      - /actuator/health
+      - /actuator/info
+      - /api/public/**
+      - /assets/**
+      - /logo.png
+    global-paths:
+      - /api/platform/**
+
+hrcore:
+  billing:
+    checkout-reconciliation-ms: ${CHECKOUT_RECONCILIATION_MS:60000}

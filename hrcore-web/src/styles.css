@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* ── Registrar variables CSS como colores del tema de Tailwind v4 ── */
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ── Variables CSS: Modo Claro ── */
+:root {
+  color-scheme: light;
+
+  /* Constantes estructurales */
+  --radius: 0.625rem;
+
+  /* Fondos y Textos Base (Mantenemos limpieza B2B) */
+  --background: #ffffff;
+  --foreground: #1f2937; /* Gris muy oscuro, mejor legibilidad que el negro puro */
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+
+  /* Marca PROSPERA - Botones y acciones principales */
+  --primary: #1b4d30; /* Verde Oscuro */
+  --primary-foreground: #ffffff;
+
+  /* Elementos Secundarios */
+  --secondary: #3d8c7c; /* Teal / Aqua */
+  --secondary-foreground: #ffffff;
+
+  /* Elementos Desactivados o Muted */
+  --muted: #f3f4f6; /* Gris muy suave */
+  --muted-foreground: #6b7280;
+
+  /* Hover states en tablas y menús */
+  --accent: #e8f5e9; /* Verde súper suave basado en tu logo */
+  --accent-foreground: #1b4d30;
+
+  /* Alertas destructivas (Mantenemos rojo estándar) */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Bordes e Inputs */
+  --border: #e5e7eb; /* Gris limpio para dividir secciones */
+  --input: #e5e7eb;
+  --ring: #8bc34a; /* Verde Lima brillante para el focus de inputs */
+
+  /* Sidebar (Panel Lateral) - Estilo Premium B2B */
+  --sidebar: #1b4d30; /* Fondo verde oscuro corporativo */
+  --sidebar-foreground: #ffffff; /* Texto blanco en el menú */
+  --sidebar-primary: #8bc34a; /* Verde lima para la sección activa */
+  --sidebar-primary-foreground: #1b4d30; /* Texto del ítem activo */
+  --sidebar-accent: #2e7d32; /* Hover en los ítems del menú (Verde bosque) */
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1b4d30;
+  --sidebar-ring: #8bc34a;
+}
+
+/* ── Variables CSS: Modo Oscuro ── */
+:root.dark {
+  color-scheme: dark;
+
+  /* Modo Oscuro adaptado a PROSPERA */
+  --background: #111827; /* Fondo oscuro tipo pizarra */
+  --foreground: #f9fafb;
+  --card: #1f2937;
+  --card-foreground: #f9fafb;
+  --popover: #1f2937;
+  --popover-foreground: #f9fafb;
+
+  /* En dark mode, los colores brillantes funcionan mejor para botones */
+  --primary: #8bc34a; /* Verde Lima */
+  --primary-foreground: #1b4d30;
+
+  --secondary: #3d8c7c;
+  --secondary-foreground: #ffffff;
+
+  --muted: #374151;
+  --muted-foreground: #9ca3af;
+
+  --accent: #1b4d30; /* Hover oscuro */
+  --accent-foreground: #ffffff;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #374151;
+  --input: #374151;
+  --ring: #8bc34a;
+
+  /* Sidebar Modo Oscuro */
+  --sidebar: #1f2937;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #8bc34a;
+  --sidebar-primary-foreground: #1b4d30;
+  --sidebar-accent: #374151;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #374151;
+  --sidebar-ring: #8bc34a;
+}
+
+/* ── Estilos Base ── */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+@layer components {
+  .app-modal-overlay {
+    @apply fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 sm:items-center;
+  }
+
+  .app-modal-panel {
+    @apply w-full max-w-2xl rounded-[28px] bg-white p-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain;
+  }
+
+  .app-modal-panel-sm {
+    @apply w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain;
+  }
+
+  .app-modal-header {
+    @apply flex items-start justify-between gap-4;
+  }
+
+  .app-modal-title {
+    @apply text-2xl font-black text-[#1B5E20];
+  }
+
+  .app-modal-subtitle {
+    @apply mt-1 text-sm text-[#6B7D6C];
+  }
+
+  .app-modal-content-grid {
+    @apply mt-6 grid gap-4 sm:grid-cols-2;
+  }
+
+  .app-modal-footer {
+    @apply mt-6 flex justify-end;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 84px;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+}
+
+a {
+  cursor: pointer;
+}
