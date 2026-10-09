@@ -420,7 +420,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:juancarlosperezarauco-hue/RR-HH:ref:refs/heads/juan-rrhh
+                token.actions.githubusercontent.com:sub: repo:juancarlosperezarauco-hue@235785122/RR-HH@1411195622:ref:refs/heads/juan-rrhh
       Policies:
         - PolicyName: EcrPublish
           PolicyDocument:
