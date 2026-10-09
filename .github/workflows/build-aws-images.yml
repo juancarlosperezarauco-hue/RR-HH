@@ -1,0 +1,49 @@
+name: Build AWS images
+
+on:
+  push:
+    branches:
+      - juan-rrhh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: hrcore-aws-images
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-2
+      AWS_ACCOUNT_ID: '357568621821'
+      IMAGE_TAG: sha-${{ github.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::357568621821:role/hrcore-production-github-actions-build
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and publish API image
+        env:
+          API_IMAGE: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hrcore-api:${{ env.IMAGE_TAG }}
+        run: |
+          docker build --file hrcore-api/Dockerfile.prod --tag "$API_IMAGE" hrcore-api
+          docker push "$API_IMAGE"
+
+      - name: Build and publish web image
+        env:
+          WEB_IMAGE: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/hrcore-web:${{ env.IMAGE_TAG }}
+        run: |
+          docker build --file hrcore-web/Dockerfile.prod --tag "$WEB_IMAGE" hrcore-web
+          docker push "$WEB_IMAGE"

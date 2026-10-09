@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  HR Core SaaS runtime with API Gateway HTTPS, Fargate, private PostgreSQL, and AWS-managed container builds.
+  HR Core SaaS runtime with API Gateway HTTPS, Fargate, private PostgreSQL, and OIDC-based container publishing.
 
 Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@3
   com.aws.cloudformation.Context:
-    arch: API Gateway HTTPS -> VPC Link -> ALB -> Fargate web/api -> private RDS; CodeBuild -> ECR; generated runtime secrets
+    arch: API Gateway HTTPS -> VPC Link -> ALB -> Fargate web/api -> private RDS; GitHub Actions OIDC -> ECR; generated runtime secrets
     must:
       - Database remains private and encrypted
       - API Gateway is the public viewer endpoint
@@ -26,16 +26,6 @@ Parameters:
       - db.t4g.small
       - db.t4g.medium
     Description: RDS instance size for the initial environment.
-  SourceRepositoryUrl:
-    Type: String
-    Default: https://github.com/juancarlosperezarauco-hue/RR-HH.git
-    AllowedPattern: '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git$'
-    Description: Public GitHub repository cloned by CodeBuild.
-  SourceRepositoryBranch:
-    Type: String
-    Default: juan-rrhh
-    AllowedPattern: '^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$'
-    Description: Git branch compiled by CodeBuild.
 
 Resources:
   Vpc:
@@ -392,34 +382,50 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
 
-  ContainerBuildRole:
+  GitHubActionsOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Allows GitHub Actions to request short-lived AWS credentials without repository secrets.
+        must:
+          - Trust only the GitHub Actions token issuer and AWS STS audience
+        mutable: review-required
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1b511abead59c6ce207077c0bf0e0043b1382612
+
+  GitHubActionsBuildRole:
     Type: AWS::IAM::Role
     Metadata:
       com.aws.cloudformation.Context:
-        why: Gives CodeBuild only the permissions needed to publish the API and web images.
+        why: Gives the selected GitHub branch temporary permissions to publish the API and web images.
         must:
           - Limit image writes to the hrcore-api and hrcore-web ECR repositories
+          - Trust only the juan-rrhh branch in the personal RR-HH repository
           - Never grant access to runtime secrets or the database
         mutable: review-required
     Properties:
+      RoleName: !Sub '${AWS::StackName}-github-actions-build'
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
-              Service: codebuild.amazonaws.com
-            Action: sts:AssumeRole
+              Federated: !Ref GitHubActionsOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: repo:juancarlosperezarauco-hue/RR-HH:ref:refs/heads/juan-rrhh
       Policies:
-        - PolicyName: BuildLogsAndEcrPublish
+        - PolicyName: EcrPublish
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-container-build:*'
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
@@ -434,65 +440,6 @@ Resources:
                 Resource:
                   - !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/hrcore-api'
                   - !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/hrcore-web'
-
-  ContainerBuildProject:
-    Type: AWS::CodeBuild::Project
-    Metadata:
-      com.aws.cloudformation.Context:
-        why: Builds production containers in AWS because deployment must not depend on a developer workstation.
-        must:
-          - Build only the configured public repository branch
-          - Publish both images with the same immutable tag
-        mutable: review-required
-    Properties:
-      Name: !Sub '${AWS::StackName}-container-build'
-      Description: Builds and publishes the HR Core API and web production images.
-      ServiceRole: !GetAtt ContainerBuildRole.Arn
-      TimeoutInMinutes: 60
-      QueuedTimeoutInMinutes: 60
-      Artifacts:
-        Type: NO_ARTIFACTS
-      Source:
-        Type: NO_SOURCE
-        BuildSpec: |
-          version: 0.2
-          phases:
-            pre_build:
-              commands:
-                - test -n "$IMAGE_TAG"
-                - git clone --depth 1 --branch "$REPOSITORY_BRANCH" "$REPOSITORY_URL" source
-                - cd source
-                - REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
-                - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
-                - API_IMAGE="$REGISTRY/hrcore-api:$IMAGE_TAG"
-                - WEB_IMAGE="$REGISTRY/hrcore-web:$IMAGE_TAG"
-            build:
-              commands:
-                - docker build --file hrcore-api/Dockerfile.prod --tag "$API_IMAGE" hrcore-api
-                - docker build --file hrcore-web/Dockerfile.prod --tag "$WEB_IMAGE" hrcore-web
-            post_build:
-              commands:
-                - docker push "$API_IMAGE"
-                - docker push "$WEB_IMAGE"
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/standard:7.0
-        ImagePullCredentialsType: CODEBUILD
-        PrivilegedMode: true
-        EnvironmentVariables:
-          - Name: AWS_ACCOUNT_ID
-            Type: PLAINTEXT
-            Value: !Ref AWS::AccountId
-          - Name: REPOSITORY_URL
-            Type: PLAINTEXT
-            Value: !Ref SourceRepositoryUrl
-          - Name: REPOSITORY_BRANCH
-            Type: PLAINTEXT
-            Value: !Ref SourceRepositoryBranch
-          - Name: IMAGE_TAG
-            Type: PLAINTEXT
-            Value: !Ref ImageTag
 
   ApiTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -830,9 +777,9 @@ Outputs:
     Value: !Sub
       - 'http://${LoadBalancerDns}'
       - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
-  ContainerBuildProjectName:
-    Description: CodeBuild project used to publish both production container images.
-    Value: !Ref ContainerBuildProject
+  GitHubActionsBuildRoleArn:
+    Description: Short-lived role used by the authorized GitHub Actions branch to publish production images.
+    Value: !GetAtt GitHubActionsBuildRole.Arn
   DatabaseEndpoint:
     Description: Private PostgreSQL endpoint used only by the API tasks.
     Value: !GetAtt Database.Endpoint.Address
