@@ -1,16 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  HR Core SaaS runtime with CloudFront HTTPS, Fargate, private PostgreSQL, and AWS-managed container builds.
+  HR Core SaaS runtime with API Gateway HTTPS, Fargate, private PostgreSQL, and AWS-managed container builds.
 
 Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@3
   com.aws.cloudformation.Context:
-    arch: CloudFront HTTPS -> ALB -> Fargate web/api -> private RDS; CodeBuild -> ECR; generated runtime secrets
+    arch: API Gateway HTTPS -> VPC Link -> ALB -> Fargate web/api -> private RDS; CodeBuild -> ECR; generated runtime secrets
     must:
       - Database remains private and encrypted
-      - CloudFront is the public viewer endpoint
-      - The ALB accepts HTTP only from the CloudFront origin-facing managed prefix list
+      - API Gateway is the public viewer endpoint
+      - The ALB accepts HTTP only from the API Gateway VPC Link security group
 
 Parameters:
   ImageTag:
@@ -26,11 +26,6 @@ Parameters:
       - db.t4g.small
       - db.t4g.medium
     Description: RDS instance size for the initial environment.
-  CloudFrontOriginPrefixListId:
-    Type: String
-    Default: pl-b6a144df
-    AllowedPattern: '^pl-[a-f0-9]+$'
-    Description: AWS-managed CloudFront origin-facing prefix list for us-east-2.
   SourceRepositoryUrl:
     Type: String
     Default: https://github.com/juancarlosperezarauco-hue/RR-HH.git
@@ -157,19 +152,35 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Metadata:
       com.aws.cloudformation.Context:
-        why: Accepts origin traffic from CloudFront and forwards it to the application services.
+        why: Accepts origin traffic from the API Gateway VPC Link and forwards it to the application services.
         must:
-          - Expose port 80 only to the AWS-managed CloudFront origin-facing prefix list
+          - Expose port 80 only to the VPC Link security group
         mutable: review-required
     Properties:
-      GroupDescription: CloudFront-only HTTP access to the HR Core load balancer.
+      GroupDescription: VPC Link-only HTTP access to the HR Core load balancer.
       VpcId: !Ref Vpc
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourcePrefixListId: !Ref CloudFrontOriginPrefixListId
-          Description: HTTP origin traffic from CloudFront.
+          SourceSecurityGroupId: !Ref ApiGatewayVpcLinkSecurityGroup
+          Description: HTTP origin traffic from the API Gateway VPC Link.
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+
+  ApiGatewayVpcLinkSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Identifies private integration traffic from API Gateway to the ALB.
+        must:
+          - Do not allow inbound traffic
+          - Allow outbound traffic only for the VPC Link integration
+        mutable: review-required
+    Properties:
+      GroupDescription: Outbound access for the HR Core API Gateway VPC Link.
+      VpcId: !Ref Vpc
       SecurityGroupEgress:
         - IpProtocol: '-1'
           CidrIp: 0.0.0.0/0
@@ -536,13 +547,9 @@ Resources:
             - Name: APP_BOOTSTRAP_SAMPLE_DATA_ENABLED
               Value: 'false'
             - Name: FRONTEND_URL_BASE
-              Value: !Sub
-                - 'https://${CloudFrontDomain}'
-                - CloudFrontDomain: !GetAtt CloudFrontDistribution.DomainName
+              Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
             - Name: API_BASE_URL
-              Value: !Sub
-                - 'https://${CloudFrontDomain}'
-                - CloudFrontDomain: !GetAtt CloudFrontDistribution.DomainName
+              Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
           Secrets:
             - Name: DB_PASSWORD
               ValueFrom: !Join ['', [!GetAtt Database.MasterUserSecret.SecretArn, ':password::']]
@@ -604,10 +611,10 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Metadata:
       com.aws.cloudformation.Context:
-        why: Routes CloudFront origin requests to API and frontend target groups.
+        why: Routes private integration requests from API Gateway to API and frontend target groups.
         must:
           - Use two public subnets
-          - Accept port 80 only from the CloudFront origin-facing prefix list
+          - Accept port 80 only from the API Gateway VPC Link security group
         mutable: review-required
     Properties:
       Scheme: internet-facing
@@ -619,51 +626,65 @@ Resources:
         - !Ref PublicSubnetA
         - !Ref PublicSubnetB
 
-  CloudFrontDistribution:
-    Type: AWS::CloudFront::Distribution
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
     Metadata:
       com.aws.cloudformation.Context:
-        why: Supplies a stable HTTPS endpoint with an AWS-managed certificate and forwards dynamic SaaS requests to the ALB.
+        why: Supplies a stable HTTPS endpoint with an AWS-managed certificate for the whole SaaS application.
         must:
-          - Redirect every HTTP viewer request to HTTPS
-          - Disable caching while authentication and tenant-aware behavior are validated
-          - Forward cookies, query strings, authorization, and all viewer headers except Host
+          - Keep the default execute-api HTTPS endpoint enabled
+          - Proxy every route and method to the ALB through a VPC Link
         mutable: review-required
     Properties:
-      DistributionConfig:
-        Enabled: true
-        Comment: !Sub 'HTTPS entry point for ${AWS::StackName}'
-        HttpVersion: http2and3
-        IPV6Enabled: true
-        PriceClass: PriceClass_100
-        Origins:
-          - Id: ApplicationLoadBalancerOrigin
-            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
-            CustomOriginConfig:
-              HTTPPort: 80
-              OriginProtocolPolicy: http-only
-              OriginReadTimeout: 60
-              OriginKeepaliveTimeout: 5
-        DefaultCacheBehavior:
-          TargetOriginId: ApplicationLoadBalancerOrigin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - DELETE
-            - GET
-            - HEAD
-            - OPTIONS
-            - PATCH
-            - POST
-            - PUT
-          CachedMethods:
-            - GET
-            - HEAD
-          Compress: true
-          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
-          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
+      Name: !Sub '${AWS::StackName}-https'
+      Description: HTTPS entry point for the HR Core SaaS application.
+      ProtocolType: HTTP
+      DisableExecuteApiEndpoint: false
+
+  HttpApiVpcLink:
+    Type: AWS::ApiGatewayV2::VpcLink
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Keeps API Gateway to ALB traffic inside the VPC instead of exposing the ALB to the internet.
+        must:
+          - Use at least two subnets
+          - Use the dedicated VPC Link security group
+        mutable: review-required
+    Properties:
+      Name: !Sub '${AWS::StackName}-vpc-link'
+      SecurityGroupIds:
+        - !Ref ApiGatewayVpcLinkSecurityGroup
+      SubnetIds:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      ConnectionId: !Ref HttpApiVpcLink
+      ConnectionType: VPC_LINK
+      Description: Proxy all HR Core requests to the ALB listener.
+      IntegrationMethod: ANY
+      IntegrationType: HTTP_PROXY
+      IntegrationUri: !Ref HttpListener
+      PayloadFormatVersion: '1.0'
+      TimeoutInMillis: 30000
+
+  HttpApiDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      AuthorizationType: NONE
+      RouteKey: '$default'
+      Target: !Join ['/', ['integrations', !Ref HttpApiIntegration]]
+
+  HttpApiDefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
 
   ApiTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -797,11 +818,9 @@ Resources:
 Outputs:
   ApplicationUrl:
     Description: Public HTTPS URL for the HR Core web application.
-    Value: !Sub
-      - 'https://${CloudFrontDomain}'
-      - CloudFrontDomain: !GetAtt CloudFrontDistribution.DomainName
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
   LoadBalancerOriginUrl:
-    Description: Internal deployment origin URL restricted to CloudFront source ranges.
+    Description: Deployment origin URL restricted to the API Gateway VPC Link security group.
     Value: !Sub
       - 'http://${LoadBalancerDns}'
       - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
