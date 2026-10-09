@@ -701,6 +701,9 @@ Resources:
       UnhealthyThresholdCount: 3
       Matcher:
         HttpCode: '200'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
 
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -713,6 +716,9 @@ Resources:
       HealthCheckPath: /
       Matcher:
         HttpCode: '200-399'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
 
   HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -762,7 +768,7 @@ Resources:
         DeploymentCircuitBreaker:
           Enable: true
           Rollback: true
-        MaximumPercent: 100
+        MaximumPercent: 200
         MinimumHealthyPercent: 0
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -799,7 +805,7 @@ Resources:
         DeploymentCircuitBreaker:
           Enable: true
           Rollback: true
-        MaximumPercent: 100
+        MaximumPercent: 200
         MinimumHealthyPercent: 0
       NetworkConfiguration:
         AwsvpcConfiguration:
