@@ -130,7 +130,7 @@ export class PricingPlanCardComponent {
   badgeLabel(): string {
     if (this.isFree()) return 'Plan gratis';
     if (this.plan.contactSales) return 'Enterprise';
-    return 'Paid';
+    return 'Suscripción';
   }
 
   priceLabel(): string {
@@ -147,13 +147,13 @@ export class PricingPlanCardComponent {
     if (this.isFree()) return 'Demo inicial sin tarjeta';
     if (this.plan.contactSales) return '';
 
-    return this.billingInterval === 'MONTHLY' ? 'Facturación mensual' : 'Facturación anual';
+    return this.billingInterval === 'MONTHLY' ? 'Modalidad mensual' : 'Modalidad anual';
   }
 
   defaultDescription(): string {
     if (this.isFree()) return 'Prueba la plataforma sin costo antes de pasar a un plan pagado.';
     if (this.plan.contactSales) return 'Plan personalizado para empresas que necesitan condiciones comerciales especiales.';
-    return 'Plan de suscripción para operar tu tenant con pago seguro mediante Stripe.';
+    return 'Plan de suscripción para operar tu organización sin cobros por usuario.';
   }
 
   featureHeader(): string {
@@ -177,7 +177,7 @@ export class PricingPlanCardComponent {
       return ['Capacidad personalizada', 'Condiciones comerciales especiales', 'Acompañamiento comercial', 'No usa checkout automático'];
     }
 
-    return [`Hasta ${this.plan.maxUsers} usuarios`, `Hasta ${this.plan.maxRoles} roles personalizados`, 'Pago seguro con Stripe', 'Puedes cambiar de plan desde tu sesión'];
+    return [`Hasta ${this.plan.maxUsers} usuarios`, `Hasta ${this.plan.maxRoles} roles personalizados`, 'Selección directa sin tarjeta', 'Puedes cambiar de plan desde tu sesión'];
   }
 
   private formatMoney(value: number): string {

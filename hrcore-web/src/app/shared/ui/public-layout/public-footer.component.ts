@@ -66,7 +66,7 @@ import { LucideAngularModule } from 'lucide-angular';
         <div>
           <h3 class="text-sm font-black uppercase tracking-[0.18em] text-white/55">Comienza ahora</h3>
           <p class="mt-5 text-sm leading-7 text-white/65">
-            Crea un tenant demo o revisa los planes disponibles para iniciar con una suscripción pagada.
+            Crea una organización y selecciona directamente el plan que utilizará, sin registrar tarjeta.
           </p>
           <div class="mt-5 grid gap-3">
             <a routerLink="/prices" class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#2E7D32] px-5 text-sm font-black text-white transition-colors hover:bg-[#256428]">

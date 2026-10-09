@@ -52,8 +52,8 @@ export class PricingFaqComponent {
       answer: 'Sí. Puedes crear un tenant con plan DEMO para validar el flujo principal antes de contratar un plan pagado.'
     },
     {
-      question: '¿El pago se realiza con Stripe?',
-      answer: 'Sí. Los planes pagados redirigen a Stripe Checkout y el backend activa la suscripción mediante webhook.'
+      question: '¿Debo registrar una tarjeta?',
+      answer: 'No. En este Sprint seleccionas el plan directamente y la suscripción queda activa sin cobros por usuario.'
     },
     {
       question: '¿Puedo cambiar de plan después?',

@@ -18,7 +18,7 @@ import { BillingInterval } from '../pricing-page/pricing-page.component';
 
             <h1 class="mt-4 text-4xl font-black leading-tight tracking-tight text-[#083B16] sm:text-5xl lg:text-6xl">Elige el plan para crear tu tenant.</h1>
 
-            <p class="mt-5 max-w-2xl text-base leading-8 text-[#405447]">Inicia gratis con DEMO o crea tu organización con una suscripción pagada usando Stripe desde el registro.</p>
+            <p class="mt-5 max-w-2xl text-base leading-8 text-[#405447]">Inicia con DEMO o crea tu organización seleccionando directamente el plan que utilizará, sin registrar tarjeta ni pagar por usuario.</p>
           </div>
 
           <div class="inline-flex w-fit rounded-full border border-[#C8E6C9] bg-white p-1 shadow-sm">

@@ -28,11 +28,11 @@ interface LandingPreviewPlan {
             </div>
 
             <h2 class="text-4xl font-black tracking-tight text-[#101827] sm:text-5xl">
-              Empieza gratis o activa tu tenant con pago
+              Elige el plan para tu organización
             </h2>
 
             <p class="mt-5 max-w-2xl text-base leading-8 text-[#405447]">
-              Elige un plan demo para probar la plataforma o continúa con una suscripción pagada usando Stripe desde el registro.
+              Selecciona DEMO, Basic o Professional directamente, sin registrar tarjeta ni aplicar cobros por usuario.
             </p>
           </div>
 
