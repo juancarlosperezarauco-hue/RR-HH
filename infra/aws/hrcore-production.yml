@@ -1,0 +1,643 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  HR Core SaaS runtime with Fargate, private PostgreSQL, and a public application load balancer for a complete initial deployment.
+
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+  com.aws.cloudformation.Context:
+    arch: ALB -> Fargate web/api -> private RDS; ECR images; generated runtime secrets
+    must:
+      - Database remains private and encrypted
+      - Only the ALB accepts public inbound traffic
+
+Parameters:
+  ImageTag:
+    Type: String
+    Default: '2026-10-09'
+    AllowedPattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$'
+    Description: Immutable tag already published in the hrcore ECR repositories.
+  DatabaseInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+    AllowedValues:
+      - db.t4g.micro
+      - db.t4g.small
+      - db.t4g.medium
+    Description: RDS instance size for the initial environment.
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Isolates public entry, Fargate tasks, and the private database.
+        must:
+          - Keep DNS support enabled for service discovery
+        mutable: review-required
+    Properties:
+      CidrBlock: 10.42.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-igw'
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.42.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-public-a'
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.42.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-public-b'
+
+  PublicSubnetARouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+
+  PublicSubnetBRouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+
+  PrivateDatabaseSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: 10.42.10.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-database-a'
+
+  PrivateDatabaseSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: 10.42.11.0/24
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-database-b'
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Places PostgreSQL in two private subnets with no public route.
+        must:
+          - Include two Availability Zones
+        mutable: change-with-constraints
+    Properties:
+      DBSubnetGroupDescription: Private subnets for the HR Core database.
+      SubnetIds:
+        - !Ref PrivateDatabaseSubnetA
+        - !Ref PrivateDatabaseSubnetB
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Public HTTP entry point before a custom domain and TLS certificate are available.
+        must:
+          - Expose only port 80 publicly
+        mutable: review-required
+    Properties:
+      GroupDescription: Public HTTP access to the HR Core load balancer.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: Public HTTP application access.
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+
+  ApiTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Restricts API traffic to the application load balancer.
+        must:
+          - Do not allow public ingress
+        mutable: review-required
+    Properties:
+      GroupDescription: ALB-only access to the HR Core API tasks.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+          Description: API requests forwarded by the ALB.
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+
+  WebTaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Restricts frontend traffic to the application load balancer.
+        must:
+          - Do not allow public ingress
+        mutable: review-required
+    Properties:
+      GroupDescription: ALB-only access to the HR Core web tasks.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+          Description: Web requests forwarded by the ALB.
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Allows PostgreSQL only from API tasks.
+        must:
+          - Never expose port 5432 publicly
+        mutable: must-never-change
+    Properties:
+      GroupDescription: API-only access to the HR Core PostgreSQL database.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ApiTaskSecurityGroup
+          Description: PostgreSQL connections from API tasks.
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Managed PostgreSQL persists HR data; password is generated and managed by RDS.
+        must:
+          - Keep encrypted, private, and snapshot before deletion or replacement
+          - Do not place credentials in this template
+        mutable: review-required
+    Properties:
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 100
+      StorageType: gp3
+      StorageEncrypted: true
+      BackupRetentionPeriod: 1
+      DeletionProtection: false
+      Engine: postgres
+      DBName: hrcoredb
+      MasterUsername: hrcore_admin
+      ManageMasterUserPassword: true
+      MultiAZ: false
+      PubliclyAccessible: false
+      AutoMinorVersionUpgrade: true
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+
+  JwtSecret:
+    Type: AWS::SecretsManager::Secret
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Provides a generated signing key without exposing it in task definitions.
+        must:
+          - Never read secret values into templates or logs
+        mutable: must-never-change
+    Properties:
+      Description: Generated JWT secret for HR Core.
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+
+  SuperadminPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Seeds the platform administrator with a generated password.
+        must:
+          - Retrieve only through authorized AWS access after deployment
+        mutable: must-never-change
+    Properties:
+      Description: Generated platform administrator password for HR Core.
+      GenerateSecretString:
+        PasswordLength: 32
+        ExcludePunctuation: true
+
+  TenantReadonlyPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Generated tenant read-only PostgreSQL password for HR Core.
+      GenerateSecretString:
+        PasswordLength: 32
+        ExcludePunctuation: true
+
+  PlatformReadonlyPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Generated platform read-only PostgreSQL password for HR Core.
+      GenerateSecretString:
+        PasswordLength: 32
+        ExcludePunctuation: true
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Runs independent API and web Fargate services without server management.
+        must:
+          - Use Container Insights for operational visibility
+        mutable: review-required
+    Properties:
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  WebLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Lets Fargate pull ECR images, emit logs, and inject only required runtime secrets.
+        must:
+          - Limit secret reads to this stack's generated secrets and RDS managed secret
+        mutable: review-required
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: RuntimeSecretsRead
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref JwtSecret
+                  - !Ref SuperadminPasswordSecret
+                  - !Ref TenantReadonlyPasswordSecret
+                  - !Ref PlatformReadonlyPasswordSecret
+                  - !GetAtt Database.MasterUserSecret.SecretArn
+
+  TaskApplicationRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Provides an explicit least-privilege runtime identity for application containers.
+        must:
+          - Keep empty until the application needs a specific AWS API permission
+        mutable: review-required
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  ApiTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Runs the Spring API with production profile and secrets injected only at task start.
+        must:
+          - Keep database password and signing secrets out of plain environment values
+        mutable: review-required
+    Properties:
+      Family: !Sub '${AWS::StackName}-api'
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskApplicationRole.Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+        - Name: api
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hrcore-api:${ImageTag}'
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+            - Name: SPRING_PROFILES_ACTIVE
+              Value: prod
+            - Name: DB_HOST
+              Value: !GetAtt Database.Endpoint.Address
+            - Name: DB_PORT
+              Value: !GetAtt Database.Endpoint.Port
+            - Name: DB_NAME
+              Value: hrcoredb
+            - Name: DB_USER
+              Value: hrcore_admin
+            - Name: MAIL_HOST
+              Value: localhost
+            - Name: MAIL_PORT
+              Value: '25'
+            - Name: MAIL_SMTP_AUTH
+              Value: 'false'
+            - Name: MAIL_SMTP_STARTTLS_ENABLE
+              Value: 'false'
+            - Name: NOTIFICATIONS_PUSH_ENABLED
+              Value: 'false'
+            - Name: FACEPP_ENABLED
+              Value: 'false'
+            - Name: APP_BOOTSTRAP_SAMPLE_DATA_ENABLED
+              Value: 'false'
+            - Name: FRONTEND_URL_BASE
+              Value: !Sub
+                - 'http://${LoadBalancerDns}'
+                - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+            - Name: API_BASE_URL
+              Value: !Sub
+                - 'http://${LoadBalancerDns}'
+                - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+          Secrets:
+            - Name: DB_PASSWORD
+              ValueFrom: !Join ['', [!GetAtt Database.MasterUserSecret.SecretArn, ':password::']]
+            - Name: JWT_SECRET
+              ValueFrom: !Ref JwtSecret
+            - Name: PLATFORM_SUPERADMIN_PASSWORD
+              ValueFrom: !Ref SuperadminPasswordSecret
+            - Name: TENANT_READONLY_DB_PASSWORD
+              ValueFrom: !Ref TenantReadonlyPasswordSecret
+            - Name: PLATFORM_READONLY_DB_PASSWORD
+              ValueFrom: !Ref PlatformReadonlyPasswordSecret
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ApiLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  WebTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Runs the Angular static frontend and proxies API paths through the same public ALB.
+        must:
+          - Preserve same-origin API routing for browsers
+        mutable: review-required
+    Properties:
+      Family: !Sub '${AWS::StackName}-web'
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskApplicationRole.Arn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+        - Name: web
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hrcore-web:${ImageTag}'
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+            - Name: API_UPSTREAM
+              Value: !Sub
+                - 'http://${LoadBalancerDns}'
+                - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref WebLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Provides a single public endpoint and routes API paths separately from frontend paths.
+        must:
+          - Use two public subnets and only port 80 until an ACM certificate is supplied
+        mutable: review-required
+    Properties:
+      Scheme: internet-facing
+      Type: application
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Subnets:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+
+  ApiTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref Vpc
+      Protocol: HTTP
+      Port: 8080
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /actuator/info
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref Vpc
+      Protocol: HTTP
+      Port: 8080
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /
+      Matcher:
+        HttpCode: '200-399'
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebTargetGroup
+
+  ApiListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HttpListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - /api/*
+              - /api-docs*
+              - /swagger-ui*
+              - /actuator/*
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref ApiTargetGroup
+
+  ApiService:
+    Type: AWS::ECS::Service
+    DependsOn: ApiListenerRule
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Keeps one API task available behind the API target group for the initial environment.
+        must:
+          - Roll back failed deployments
+        mutable: review-required
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      AvailabilityZoneRebalancing: DISABLED
+      EnableExecuteCommand: true
+      HealthCheckGracePeriodSeconds: 300
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ApiTaskSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetA
+            - !Ref PublicSubnetB
+      TaskDefinition: !Ref ApiTaskDefinition
+      LoadBalancers:
+        - ContainerName: api
+          ContainerPort: 8080
+          TargetGroupArn: !Ref ApiTargetGroup
+
+  WebService:
+    Type: AWS::ECS::Service
+    DependsOn: HttpListener
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Keeps one frontend task available behind the default ALB route.
+        must:
+          - Roll back failed deployments
+        mutable: review-required
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      PlatformVersion: LATEST
+      AvailabilityZoneRebalancing: DISABLED
+      EnableExecuteCommand: true
+      HealthCheckGracePeriodSeconds: 60
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 100
+        MinimumHealthyPercent: 0
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref WebTaskSecurityGroup
+          Subnets:
+            - !Ref PublicSubnetA
+            - !Ref PublicSubnetB
+      TaskDefinition: !Ref WebTaskDefinition
+      LoadBalancers:
+        - ContainerName: web
+          ContainerPort: 8080
+          TargetGroupArn: !Ref WebTargetGroup
+
+Outputs:
+  ApplicationUrl:
+    Description: Public HTTP URL for the HR Core web application.
+    Value: !Sub
+      - 'http://${LoadBalancerDns}'
+      - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+  DatabaseEndpoint:
+    Description: Private PostgreSQL endpoint used only by the API tasks.
+    Value: !GetAtt Database.Endpoint.Address
+  SuperadminPasswordSecretArn:
+    Description: AWS Secrets Manager ARN containing the generated initial platform administrator password.
+    Value: !Ref SuperadminPasswordSecret

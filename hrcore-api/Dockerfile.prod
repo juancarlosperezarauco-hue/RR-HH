@@ -8,13 +8,10 @@ COPY mvnw .
 
 RUN chmod +x mvnw
 
-# Precarga dependencias para aprovechar la caché de Docker.
-RUN ./mvnw -B dependency:go-offline
-
 COPY src src
 
 # Genera el JAR de producción.
-RUN ./mvnw -B clean package -DskipTests
+RUN ./mvnw -B -Dmaven.wagon.http.retryHandler.count=5 clean package -DskipTests
 
 
 FROM eclipse-temurin:21-jre
@@ -43,7 +40,8 @@ RUN groupadd --system app \
   && useradd --system \
     --gid app \
     --home-dir /app \
-    app
+    app \
+  && install -d -o app -g app /storage/backups
 
 COPY --from=builder --chown=app:app \
   /build/target/hrcore-api-0.0.1-SNAPSHOT.jar \
