@@ -636,6 +636,7 @@ Resources:
   ApiTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
+      Name: !Sub '${AWS::StackName}-api-v2'
       VpcId: !Ref Vpc
       Protocol: HTTP
       Port: 8080
@@ -655,6 +656,7 @@ Resources:
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
+      Name: !Sub '${AWS::StackName}-web-v2'
       VpcId: !Ref Vpc
       Protocol: HTTP
       Port: 8080
