@@ -94,7 +94,7 @@ public class TenantBillingController {
             @Valid @RequestBody CreateCheckoutSessionRequest request
     ) {
         return ApiResponse.success(
-                "Stripe checkout session created successfully",
+                "Subscription plan activated successfully",
                 createTenantCheckoutSessionUseCase.execute(request)
         );
     }

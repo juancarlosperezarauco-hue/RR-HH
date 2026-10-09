@@ -91,29 +91,27 @@ export class TenantSubscriptionUseCase {
         })
       );
 
-      if (!response.success || !response.data?.checkoutUrl) {
+      if (!response.success || !response.data) {
         this.state.update((state) => ({
           ...state,
           checkoutLoading: false,
-          error: response.message || 'No se pudo crear el checkout'
+          error: response.message || 'No se pudo activar el plan'
         }));
         return;
       }
 
-      this.storage.save({
-        stripeSessionId: response.data.stripeSessionId,
-        selectedPlanCode: response.data.selectedPlanCode,
-        billingInterval: response.data.billingInterval,
-        checkoutUrl: response.data.checkoutUrl,
-        createdAt: new Date().toISOString()
-      });
-
-      window.location.assign(response.data.checkoutUrl);
+      this.storage.clear();
+      this.state.update((state) => ({
+        ...state,
+        checkoutLoading: false,
+        error: null
+      }));
+      await this.load();
     } catch (err: any) {
       this.state.update((state) => ({
         ...state,
         checkoutLoading: false,
-        error: err.error?.message || err.message || 'No se pudo iniciar el upgrade'
+        error: err.error?.message || err.message || 'No se pudo activar el plan'
       }));
     }
   }

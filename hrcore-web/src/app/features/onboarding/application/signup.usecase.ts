@@ -1,6 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { PendingCheckoutStorageService } from '../../../entities/billing';
 import { PublicPaidSignupRequest, PublicSignupRequest, TenantService } from '../../../entities/tenant';
 
 export interface SignupState {
@@ -17,8 +16,6 @@ export const CHECKOUT_PENDING_KEY = 'hrcore.checkout.pending';
 })
 export class SignupUseCase {
   private readonly tenantService = inject(TenantService);
-  private readonly pendingCheckoutStorage = inject(PendingCheckoutStorageService);
-
   private readonly state = signal<SignupState>({
     loading: false,
     error: null,
@@ -64,32 +61,19 @@ export class SignupUseCase {
     try {
       const response = await firstValueFrom(this.tenantService.publicPaidSignup(request));
 
-      if (response.success && response.data?.checkoutUrl) {
-        this.pendingCheckoutStorage.save({
-          tenantSlug: response.data.tenantSlug,
-          companyName: response.data.companyName,
-          adminEmail: response.data.adminEmail,
-          requestedPlanCode: request.planCode,
-          selectedPlanCode: response.data.selectedPlanCode,
-          billingInterval: response.data.billingInterval,
-          checkoutSessionId: response.data.checkoutSessionId,
-          checkoutUrl: response.data.checkoutUrl,
-          createdAt: new Date().toISOString()
-        });
-
+      if (response.success && response.data) {
         this.state.set({
           loading: false,
           error: null,
-          success: false,
-          redirectingToPayment: true
+          success: true,
+          redirectingToPayment: false
         });
-        window.location.assign(response.data.checkoutUrl);
         return;
       }
 
       this.state.set({
         loading: false,
-        error: response.message || 'No se pudo iniciar el pago',
+        error: response.message || 'No se pudo crear la organización con el plan seleccionado',
         success: false,
         redirectingToPayment: false
       });

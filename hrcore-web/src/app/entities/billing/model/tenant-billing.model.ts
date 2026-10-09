@@ -27,8 +27,8 @@ export interface TenantCheckoutSessionRequest {
 
 export interface TenantCheckoutSessionResponse {
   id: string;
-  stripeSessionId: string;
-  checkoutUrl: string;
+  stripeSessionId: string | null;
+  checkoutUrl: string | null;
   status: string;
   selectedPlanCode: string;
   billingInterval: BillingInterval;

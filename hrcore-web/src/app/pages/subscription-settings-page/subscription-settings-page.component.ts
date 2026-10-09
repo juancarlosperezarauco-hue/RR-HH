@@ -18,11 +18,11 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
           </p>
 
           <h1 class="mt-2 text-3xl font-black text-slate-950">
-            Plan y facturación
+            Plan de suscripción
           </h1>
 
           <p class="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-            Revisa tu plan actual y mejora tu suscripción cuando necesites más capacidad.
+            Revisa tu plan actual y selecciona otra suscripción cuando necesites más capacidad.
           </p>
         </div>
 
@@ -144,7 +144,7 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                   </li>
                   <li class="flex gap-3">
                     <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"></lucide-icon>
-                    Pago seguro con Stripe
+                    Activación directa sin tarjeta ni cobro por usuario
                   </li>
                 </ul>
               </div>
@@ -182,7 +182,7 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                     } @else {
                       <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
                     }
-                    Mejorar plan
+                    Seleccionar plan
                   </button>
                 }
               </div>

@@ -3,11 +3,7 @@ package com.hrcoresystem.hrcore_api.modules.platform.onboarding.application.usec
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
 import com.hrcoresystem.hrcore_api.modules.platform.audit.PlatformAuditPayloads;
-import com.hrcoresystem.hrcore_api.modules.platform.billing.application.service.StripeCheckoutService;
-import com.hrcoresystem.hrcore_api.modules.platform.billing.application.service.StripeCustomerService;
 import com.hrcoresystem.hrcore_api.modules.platform.billing.domain.exception.BillingException;
-import com.hrcoresystem.hrcore_api.modules.platform.billing.domain.model.SubscriptionCheckoutSession;
-import com.hrcoresystem.hrcore_api.modules.platform.billing.domain.repository.SubscriptionCheckoutSessionRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.onboarding.application.dto.PublicPaidSignupRequest;
 import com.hrcoresystem.hrcore_api.modules.platform.onboarding.application.dto.PublicPaidSignupResponse;
 import com.hrcoresystem.hrcore_api.modules.platform.onboarding.application.service.TenantOwnerAdminProvisioningService;
@@ -21,13 +17,8 @@ import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.dto.Plat
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.usecase.CreateTenantUseCase;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenant;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.repository.PlatformTenantRepository;
-import com.stripe.model.checkout.Session;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-
-import java.math.BigDecimal;
-import java.time.Instant;
 
 @Service
 public class PublicPaidSignupUseCase {
@@ -37,9 +28,6 @@ public class PublicPaidSignupUseCase {
     private final PlatformSubscriptionRepository platformSubscriptionRepository;
     private final PlatformPlanRepository platformPlanRepository;
     private final TenantOwnerAdminProvisioningService tenantOwnerAdminProvisioningService;
-    private final StripeCustomerService stripeCustomerService;
-    private final StripeCheckoutService stripeCheckoutService;
-    private final SubscriptionCheckoutSessionRepository checkoutSessionRepository;
     private final AuditTrailService auditTrailService;
 
     public PublicPaidSignupUseCase(
@@ -48,9 +36,6 @@ public class PublicPaidSignupUseCase {
             PlatformSubscriptionRepository platformSubscriptionRepository,
             PlatformPlanRepository platformPlanRepository,
             TenantOwnerAdminProvisioningService tenantOwnerAdminProvisioningService,
-            StripeCustomerService stripeCustomerService,
-            StripeCheckoutService stripeCheckoutService,
-            SubscriptionCheckoutSessionRepository checkoutSessionRepository,
             AuditTrailService auditTrailService
     ) {
         this.createTenantUseCase = createTenantUseCase;
@@ -58,9 +43,6 @@ public class PublicPaidSignupUseCase {
         this.platformSubscriptionRepository = platformSubscriptionRepository;
         this.platformPlanRepository = platformPlanRepository;
         this.tenantOwnerAdminProvisioningService = tenantOwnerAdminProvisioningService;
-        this.stripeCustomerService = stripeCustomerService;
-        this.stripeCheckoutService = stripeCheckoutService;
-        this.checkoutSessionRepository = checkoutSessionRepository;
         this.auditTrailService = auditTrailService;
     }
 
@@ -77,14 +59,14 @@ public class PublicPaidSignupUseCase {
                 new CreateTenantRequest(
                         request.companyName().trim(),
                         request.tenantSlug().trim(),
-                        "DEMO"
+                        selectedPlan.code()
                 )
         );
 
         PlatformTenant createdTenant = platformTenantRepository.findById(createdTenantResponse.id())
                 .orElseThrow();
 
-        tenantOwnerAdminProvisioningService.provisionOwnerAdmin(
+        tenantOwnerAdminProvisioningService.provisionOwnerAdminWithoutVerification(
                 createdTenant.schemaName(),
                 createdTenant.slug(),
                 request.adminEmail().trim().toLowerCase(),
@@ -96,75 +78,39 @@ public class PublicPaidSignupUseCase {
         PlatformSubscription currentSubscription = platformSubscriptionRepository.findCurrentByTenantId(createdTenant.id())
                 .orElseThrow();
 
-        PlatformPlan initialPlan = platformPlanRepository.findById(currentSubscription.planId())
+        PlatformPlan currentPlan = platformPlanRepository.findById(currentSubscription.planId())
                 .orElseThrow();
 
-        PlatformTenant tenantWithCustomer = stripeCustomerService.ensureStripeCustomer(
-                createdTenant,
-                request.adminEmail()
-        );
-
-        Session stripeSession = stripeCheckoutService.createSubscriptionCheckoutSession(
-                tenantWithCustomer,
-                selectedPlan,
-                billingInterval
-        );
-
-        SubscriptionCheckoutSession savedCheckout = checkoutSessionRepository.save(
-                new SubscriptionCheckoutSession(
-                        null,
-                        tenantWithCustomer.id(),
-                        selectedPlan.id(),
-                        null,
-                        request.adminEmail().trim().toLowerCase(),
-                        billingInterval,
-                        normalizeCheckoutStatus(stripeSession.getStatus()),
-                        tenantWithCustomer.stripeCustomerId(),
-                        stripeSession.getId(),
-                        null,
-                        null,
-                        stripeSession.getUrl(),
-                        null,
-                        null,
-                        resolveAmount(selectedPlan, billingInterval),
-                        selectedPlan.currency(),
-                        null,
-                        stripeSession.getExpiresAt() == null ? null : Instant.ofEpochSecond(stripeSession.getExpiresAt()),
-                        null,
-                        null
-                )
-        );
-
         auditTrailService.recordPlatformEvent(
-                AuditEventTypes.PUBLIC_SIGNUP_CHECKOUT_CREATED,
+                AuditEventTypes.PUBLIC_SIGNUP_COMPLETED,
                 "TENANT",
-                tenantWithCustomer.id().toString(),
+                createdTenant.id().toString(),
                 PlatformAuditPayloads.details(
-                        "tenantSlug", tenantWithCustomer.slug(),
+                        "tenantSlug", createdTenant.slug(),
                         "adminEmail", request.adminEmail().trim().toLowerCase(),
-                        "initialPlanCode", initialPlan.code(),
+                        "initialPlanCode", currentPlan.code(),
                         "selectedPlanCode", selectedPlan.code(),
                         "billingInterval", billingInterval.name(),
-                        "checkoutSessionId", stripeSession.getId()
+                        "paymentRequired", "false"
                 ),
                 null,
-                PlatformAuditPayloads.tenantState(tenantWithCustomer)
+                PlatformAuditPayloads.tenantState(createdTenant)
         );
 
         return new PublicPaidSignupResponse(
-                tenantWithCustomer.id(),
-                tenantWithCustomer.slug(),
-                tenantWithCustomer.name(),
+                createdTenant.id(),
+                createdTenant.slug(),
+                createdTenant.name(),
                 request.adminEmail().trim().toLowerCase(),
                 "OWNER_ADMIN",
-                initialPlan.code(),
+                currentPlan.code(),
                 selectedPlan.code(),
                 billingInterval.name(),
-                savedCheckout.stripeSessionId(),
-                savedCheckout.checkoutUrl(),
-                savedCheckout.status(),
-                savedCheckout.expiresAt(),
-                "Redirect the user to checkoutUrl. The subscription will be activated after Stripe webhook confirmation and the owner must verify the inbox before signing in."
+                null,
+                null,
+                "NOT_REQUIRED",
+                currentSubscription.expiresAt(),
+                "Organization and owner account created with the selected plan. Payment is not required for this Sprint."
         );
     }
 
@@ -190,33 +136,8 @@ public class PublicPaidSignupUseCase {
         }
     }
 
-    private String normalizeCheckoutStatus(String stripeStatus) {
-        if (!StringUtils.hasText(stripeStatus)) {
-            return "PENDING";
-        }
-
-        return switch (stripeStatus.trim().toLowerCase()) {
-            case "open" -> "OPEN";
-            case "complete" -> "COMPLETED";
-            case "expired" -> "EXPIRED";
-            default -> "PENDING";
-        };
-    }
-
-    private BigDecimal resolveAmount(PlatformPlan plan, BillingInterval billingInterval) {
-        BigDecimal amount = billingInterval == BillingInterval.MONTHLY
-                ? plan.monthlyAmount()
-                : plan.yearlyAmount();
-
-        if (amount == null) {
-            throw new BillingException("Selected plan does not have an amount configured for " + billingInterval.name());
-        }
-
-        return amount;
-    }
-
     private String normalizeName(String value) {
-        if (!StringUtils.hasText(value)) {
+        if (value == null || value.isBlank()) {
             return "";
         }
 

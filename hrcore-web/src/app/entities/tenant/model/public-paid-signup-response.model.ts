@@ -6,8 +6,8 @@ export interface PublicPaidSignupResponse {
   initialPlanCode: string;
   selectedPlanCode: string;
   billingInterval: string;
-  checkoutSessionId: string;
-  checkoutUrl: string;
+  checkoutSessionId: string | null;
+  checkoutUrl: string | null;
   checkoutStatus: string;
   expiresAt: string | null;
   message?: string;

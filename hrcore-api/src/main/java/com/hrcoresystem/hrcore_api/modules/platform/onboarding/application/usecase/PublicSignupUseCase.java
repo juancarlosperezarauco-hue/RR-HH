@@ -57,7 +57,7 @@ public class PublicSignupUseCase {
         PlatformTenant createdTenant = platformTenantRepository.findById(createdTenantResponse.id())
                 .orElseThrow();
 
-        tenantOwnerAdminProvisioningService.provisionOwnerAdmin(
+        tenantOwnerAdminProvisioningService.provisionOwnerAdminWithoutVerification(
                 createdTenant.schemaName(),
                 createdTenant.slug(),
                 request.adminEmail(),
@@ -94,7 +94,7 @@ public class PublicSignupUseCase {
                 currentPlan.code(),
                 currentSubscription.status().name(),
                 currentSubscription.expiresAt(),
-                "Revisa tu correo y activa la cuenta antes de iniciar sesión (X-Tenant-Slug = "
+                "La organización y la cuenta propietaria están listas para iniciar sesión (X-Tenant-Slug = "
                         + createdTenant.slug() + ")."
         );
     }

@@ -1,15 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  HR Core SaaS runtime with Fargate, private PostgreSQL, and a public application load balancer for a complete initial deployment.
+  HR Core SaaS runtime with CloudFront HTTPS, Fargate, private PostgreSQL, and AWS-managed container builds.
 
 Metadata:
   AWSToolsMetrics:
     AWSAgentToolkit: aws-cloudformation@3
   com.aws.cloudformation.Context:
-    arch: ALB -> Fargate web/api -> private RDS; ECR images; generated runtime secrets
+    arch: CloudFront HTTPS -> ALB -> Fargate web/api -> private RDS; CodeBuild -> ECR; generated runtime secrets
     must:
       - Database remains private and encrypted
-      - Only the ALB accepts public inbound traffic
+      - CloudFront is the public viewer endpoint
+      - The ALB accepts HTTP only from the CloudFront origin-facing managed prefix list
 
 Parameters:
   ImageTag:
@@ -25,6 +26,21 @@ Parameters:
       - db.t4g.small
       - db.t4g.medium
     Description: RDS instance size for the initial environment.
+  CloudFrontOriginPrefixListId:
+    Type: String
+    Default: pl-b6a144df
+    AllowedPattern: '^pl-[a-f0-9]+$'
+    Description: AWS-managed CloudFront origin-facing prefix list for us-east-2.
+  SourceRepositoryUrl:
+    Type: String
+    Default: https://github.com/juancarlosperezarauco-hue/RR-HH.git
+    AllowedPattern: '^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git$'
+    Description: Public GitHub repository cloned by CodeBuild.
+  SourceRepositoryBranch:
+    Type: String
+    Default: juan-rrhh
+    AllowedPattern: '^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$'
+    Description: Git branch compiled by CodeBuild.
 
 Resources:
   Vpc:
@@ -141,19 +157,19 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Metadata:
       com.aws.cloudformation.Context:
-        why: Public HTTP entry point before a custom domain and TLS certificate are available.
+        why: Accepts origin traffic from CloudFront and forwards it to the application services.
         must:
-          - Expose only port 80 publicly
+          - Expose port 80 only to the AWS-managed CloudFront origin-facing prefix list
         mutable: review-required
     Properties:
-      GroupDescription: Public HTTP access to the HR Core load balancer.
+      GroupDescription: CloudFront-only HTTP access to the HR Core load balancer.
       VpcId: !Ref Vpc
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
-          Description: Public HTTP application access.
+          SourcePrefixListId: !Ref CloudFrontOriginPrefixListId
+          Description: HTTP origin traffic from CloudFront.
       SecurityGroupEgress:
         - IpProtocol: '-1'
           CidrIp: 0.0.0.0/0
@@ -365,6 +381,108 @@ Resources:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
 
+  ContainerBuildRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Gives CodeBuild only the permissions needed to publish the API and web images.
+        must:
+          - Limit image writes to the hrcore-api and hrcore-web ECR repositories
+          - Never grant access to runtime secrets or the database
+        mutable: review-required
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BuildLogsAndEcrPublish
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-container-build:*'
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/hrcore-api'
+                  - !Sub 'arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/hrcore-web'
+
+  ContainerBuildProject:
+    Type: AWS::CodeBuild::Project
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Builds production containers in AWS because deployment must not depend on a developer workstation.
+        must:
+          - Build only the configured public repository branch
+          - Publish both images with the same immutable tag
+        mutable: review-required
+    Properties:
+      Name: !Sub '${AWS::StackName}-container-build'
+      Description: Builds and publishes the HR Core API and web production images.
+      ServiceRole: !GetAtt ContainerBuildRole.Arn
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 60
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - test -n "$IMAGE_TAG"
+                - git clone --depth 1 --branch "$REPOSITORY_BRANCH" "$REPOSITORY_URL" source
+                - cd source
+                - REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
+                - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+                - API_IMAGE="$REGISTRY/hrcore-api:$IMAGE_TAG"
+                - WEB_IMAGE="$REGISTRY/hrcore-web:$IMAGE_TAG"
+            build:
+              commands:
+                - docker build --file hrcore-api/Dockerfile.prod --tag "$API_IMAGE" hrcore-api
+                - docker build --file hrcore-web/Dockerfile.prod --tag "$WEB_IMAGE" hrcore-web
+            post_build:
+              commands:
+                - docker push "$API_IMAGE"
+                - docker push "$WEB_IMAGE"
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_ACCOUNT_ID
+            Type: PLAINTEXT
+            Value: !Ref AWS::AccountId
+          - Name: REPOSITORY_URL
+            Type: PLAINTEXT
+            Value: !Ref SourceRepositoryUrl
+          - Name: REPOSITORY_BRANCH
+            Type: PLAINTEXT
+            Value: !Ref SourceRepositoryBranch
+          - Name: IMAGE_TAG
+            Type: PLAINTEXT
+            Value: !Ref ImageTag
+
   ApiTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Metadata:
@@ -419,12 +537,12 @@ Resources:
               Value: 'false'
             - Name: FRONTEND_URL_BASE
               Value: !Sub
-                - 'http://${LoadBalancerDns}'
-                - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+                - 'https://${CloudFrontDomain}'
+                - CloudFrontDomain: !GetAtt CloudFrontDistribution.DomainName
             - Name: API_BASE_URL
               Value: !Sub
-                - 'http://${LoadBalancerDns}'
-                - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+                - 'https://${CloudFrontDomain}'
+                - CloudFrontDomain: !GetAtt CloudFrontDistribution.DomainName
           Secrets:
             - Name: DB_PASSWORD
               ValueFrom: !Join ['', [!GetAtt Database.MasterUserSecret.SecretArn, ':password::']]
@@ -486,9 +604,10 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Metadata:
       com.aws.cloudformation.Context:
-        why: Provides a single public endpoint and routes API paths separately from frontend paths.
+        why: Routes CloudFront origin requests to API and frontend target groups.
         must:
-          - Use two public subnets and only port 80 until an ACM certificate is supplied
+          - Use two public subnets
+          - Accept port 80 only from the CloudFront origin-facing prefix list
         mutable: review-required
     Properties:
       Scheme: internet-facing
@@ -499,6 +618,52 @@ Resources:
       Subnets:
         - !Ref PublicSubnetA
         - !Ref PublicSubnetB
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Supplies a stable HTTPS endpoint with an AWS-managed certificate and forwards dynamic SaaS requests to the ALB.
+        must:
+          - Redirect every HTTP viewer request to HTTPS
+          - Disable caching while authentication and tenant-aware behavior are validated
+          - Forward cookies, query strings, authorization, and all viewer headers except Host
+        mutable: review-required
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub 'HTTPS entry point for ${AWS::StackName}'
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: ApplicationLoadBalancerOrigin
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 5
+        DefaultCacheBehavior:
+          TargetOriginId: ApplicationLoadBalancerOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - DELETE
+            - GET
+            - HEAD
+            - OPTIONS
+            - PATCH
+            - POST
+            - PUT
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
 
   ApiTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -631,10 +796,18 @@ Resources:
 
 Outputs:
   ApplicationUrl:
-    Description: Public HTTP URL for the HR Core web application.
+    Description: Public HTTPS URL for the HR Core web application.
+    Value: !Sub
+      - 'https://${CloudFrontDomain}'
+      - CloudFrontDomain: !GetAtt CloudFrontDistribution.DomainName
+  LoadBalancerOriginUrl:
+    Description: Internal deployment origin URL restricted to CloudFront source ranges.
     Value: !Sub
       - 'http://${LoadBalancerDns}'
       - LoadBalancerDns: !GetAtt ApplicationLoadBalancer.DNSName
+  ContainerBuildProjectName:
+    Description: CodeBuild project used to publish both production container images.
+    Value: !Ref ContainerBuildProject
   DatabaseEndpoint:
     Description: Private PostgreSQL endpoint used only by the API tasks.
     Value: !GetAtt Database.Endpoint.Address

@@ -44,15 +44,15 @@ public class PublicOnboardingController {
     }
 
     /**
-     * Registro público con Stripe Checkout.
-     * Crea el tenant en estado pendiente y devuelve la URL de Stripe.
+     * Registro público con selección directa de un plan de suscripción.
+     * No solicita tarjeta ni crea un cobro por usuario durante este Sprint.
      */
     @PostMapping("/signup/checkout")
     public ApiResponse<PublicPaidSignupResponse> paidSignup(
             @Valid @RequestBody PublicPaidSignupRequest request
     ) {
         return ApiResponse.success(
-                "Public paid signup checkout created successfully",
+                "Public signup with selected plan completed successfully",
                 publicPaidSignupUseCase.execute(request)
         );
     }
