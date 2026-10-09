@@ -564,7 +564,7 @@ Resources:
           - Accept port 80 only from the API Gateway VPC Link security group
         mutable: review-required
     Properties:
-      Scheme: internet-facing
+      Scheme: internal
       Type: application
       IpAddressType: ipv4
       SecurityGroups:
