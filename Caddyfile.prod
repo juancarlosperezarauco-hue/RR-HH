@@ -1,0 +1,17 @@
+{$APP_DOMAIN} {
+    handle /api/* {
+        reverse_proxy serv-hrcore-api:8080
+    }
+
+    handle /assets/* {
+        reverse_proxy serv-hrcore-web:80
+    }
+
+    handle /logo.png {
+        reverse_proxy serv-hrcore-web:80
+    }
+
+    handle {
+        reverse_proxy serv-hrcore-web:80
+    }
+}
