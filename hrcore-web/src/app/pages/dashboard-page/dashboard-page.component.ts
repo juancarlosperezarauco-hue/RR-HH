@@ -10,7 +10,7 @@ import { SidebarComponent, HeaderComponent } from '../../widgets/layoutAdmin';
   imports: [CommonModule, RouterModule, RouterOutlet, SidebarComponent, HeaderComponent],
 
   template: `
-    <div class="flex h-screen w-full overflow-hidden bg-[#F1F8E9]">
+    <div class="hrcore-brand-theme flex h-screen w-full overflow-hidden bg-accent">
       <app-sidebar class="w-0 md:w-64 shrink-0 transition-all duration-300 relative z-50" (logoutAction)="logout()"></app-sidebar>
 
       <main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">

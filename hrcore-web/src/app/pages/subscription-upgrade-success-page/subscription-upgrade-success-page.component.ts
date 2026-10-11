@@ -10,47 +10,47 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
   imports: [CommonModule, RouterModule, LucideAngularModule],
   template: `
     <section class="mx-auto max-w-3xl px-4 py-12">
-      <div class="rounded-3xl border border-emerald-100 bg-white p-8 text-center shadow-sm">
+      <div class="rounded-3xl border border-border/30 bg-card p-8 text-center shadow-sm">
         @if (useCase.activationStatus()?.active) {
-          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-700 text-white">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary text-primary-foreground">
             <lucide-icon name="check-circle" class="h-8 w-8"></lucide-icon>
           </div>
 
-          <h1 class="mt-6 text-3xl font-black text-slate-950">
+          <h1 class="mt-6 text-3xl font-black text-foreground">
             Plan actualizado
           </h1>
 
-          <p class="mt-4 text-sm leading-7 text-slate-600">
+          <p class="mt-4 text-sm leading-7 text-muted-foreground">
             Tu suscripción ya fue activada con el plan {{ useCase.activationStatus()?.planCode }}.
           </p>
         } @else if (useCase.activationStatus()?.failed) {
-          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-100 text-amber-700">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-warning/10 text-warning">
             <lucide-icon name="circle-alert" class="h-8 w-8"></lucide-icon>
           </div>
 
-          <h1 class="mt-6 text-3xl font-black text-slate-950">
+          <h1 class="mt-6 text-3xl font-black text-foreground">
             Activación en revisión
           </h1>
 
-          <p class="mt-4 text-sm leading-7 text-slate-600">
+          <p class="mt-4 text-sm leading-7 text-muted-foreground">
             No vuelvas a pagar. El pago fue recibido, pero necesitamos reconciliar la activación.
           </p>
         } @else {
-          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-700">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-accent text-primary">
             <lucide-icon name="loader-circle" class="h-8 w-8 animate-spin"></lucide-icon>
           </div>
 
-          <h1 class="mt-6 text-3xl font-black text-slate-950">
+          <h1 class="mt-6 text-3xl font-black text-foreground">
             Pago recibido
           </h1>
 
-          <p class="mt-4 text-sm leading-7 text-slate-600">
+          <p class="mt-4 text-sm leading-7 text-muted-foreground">
             Estamos activando tu nuevo plan. Esto puede tardar unos segundos.
           </p>
         }
 
         @if (useCase.error()) {
-          <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-sm text-amber-800">
+          <div class="mt-6 rounded-2xl border border-warning/30 bg-warning/10 p-4 text-left text-sm text-warning">
             {{ useCase.error() }}
           </div>
         }
@@ -59,13 +59,13 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
           <button
             type="button"
             (click)="checkNow()"
-            class="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-200 bg-white px-5 text-sm font-black text-emerald-700 hover:bg-emerald-50">
+            class="inline-flex h-11 items-center justify-center rounded-xl border border-border/40 bg-card px-5 text-sm font-black text-primary hover:bg-accent">
             Revisar estado
           </button>
 
           <a
             routerLink="/dashboard/subscription"
-            class="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-black text-white hover:bg-emerald-800">
+            class="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground hover:bg-primary/90">
             Volver a suscripción
           </a>
         </div>

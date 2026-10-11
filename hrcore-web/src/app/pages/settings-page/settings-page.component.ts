@@ -45,18 +45,18 @@ const DEFAULT_SETTINGS: SettingsFormValue = {
   imports: [CommonModule, RouterModule, ReactiveFormsModule, LucideAngularModule],
   template: `
     <div class="space-y-6 p-4 sm:p-6 lg:p-8">
-      <section class="rounded-[28px] border border-[#C8E6C9] bg-gradient-to-br from-white via-[#F7FBF3] to-[#EAF6EB] p-6 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+      <section class="rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-muted p-6 shadow-lg">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div class="space-y-3">
-            <div class="inline-flex items-center gap-2 rounded-full border border-[#C8E6C9] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2E7D32]">
-              <span class="h-2 w-2 rounded-full bg-[#4CAF50]"></span>
+            <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              <span class="h-2 w-2 rounded-full bg-secondary"></span>
               {{ contextBadge }}
             </div>
             <div>
-              <h1 class="text-3xl font-black tracking-tight text-[#1B5E20] sm:text-4xl">
+              <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Configuraciones
               </h1>
-              <p class="mt-2 max-w-3xl text-sm leading-6 text-[#5F6F5F]">
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                 {{ contextDescription }}
               </p>
             </div>
@@ -66,7 +66,7 @@ const DEFAULT_SETTINGS: SettingsFormValue = {
             @for (action of quickActions; track action.route) {
               <a
                 [routerLink]="action.route"
-                class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                 <lucide-icon [name]="action.icon" class="h-4 w-4"></lucide-icon>
                 {{ action.label }}
               </a>
@@ -76,69 +76,69 @@ const DEFAULT_SETTINGS: SettingsFormValue = {
       </section>
 
       @if (loading && !displayEmail) {
-        <section class="rounded-[24px] border border-[#C8E6C9] bg-white p-8 text-sm text-[#6B7D6C] shadow-sm">
+        <section class="rounded-[24px] border border-border bg-card p-8 text-sm text-muted-foreground shadow-sm">
           Cargando configuraciones...
         </section>
       }
 
       @if (errorMessage) {
-        <section class="rounded-[24px] border border-[#F3C6C6] bg-[#FFF7F7] p-6 shadow-sm">
-          <p class="text-sm font-semibold text-[#B42318]">{{ errorMessage }}</p>
+        <section class="rounded-[24px] border border-border bg-muted p-6 shadow-sm">
+          <p class="text-sm font-semibold text-foreground">{{ errorMessage }}</p>
         </section>
       }
 
       <section class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+        <div class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
           <div class="flex items-center gap-3">
-            <div class="rounded-2xl bg-[#F1F8E9] p-3 text-[#2E7D32]">
+            <div class="rounded-2xl bg-accent p-3 text-primary">
               <lucide-icon [name]="contextIcon" class="h-5 w-5"></lucide-icon>
             </div>
             <div>
-              <h2 class="text-lg font-bold text-[#1B5E20]">Cuenta activa</h2>
-              <p class="text-sm text-[#6B7D6C]">{{ contextSubtitle }}</p>
+              <h2 class="text-lg font-bold text-accent-foreground">Cuenta activa</h2>
+              <p class="text-sm text-muted-foreground">{{ contextSubtitle }}</p>
             </div>
           </div>
 
           <div class="mt-6 space-y-4">
-            <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-              <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Nombre</p>
-              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ displayName }}</p>
+            <div class="rounded-2xl border border-border bg-muted p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Nombre</p>
+              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ displayName }}</p>
             </div>
-            <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-              <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Correo</p>
-              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ displayEmail }}</p>
+            <div class="rounded-2xl border border-border bg-muted p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Correo</p>
+              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ displayEmail }}</p>
             </div>
-            <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-              <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Rol</p>
-              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ displayRole }}</p>
+            <div class="rounded-2xl border border-border bg-muted p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Rol</p>
+              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ displayRole }}</p>
             </div>
-            <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-              <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Ámbito</p>
-              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ contextBadge }}</p>
+            <div class="rounded-2xl border border-border bg-muted p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Ámbito</p>
+              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ contextBadge }}</p>
             </div>
           </div>
         </div>
 
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+        <div class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
           <div class="flex items-center gap-3">
-            <div class="rounded-2xl bg-[#F1F8E9] p-3 text-[#2E7D32]">
+            <div class="rounded-2xl bg-accent p-3 text-primary">
               <lucide-icon name="settings" class="h-5 w-5"></lucide-icon>
             </div>
             <div>
-              <h2 class="text-lg font-bold text-[#1B5E20]">Preferencias</h2>
-              <p class="text-sm text-[#6B7D6C]">Ajustes visuales y de comportamiento guardados localmente.</p>
+              <h2 class="text-lg font-bold text-accent-foreground">Preferencias</h2>
+              <p class="text-sm text-muted-foreground">Ajustes visuales y de comportamiento guardados localmente.</p>
             </div>
           </div>
 
           <form class="mt-6 space-y-3" [formGroup]="form" (ngSubmit)="save()">
             @for (option of settingOptions; track option.key) {
-              <label class="flex items-start justify-between gap-4 rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
+              <label class="flex items-start justify-between gap-4 rounded-2xl border border-border bg-muted p-4">
                 <div>
-                  <p class="text-sm font-semibold text-[#1B5E20]">{{ option.label }}</p>
-                  <p class="mt-1 text-xs leading-5 text-[#6B7D6C]">{{ option.description }}</p>
+                  <p class="text-sm font-semibold text-accent-foreground">{{ option.label }}</p>
+                  <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ option.description }}</p>
                 </div>
                 <input
-                  class="mt-1 h-5 w-5 rounded border-[#C8E6C9] text-[#2E7D32] focus:ring-[#2E7D32]"
+                  class="mt-1 h-5 w-5 rounded border-border text-primary focus:ring-primary"
                   type="checkbox"
                   [formControlName]="option.key">
               </label>
@@ -147,27 +147,27 @@ const DEFAULT_SETTINGS: SettingsFormValue = {
             <div class="flex flex-wrap gap-3 pt-2">
               <button
                 type="submit"
-                class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32]">
+                class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary">
                 <lucide-icon name="save" class="h-4 w-4"></lucide-icon>
                 Guardar cambios
               </button>
               <button
                 type="button"
                 (click)="reset()"
-                class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="rotate-ccw" class="h-4 w-4"></lucide-icon>
                 Restaurar
               </button>
             </div>
 
             @if (successMessage) {
-              <div class="rounded-2xl border border-[#C8E6C9] bg-[#F1F8E9] px-4 py-3 text-sm font-medium text-[#1B5E20]">
+              <div class="rounded-2xl border border-border bg-accent px-4 py-3 text-sm font-medium text-accent-foreground">
                 {{ successMessage }}
               </div>
             }
 
             @if (formError) {
-              <div class="rounded-2xl border border-[#F3C6C6] bg-[#FFF7F7] px-4 py-3 text-sm font-medium text-[#B42318]">
+              <div class="rounded-2xl border border-border bg-muted px-4 py-3 text-sm font-medium text-foreground">
                 {{ formError }}
               </div>
             }

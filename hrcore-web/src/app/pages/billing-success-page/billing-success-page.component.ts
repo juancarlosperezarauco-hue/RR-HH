@@ -18,77 +18,77 @@ import { PublicFooterComponent, PublicNavbarComponent } from '../../shared/ui/pu
     PublicFooterComponent
   ],
   template: `
-    <div class="min-h-screen bg-[#F7FBF3]">
+    <div class="min-h-screen bg-background">
       <app-public-navbar />
 
       <main class="px-4 py-20 sm:px-6 lg:px-8">
-        <section class="mx-auto max-w-3xl rounded-[34px] border border-[#DDEED8] bg-white p-6 shadow-[0_24px_70px_rgba(27,94,32,0.12)] sm:p-8">
-          <div class="rounded-[30px] border border-[#DDEED8] bg-[#FAFCF8] p-5 sm:p-7">
+        <section class="mx-auto max-w-3xl rounded-[34px] border border-border bg-card p-6 shadow-lg sm:p-8">
+          <div class="rounded-[30px] border border-border bg-muted p-5 sm:p-7">
             @if (statusUseCase.status() === 'active') {
-              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#2E7D32] text-white shadow-sm">
+              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-primary text-primary-foreground shadow-sm">
                 <lucide-icon name="check-circle" class="h-8 w-8"></lucide-icon>
               </div>
 
-              <h1 class="mt-6 text-center text-3xl font-black tracking-tight text-[#083B16] sm:text-4xl">
+              <h1 class="mt-6 text-center text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Tu compra fue confirmada
               </h1>
 
-              <p class="mt-4 text-center text-sm leading-7 text-[#405447] sm:text-base">
+              <p class="mt-4 text-center text-sm leading-7 text-muted-foreground sm:text-base">
                 Revisa tu correo y luego entra al login para empezar a usar el plan {{ planCode() }}.
               </p>
             } @else if (statusUseCase.status() === 'failed') {
-              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#FBF4EA] text-[#A87824] shadow-sm">
+              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-muted text-foreground shadow-sm">
                 <lucide-icon name="circle-alert" class="h-8 w-8"></lucide-icon>
               </div>
 
-              <h1 class="mt-6 text-center text-3xl font-black tracking-tight text-[#083B16] sm:text-4xl">
+              <h1 class="mt-6 text-center text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Estamos terminando de activar tu suscripción
               </h1>
 
-              <p class="mt-4 text-center text-sm leading-7 text-[#405447] sm:text-base">
+              <p class="mt-4 text-center text-sm leading-7 text-muted-foreground sm:text-base">
                 No vuelvas a pagar. Tu compra ya fue registrada. Revisa tu correo y vuelve a intentar en unos segundos.
               </p>
             } @else {
-              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#E8F5E9] text-[#2E7D32] shadow-sm">
+              <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-accent text-primary shadow-sm">
                 <lucide-icon name="loader-circle" class="h-8 w-8 animate-spin"></lucide-icon>
               </div>
 
-              <h1 class="mt-6 text-center text-3xl font-black tracking-tight text-[#083B16] sm:text-4xl">
+              <h1 class="mt-6 text-center text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Estamos revisando tu compra
               </h1>
 
-              <p class="mt-4 text-center text-sm leading-7 text-[#405447] sm:text-base">
+              <p class="mt-4 text-center text-sm leading-7 text-muted-foreground sm:text-base">
                 Tu pago ya llegó. Revisa tu correo y en breve quedará listo tu acceso al plan {{ planCode() }}.
               </p>
             }
 
             @if (pendingCheckout()) {
-              <div class="mt-8 rounded-3xl border border-[#DDEED8] bg-white p-5 text-left shadow-sm">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-[#2E7D32]">
+              <div class="mt-8 rounded-3xl border border-border bg-card p-5 text-left shadow-sm">
+                <p class="text-xs font-black uppercase tracking-[0.18em] text-primary">
                   Resumen
                 </p>
 
                 <div class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                  <div class="rounded-2xl bg-[#FAFCF8] px-4 py-3">
-                    <p class="text-xs font-bold text-[#6B7D6C]">Plan</p>
-                    <p class="mt-1 font-black text-[#083B16]">{{ planCode() }}</p>
+                  <div class="rounded-2xl bg-muted px-4 py-3">
+                    <p class="text-xs font-bold text-muted-foreground">Plan</p>
+                    <p class="mt-1 font-black text-accent-foreground">{{ planCode() }}</p>
                   </div>
 
-                  <div class="rounded-2xl bg-[#FAFCF8] px-4 py-3">
-                    <p class="text-xs font-bold text-[#6B7D6C]">Facturación</p>
-                    <p class="mt-1 font-black text-[#083B16]">{{ billingInterval() }}</p>
+                  <div class="rounded-2xl bg-muted px-4 py-3">
+                    <p class="text-xs font-bold text-muted-foreground">Facturación</p>
+                    <p class="mt-1 font-black text-accent-foreground">{{ billingInterval() }}</p>
                   </div>
 
-                  <div class="rounded-2xl bg-[#FAFCF8] px-4 py-3 sm:col-span-2">
-                    <p class="text-xs font-bold text-[#6B7D6C]">Empresa</p>
-                    <p class="mt-1 font-black text-[#083B16]">{{ pendingCheckout()?.companyName }}</p>
+                  <div class="rounded-2xl bg-muted px-4 py-3 sm:col-span-2">
+                    <p class="text-xs font-bold text-muted-foreground">Empresa</p>
+                    <p class="mt-1 font-black text-accent-foreground">{{ pendingCheckout()?.companyName }}</p>
                   </div>
                 </div>
               </div>
             }
 
             @if (statusUseCase.status() === 'error') {
-              <div class="mt-6 rounded-2xl border border-[#F5D7B5] bg-[#FBF4EA] p-4 text-left text-sm leading-7 text-[#7E5A1B]">
+              <div class="mt-6 rounded-2xl border border-border bg-muted p-4 text-left text-sm leading-7 text-foreground">
                 No pudimos revisar el estado en este momento. No vuelvas a pagar. Puedes intentar nuevamente o entrar al login en unos segundos.
               </div>
             }
@@ -98,7 +98,7 @@ import { PublicFooterComponent, PublicNavbarComponent } from '../../shared/ui/pu
                 <button
                   type="button"
                   (click)="checkNow()"
-                  class="inline-flex h-11 items-center justify-center rounded-xl border border-[#C8E6C9] bg-white px-5 text-sm font-black text-[#1B5E20] hover:bg-[#F7FBF3]">
+                  class="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-black text-accent-foreground hover:bg-background">
                   Revisar estado
                 </button>
               }
@@ -106,12 +106,12 @@ import { PublicFooterComponent, PublicNavbarComponent } from '../../shared/ui/pu
               <a
                 routerLink="/login"
                 [queryParams]="pendingCheckout()?.tenantSlug ? { tenant: pendingCheckout()?.tenantSlug, checkout: 'success' } : { checkout: 'success' }"
-                class="inline-flex h-11 items-center justify-center rounded-xl bg-[#2E7D32] px-5 text-sm font-black text-white hover:bg-[#256428]">
+                class="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground hover:bg-primary/90">
                 Ir al login
               </a>
             </div>
 
-            <p class="mt-6 text-center text-xs leading-6 text-[#6B7D6C]">
+            <p class="mt-6 text-center text-xs leading-6 text-muted-foreground">
               Si todavía no ves tu plan activo, espera unos segundos y vuelve a revisar.
             </p>
           </div>

@@ -9,60 +9,60 @@ import { ForgotPasswordUseCase } from '../../features/auth';
   selector: 'app-forgot-password-page',
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
-    <div class="min-h-screen bg-white px-4 py-10">
+    <div class="min-h-screen bg-card px-4 py-10">
       <div class="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center">
-        <div class="w-full rounded-[28px] border border-[#C8E6C9] bg-white p-8 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+        <div class="w-full rounded-[28px] border border-border bg-card p-8 shadow-lg">
           <div class="mb-8 text-center">
-            <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2E7D32] text-white">
-              ?
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card p-2 shadow-sm">
+              <img src="/logo.png" alt="HR Core" class="h-full w-full object-contain">
             </div>
-            <h1 class="text-2xl font-black tracking-tight text-[#1B5E20]">Recuperar contraseña</h1>
-            <p class="mt-2 text-sm text-[#5F6F5F]">Ingresa tu tenant y tu correo. Te enviaremos un enlace de restablecimiento.</p>
+            <h1 class="text-2xl font-black tracking-tight text-accent-foreground">Recuperar contraseña</h1>
+            <p class="mt-2 text-sm text-muted-foreground">Ingresa tu tenant y tu correo. Te enviaremos un enlace de restablecimiento.</p>
           </div>
 
-          <div *ngIf="useCase.status() === 'error' && useCase.error()" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div *ngIf="useCase.status() === 'error' && useCase.error()" class="mb-6 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
             {{ useCase.error() }}
           </div>
 
-          <div *ngIf="useCase.status() === 'success' && useCase.message()" class="mb-6 rounded-2xl border border-[#C8E6C9] bg-[#F1F8E9] p-4 text-sm text-[#1B5E20]">
+          <div *ngIf="useCase.status() === 'success' && useCase.message()" class="mb-6 rounded-2xl border border-border bg-accent p-4 text-sm text-accent-foreground">
             {{ useCase.message() }}
           </div>
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
             <div>
-              <label class="mb-1 block text-sm font-semibold text-[#567157]" for="tenantSlug">Tenant</label>
+              <label class="mb-1 block text-sm font-semibold text-muted-foreground" for="tenantSlug">Tenant</label>
               <input
                 id="tenantSlug"
                 type="text"
                 formControlName="tenantSlug"
                 autocomplete="off"
-                class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                placeholder="ej: sebastian">
-              <span *ngIf="isInvalid('tenantSlug')" class="mt-1 text-xs text-red-600">El tenant es requerido.</span>
+                class="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+                placeholder="empresa">
+              <span *ngIf="isInvalid('tenantSlug')" class="mt-1 text-xs text-destructive">El tenant es requerido.</span>
             </div>
 
             <div>
-              <label class="mb-1 block text-sm font-semibold text-[#567157]" for="email">Correo electrónico</label>
+              <label class="mb-1 block text-sm font-semibold text-muted-foreground" for="email">Correo electrónico</label>
               <input
                 id="email"
                 type="email"
                 formControlName="email"
-                class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
+                class="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
                 placeholder="nombre@empresa.com">
-              <span *ngIf="isInvalid('email')" class="mt-1 text-xs text-red-600">Ingresa un correo válido.</span>
+              <span *ngIf="isInvalid('email')" class="mt-1 text-xs text-destructive">Ingresa un correo válido.</span>
             </div>
 
             <button
               type="submit"
               [disabled]="useCase.status() === 'loading'"
-              class="flex w-full items-center justify-center rounded-full bg-[#2E7D32] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#256428] disabled:cursor-not-allowed disabled:opacity-50">
+              class="flex w-full items-center justify-center rounded-full bg-primary px-4 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
               {{ useCase.status() === 'loading' ? 'Enviando...' : 'Enviar enlace' }}
             </button>
           </form>
 
           <div class="mt-6 flex items-center justify-between gap-3 text-sm">
-            <a routerLink="/login" class="font-semibold text-[#2E7D32] hover:text-[#256428] hover:underline">Volver al login</a>
-            <a routerLink="/onboarding" class="font-semibold text-[#2E7D32] hover:text-[#256428] hover:underline">Crear tenant</a>
+            <a routerLink="/login" class="font-semibold text-primary hover:text-primary/90 hover:underline">Volver al login</a>
+            <a routerLink="/onboarding" class="font-semibold text-primary hover:text-primary/90 hover:underline">Crear tenant</a>
           </div>
         </div>
       </div>

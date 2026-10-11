@@ -9,64 +9,89 @@ import { ResetPasswordUseCase } from '../../features/auth';
   selector: 'app-reset-password-page',
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
-    <div class="min-h-screen bg-white px-4 py-10">
-      <div class="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center">
-        <div class="w-full rounded-[28px] border border-[#C8E6C9] bg-white p-8 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
-          <div class="mb-8 text-center">
-            <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2E7D32] text-white">
-              *
+    <div class="hrcore-brand-theme relative min-h-screen overflow-hidden bg-background px-4 py-8 sm:px-6 lg:px-8">
+      <div class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-secondary/10 blur-3xl"></div>
+
+      <div class="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl items-center justify-center">
+        <div class="grid w-full overflow-hidden rounded-[32px] border border-border bg-card shadow-lg lg:grid-cols-[0.85fr_1.15fr]">
+          <aside class="relative hidden overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
+            <div class="absolute -right-20 -top-20 h-64 w-64 rounded-full border-[32px] border-secondary/20"></div>
+            <div class="absolute -bottom-28 -left-20 h-72 w-72 rounded-full border-[40px] border-primary/30"></div>
+            <div class="relative">
+              <div class="mb-10 flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-card p-2 shadow-lg">
+                  <img src="/logo.png" alt="HR Core" class="h-full w-full object-contain">
+                </div>
+                <div>
+                  <p class="text-lg font-black tracking-tight">HR Core</p>
+                  <p class="text-xs font-medium text-sidebar-foreground/70">Recursos Humanos</p>
+                </div>
+              </div>
+              <span class="inline-flex items-center gap-2 rounded-full border border-sidebar-foreground/20 bg-sidebar-foreground/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-sidebar-foreground/80">
+                <span class="h-1.5 w-1.5 rounded-full bg-secondary"></span>
+                Seguridad de acceso
+              </span>
+              <h2 class="mt-6 max-w-sm text-3xl font-black leading-tight tracking-tight">Protege tu espacio de trabajo.</h2>
+              <p class="mt-4 max-w-sm text-sm leading-6 text-sidebar-foreground/75">Actualiza tu contraseña y mantén segura la información de tu organización.</p>
             </div>
-            <h1 class="text-2xl font-black tracking-tight text-[#1B5E20]">Crear nueva contraseña</h1>
-            <p class="mt-2 text-sm text-[#5F6F5F]">Confirma tu nueva contraseña para el tenant <span class="font-semibold text-[#1B5E20]">{{ tenantSlug || '...' }}</span>.</p>
-          </div>
-
-          <div *ngIf="errorText" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {{ errorText }}
-          </div>
-
-          <div *ngIf="useCase.status() === 'error' && useCase.error()" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {{ useCase.error() }}
-          </div>
-
-          <div *ngIf="useCase.status() === 'success' && useCase.message()" class="mb-6 rounded-2xl border border-[#C8E6C9] bg-[#F1F8E9] p-4 text-sm text-[#1B5E20]">
-            {{ useCase.message() }}
-          </div>
-
-          <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-[#567157]" for="newPassword">Nueva contraseña</label>
-              <input
-                id="newPassword"
-                type="password"
-                formControlName="newPassword"
-                class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                placeholder="••••••••">
-              <span *ngIf="isInvalid('newPassword')" class="mt-1 text-xs text-red-600">La contraseña debe tener al menos 8 caracteres.</span>
+            <div class="relative mt-12 space-y-4 text-sm text-sidebar-foreground/80">
+              <div class="flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-xl bg-sidebar-foreground/10 text-secondary">✓</span><span>Contraseña segura</span></div>
+              <div class="flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-xl bg-sidebar-foreground/10 text-secondary">✓</span><span>Acceso protegido por tenant</span></div>
             </div>
+          </aside>
 
-            <div>
-              <label class="mb-1 block text-sm font-semibold text-[#567157]" for="confirmPassword">Confirmar contraseña</label>
-              <input
-                id="confirmPassword"
-                type="password"
-                formControlName="confirmPassword"
-                class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                placeholder="••••••••">
-              <span *ngIf="confirmPasswordMismatch()" class="mt-1 text-xs text-red-600">Las contraseñas no coinciden.</span>
+          <main class="p-6 sm:p-10 lg:p-12">
+            <div class="mb-8 flex items-center gap-3 lg:hidden">
+              <img src="/logo.png" alt="HR Core" class="h-11 w-11 rounded-xl object-contain">
+              <div><p class="font-black tracking-tight text-foreground">HR Core</p><p class="text-xs text-muted-foreground">Recursos Humanos</p></div>
             </div>
 
-            <button
-              type="submit"
-              [disabled]="useCase.status() === 'loading'"
-              class="flex w-full items-center justify-center rounded-full bg-[#2E7D32] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#256428] disabled:cursor-not-allowed disabled:opacity-50">
-              {{ useCase.status() === 'loading' ? 'Actualizando...' : 'Restablecer contraseña' }}
-            </button>
-          </form>
+            <div class="mb-8">
+              <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-2xl font-black text-primary">*</div>
+              <p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">HR Core · Seguridad</p>
+              <h1 class="text-3xl font-black tracking-tight text-foreground sm:text-4xl">Crea una nueva contraseña</h1>
+              <p class="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">Confirma una nueva clave para recuperar tu acceso al tenant <span class="font-bold text-foreground">{{ tenantSlug || '...' }}</span>.</p>
+            </div>
 
-          <div class="mt-6 flex items-center justify-between gap-3 text-sm">
-            <a routerLink="/login" class="font-semibold text-[#2E7D32] hover:text-[#256428] hover:underline">Volver al login</a>
-            <a routerLink="/forgot-password" class="font-semibold text-[#2E7D32] hover:text-[#256428] hover:underline">Solicitar otro enlace</a>
-          </div>
+            <div *ngIf="errorText" class="mb-6 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+              <p class="font-bold">Enlace no válido</p>
+              <p class="mt-1 leading-5">{{ errorText }}</p>
+            </div>
+
+            <div *ngIf="useCase.status() === 'error' && useCase.error()" class="mb-6 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+              <p class="font-bold">No pudimos actualizar la contraseña</p>
+              <p class="mt-1 leading-5">{{ useCase.error() }}</p>
+            </div>
+
+            <div *ngIf="useCase.status() === 'success' && useCase.message()" class="mb-6 rounded-2xl border border-secondary/30 bg-secondary/10 p-4 text-sm text-foreground">
+              <p class="font-bold text-accent-foreground">Contraseña actualizada</p>
+              <p class="mt-1 leading-5 text-muted-foreground">{{ useCase.message() }}</p>
+            </div>
+
+            <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+              <div>
+                <label class="mb-2 block text-sm font-bold text-foreground" for="newPassword">Nueva contraseña</label>
+                <input id="newPassword" type="password" formControlName="newPassword" class="w-full rounded-2xl border border-input bg-muted/30 px-4 py-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/15" placeholder="••••••••">
+                <span *ngIf="isInvalid('newPassword')" class="mt-1.5 block text-xs text-destructive">La contraseña debe tener al menos 8 caracteres.</span>
+              </div>
+
+              <div>
+                <label class="mb-2 block text-sm font-bold text-foreground" for="confirmPassword">Confirmar contraseña</label>
+                <input id="confirmPassword" type="password" formControlName="confirmPassword" class="w-full rounded-2xl border border-input bg-muted/30 px-4 py-3.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/15" placeholder="••••••••">
+                <span *ngIf="confirmPasswordMismatch()" class="mt-1.5 block text-xs text-destructive">Las contraseñas no coinciden.</span>
+              </div>
+
+              <button type="submit" [disabled]="useCase.status() === 'loading'" class="flex w-full items-center justify-center rounded-2xl bg-primary px-4 py-3.5 font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+                {{ useCase.status() === 'loading' ? 'Actualizando...' : 'Restablecer contraseña' }}
+              </button>
+            </form>
+
+            <div class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 text-sm">
+              <a routerLink="/login" class="font-bold text-primary transition-colors hover:text-primary/80 hover:underline">Volver al login</a>
+              <a routerLink="/forgot-password" class="font-semibold text-muted-foreground transition-colors hover:text-primary hover:underline">Solicitar otro enlace</a>
+            </div>
+          </main>
         </div>
       </div>
     </div>

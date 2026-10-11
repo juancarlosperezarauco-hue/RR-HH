@@ -11,35 +11,35 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, LucideAngularModule],
   template: `
-    <div class="mx-auto w-full max-w-md rounded-[28px] border border-[#C8E6C9] bg-white p-8 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+    <div class="mx-auto w-full max-w-md rounded-[28px] border border-border bg-card p-8 shadow-lg">
       <div class="mb-8 text-center">
-        <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2E7D32] text-white shadow-sm">
-          <lucide-icon name="shield" class="h-6 w-6"></lucide-icon>
+        <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-card shadow-sm">
+          <img src="/logo.png" alt="HR Core" class="h-10 w-10 object-contain">
         </div>
-        <h2 class="text-2xl font-black tracking-tight text-[#1B5E20]">Iniciar sesión</h2>
-        <p class="mt-2 text-sm text-[#5F6F5F]">Elige entre contraseña o reconocimiento facial.</p>
+        <h2 class="text-2xl font-black tracking-tight text-accent-foreground">Iniciar sesión</h2>
+        <p class="mt-2 text-sm text-muted-foreground">Elige entre contraseña o reconocimiento facial.</p>
       </div>
 
-      <div *ngIf="status === 'error'" class="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div *ngIf="status === 'error'" class="mb-6 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
         {{ error }}
       </div>
 
-      <div class="mb-6 grid grid-cols-2 rounded-full bg-[#F1F8E9] p-1">
+      <div class="mb-6 grid grid-cols-2 rounded-full bg-accent p-1">
         <button
           type="button"
           (click)="setActiveTab('password')"
-          [class.bg-white]="activeTab === 'password'"
-          [class.text-[#1B5E20]]="activeTab === 'password'"
-          [class.text-[#6B7D6C]]="activeTab !== 'password'"
+          [class.bg-card]="activeTab === 'password'"
+          [class.text-accent-foreground]="activeTab === 'password'"
+          [class.text-muted-foreground]="activeTab !== 'password'"
           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors">
           Contraseña
         </button>
         <button
           type="button"
           (click)="setActiveTab('face')"
-          [class.bg-white]="activeTab === 'face'"
-          [class.text-[#1B5E20]]="activeTab === 'face'"
-          [class.text-[#6B7D6C]]="activeTab !== 'face'"
+          [class.bg-card]="activeTab === 'face'"
+          [class.text-accent-foreground]="activeTab === 'face'"
+          [class.text-muted-foreground]="activeTab !== 'face'"
           class="rounded-full px-4 py-2 text-sm font-semibold transition-colors">
           Rostro
         </button>
@@ -49,7 +49,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
         @if (activeTab === 'password') {
           <section class="space-y-4">
             <div>
-              <label for="tenantSlug" class="mb-1 block text-sm font-semibold text-[#567157]">Nombre de organización</label>
+              <label for="tenantSlug" class="mb-1 block text-sm font-semibold text-muted-foreground">Nombre de organización</label>
               <input
                 id="tenantSlug"
                 type="text"
@@ -57,47 +57,47 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                 autocapitalize="off"
                 spellcheck="false"
                 formControlName="tenantSlug"
-                class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                [class.border-red-300]="isFieldInvalid('tenantSlug')"
+                class="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+                [class.border-destructive/30]="isFieldInvalid('tenantSlug')"
                 placeholder="ej: miempresa">
-              <span *ngIf="isFieldInvalid('tenantSlug')" class="mt-1 text-xs text-red-600">Ingresa el identificador único de tu empresa.</span>
+              <span *ngIf="isFieldInvalid('tenantSlug')" class="mt-1 text-xs text-destructive">Ingresa el identificador único de tu empresa.</span>
             </div>
 
             <div>
-              <label for="email" class="mb-1 block text-sm font-semibold text-[#567157]">Correo electrónico</label>
+              <label for="email" class="mb-1 block text-sm font-semibold text-muted-foreground">Correo electrónico</label>
               <input
                 id="email"
                 type="email"
                 formControlName="email"
-                class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                [class.border-red-300]="isFieldInvalid('email')"
+                class="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+                [class.border-destructive/30]="isFieldInvalid('email')"
                 placeholder="admin@miempresa.com">
-              <span *ngIf="isFieldInvalid('email')" class="mt-1 text-xs text-red-600">Ingresa un correo válido.</span>
+              <span *ngIf="isFieldInvalid('email')" class="mt-1 text-xs text-destructive">Ingresa un correo válido.</span>
             </div>
 
             <div>
-              <label for="password" class="mb-1 block text-sm font-semibold text-[#567157]">Contraseña</label>
+              <label for="password" class="mb-1 block text-sm font-semibold text-muted-foreground">Contraseña</label>
               <div class="relative">
                 <input
                   id="password"
                   [type]="showPassword ? 'text' : 'password'"
                   formControlName="password"
-                  class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 pr-10 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                  [class.border-red-300]="isFieldInvalid('password')"
+                  class="w-full rounded-2xl border border-border bg-muted px-4 py-3 pr-10 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+                  [class.border-destructive/30]="isFieldInvalid('password')"
                   placeholder="••••••••">
                 <button
                   type="button"
                   (click)="togglePasswordVisibility()"
-                  class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6B7D6C] transition-colors hover:text-[#2E7D32]"
+                  class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-primary"
                   tabindex="-1">
                   <lucide-icon [name]="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></lucide-icon>
                 </button>
               </div>
-              <span *ngIf="isFieldInvalid('password')" class="mt-1 text-xs text-red-600">La contraseña es requerida.</span>
+              <span *ngIf="isFieldInvalid('password')" class="mt-1 text-xs text-destructive">La contraseña es requerida.</span>
             </div>
 
             <div class="flex items-center justify-between gap-3">
-              <a routerLink="/forgot-password" class="text-sm font-semibold text-[#2E7D32] transition-colors hover:text-[#256428] hover:underline">
+              <a routerLink="/forgot-password" class="text-sm font-semibold text-primary transition-colors hover:text-primary/90 hover:underline">
                 Olvidé mi contraseña
               </a>
             </div>
@@ -105,7 +105,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
             <button
               type="submit"
               [disabled]="status === 'loading'"
-              class="flex w-full cursor-pointer items-center justify-center rounded-full bg-[#2E7D32] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#256428] disabled:cursor-not-allowed disabled:opacity-50">
+              class="flex w-full cursor-pointer items-center justify-center rounded-full bg-primary px-4 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
               <ng-container *ngIf="status !== 'loading'; else loadingSpinner">
                 Ingresar
               </ng-container>
@@ -122,7 +122,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
           <section class="space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
               <div>
-                <label for="faceTenantSlug" class="mb-1 block text-sm font-semibold text-[#567157]">Nombre de organización</label>
+                <label for="faceTenantSlug" class="mb-1 block text-sm font-semibold text-muted-foreground">Nombre de organización</label>
                 <input
                   id="faceTenantSlug"
                   type="text"
@@ -130,32 +130,32 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                   autocapitalize="off"
                   spellcheck="false"
                   formControlName="tenantSlug"
-                  class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                  [class.border-red-300]="isFieldInvalid('tenantSlug')"
+                  class="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+                  [class.border-destructive/30]="isFieldInvalid('tenantSlug')"
                   placeholder="ej: miempresa">
-                <span *ngIf="isFieldInvalid('tenantSlug')" class="mt-1 text-xs text-red-600">El tenant es obligatorio para el login facial.</span>
+                <span *ngIf="isFieldInvalid('tenantSlug')" class="mt-1 text-xs text-destructive">El tenant es obligatorio para el login facial.</span>
               </div>
 
               <div>
-                <label for="faceEmail" class="mb-1 block text-sm font-semibold text-[#567157]">Correo electrónico</label>
+                <label for="faceEmail" class="mb-1 block text-sm font-semibold text-muted-foreground">Correo electrónico</label>
                 <input
                   id="faceEmail"
                   type="email"
                   formControlName="email"
-                  class="w-full rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 text-sm text-[#1B5E20] outline-none transition-colors focus:border-[#2E7D32] focus:bg-white"
-                  [class.border-red-300]="isFieldInvalid('email')"
+                  class="w-full rounded-2xl border border-border bg-muted px-4 py-3 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+                  [class.border-destructive/30]="isFieldInvalid('email')"
                   placeholder="admin@miempresa.com">
-                <span *ngIf="isFieldInvalid('email')" class="mt-1 text-xs text-red-600">El correo es obligatorio para el login facial.</span>
+                <span *ngIf="isFieldInvalid('email')" class="mt-1 text-xs text-destructive">El correo es obligatorio para el login facial.</span>
               </div>
             </div>
 
-            <div class="rounded-3xl border border-dashed border-[#DDEED8] bg-[#FBFDF8] p-4">
+            <div class="rounded-3xl border border-dashed border-border bg-muted p-4">
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <p class="text-sm font-semibold text-[#1B5E20]">Acceso facial</p>
-                  <p class="mt-1 text-xs leading-5 text-[#6B7D6C]">Usa la cámara frontal o la cámara del dispositivo. Necesitas tenant, correo e imagen.</p>
+                  <p class="text-sm font-semibold text-accent-foreground">Acceso facial</p>
+                  <p class="mt-1 text-xs leading-5 text-muted-foreground">Usa la cámara frontal o la cámara del dispositivo. Necesitas tenant, correo e imagen.</p>
                 </div>
-                <lucide-icon name="camera" class="h-5 w-5 text-[#2E7D32]"></lucide-icon>
+                <lucide-icon name="camera" class="h-5 w-5 text-primary"></lucide-icon>
               </div>
 
               <div class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -163,7 +163,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                   <button
                     type="button"
                     (click)="openSelfieCamera()"
-                    class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                     <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                     Tomar selfie
                   </button>
@@ -179,7 +179,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                   <button
                     type="button"
                     (click)="openGallery()"
-                    class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                    class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                     <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                     Usar foto
                   </button>
@@ -187,28 +187,28 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
               </div>
 
               @if (cameraOpen) {
-                <div class="mt-4 space-y-3 rounded-3xl border border-[#C8E6C9] bg-white p-4 shadow-sm">
+                <div class="mt-4 space-y-3 rounded-3xl border border-border bg-card p-4 shadow-sm">
                   <div class="flex items-center justify-between gap-3">
                     <div>
-                      <p class="text-sm font-semibold text-[#1B5E20]">Cámara activa</p>
-                      <p class="text-xs text-[#6B7D6C]">
+                      <p class="text-sm font-semibold text-accent-foreground">Cámara activa</p>
+                      <p class="text-xs text-muted-foreground">
                         {{ cameraFacingMode === 'user' ? 'Cámara frontal' : 'Cámara trasera' }}
                       </p>
                     </div>
                     <button
                       type="button"
                       (click)="closeCamera()"
-                      class="rounded-full border border-[#C8E6C9] bg-white px-3 py-1.5 text-xs font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                      class="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-accent">
                       Cerrar
                     </button>
                   </div>
 
-                  <div class="overflow-hidden rounded-2xl border border-[#E8F2E2] bg-black">
+                  <div class="overflow-hidden rounded-2xl border border-border bg-sidebar">
                     <video #cameraVideo autoplay playsinline muted class="h-64 w-full object-cover"></video>
                   </div>
 
                   @if (cameraError) {
-                    <p class="text-xs text-red-600">{{ cameraError }}</p>
+                    <p class="text-xs text-destructive">{{ cameraError }}</p>
                   }
 
                   <div class="flex flex-wrap gap-3">
@@ -216,7 +216,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                       type="button"
                       (click)="captureCameraPhoto()"
                       [disabled]="cameraBusy"
-                      class="inline-flex items-center gap-2 rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-50">
+                      class="inline-flex items-center gap-2 rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50">
                       <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                       {{ cameraBusy ? 'Capturando...' : 'Capturar foto' }}
                     </button>
@@ -224,18 +224,18 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                       type="button"
                       (click)="openSelfieCamera()"
                       [disabled]="cameraBusy"
-                      class="inline-flex items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9] disabled:cursor-not-allowed disabled:opacity-50">
+                      class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
                       Cambiar a selfie
                     </button>
                   </div>
                 </div>
               }
 
-              <p class="mt-4 text-xs text-[#6B7D6C]">
-                Imagen seleccionada: <span class="font-semibold text-[#1B5E20]">{{ faceFileLabel() }}</span>
+              <p class="mt-4 text-xs text-muted-foreground">
+                Imagen seleccionada: <span class="font-semibold text-accent-foreground">{{ faceFileLabel() }}</span>
               </p>
 
-              <div *ngIf="selectedFacePreview" class="mt-4 overflow-hidden rounded-2xl border border-[#E8F2E2] bg-white">
+              <div *ngIf="selectedFacePreview" class="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
                 <img [src]="selectedFacePreview" alt="Vista previa de rostro" class="h-40 w-full object-cover">
               </div>
 
@@ -244,7 +244,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                   type="button"
                   (click)="onFaceLogin()"
                   [disabled]="status === 'loading' || !selectedFaceFile"
-                  class="inline-flex items-center gap-2 rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-50">
+                  class="inline-flex items-center gap-2 rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50">
                   <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                   Entrar con rostro
                 </button>
@@ -253,15 +253,15 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
           </section>
         }
 
-        <div class="mt-6 border-t border-[#E8F2E2] pt-4 text-center text-sm text-[#5F6F5F]">
+        <div class="mt-6 border-t border-border pt-4 text-center text-sm text-muted-foreground">
           ¿No tienes una empresa registrada? <br>
-          <a routerLink="/prices" class="mt-1 inline-block font-semibold text-[#2E7D32] transition-colors hover:text-[#256428] hover:underline">
+          <a routerLink="/prices" class="mt-1 inline-block font-semibold text-primary transition-colors hover:text-primary/90 hover:underline">
             Regístrate y crea tu entorno
           </a>
         </div>
 
-        <div class="mt-4 text-center text-sm text-[#666666] border-t border-[#C8E6C9] pt-4">
-          <a routerLink="/" class="font-medium text-[#4CAF50] hover:text-[#2E7D32] transition-colors">
+        <div class="mt-4 text-center text-sm text-muted-foreground border-t border-border pt-4">
+          <a routerLink="/" class="font-medium text-secondary hover:text-primary transition-colors">
             ← Volver al inicio
           </a>
         </div>

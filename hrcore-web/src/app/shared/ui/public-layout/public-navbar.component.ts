@@ -10,7 +10,7 @@ import { PublicNavItem } from './public-nav-item.model';
   imports: [CommonModule, RouterModule, LucideAngularModule],
   template: `
     <header
-      class="sticky top-0 z-50 border-b border-[#DDEED8] bg-white/95 shadow-[0_8px_24px_rgba(27,94,32,0.06)] backdrop-blur-xl"
+      class="hrcore-brand-theme sticky top-0 z-50 border-b border-border bg-card/95 shadow-lg backdrop-blur-xl"
     >
       <nav
         class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:h-[76px] lg:px-8"
@@ -22,7 +22,7 @@ import { PublicNavItem } from './public-nav-item.model';
           class="flex min-w-0 items-center gap-3 text-left"
         >
           <span
-            class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#C8E6C9] bg-[#F3FAF1] shadow-sm"
+            class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-background shadow-sm"
           >
             <img
               src="/logo.png"
@@ -33,12 +33,12 @@ import { PublicNavItem } from './public-nav-item.model';
 
           <span class="min-w-0">
             <span
-              class="block truncate text-base font-black leading-none text-[#083B16] sm:text-lg"
+              class="block truncate text-base font-black leading-none text-accent-foreground sm:text-lg"
             >
               HR Core
             </span>
             <span
-              class="mt-1 hidden text-[11px] font-black uppercase tracking-[0.28em] text-[#6B7D6C] sm:block"
+              class="mt-1 hidden text-[11px] font-black uppercase tracking-[0.28em] text-muted-foreground sm:block"
             >
               Plataforma de recursos humanos
             </span>
@@ -50,7 +50,7 @@ import { PublicNavItem } from './public-nav-item.model';
             <a
               [routerLink]="item.routerLink"
               [fragment]="item.fragment"
-              class="text-sm font-black text-[#2E5F37] transition-colors hover:text-[#1B5E20]"
+              class="text-sm font-black text-foreground transition-colors hover:text-accent-foreground"
             >
               {{ item.label }}
             </a>
@@ -60,7 +60,7 @@ import { PublicNavItem } from './public-nav-item.model';
         <div class="hidden items-center gap-3 lg:flex">
           <a
             routerLink="/login"
-            class="inline-flex h-11 items-center justify-center rounded-full bg-[#2E7D32] px-6 text-sm font-black text-white shadow-sm transition-colors hover:bg-[#256428]"
+            class="inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-black text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
             Ingresar
           </a>
@@ -69,7 +69,7 @@ import { PublicNavItem } from './public-nav-item.model';
         <button
           type="button"
           (click)="toggleMobileMenu()"
-          class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border cursor-pointer border-[#C8E6C9] bg-white text-[#1B5E20] shadow-sm transition-colors hover:bg-[#F3FAF1] lg:hidden"
+          class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border cursor-pointer border-border bg-card text-accent-foreground shadow-sm transition-colors hover:bg-background lg:hidden"
           [attr.aria-label]="mobileMenuOpen() ? 'Cerrar menú' : 'Abrir menú'"
           [attr.aria-expanded]="mobileMenuOpen()"
         >
@@ -82,7 +82,7 @@ import { PublicNavItem } from './public-nav-item.model';
 
       @if (mobileMenuOpen()) {
         <div
-          class="border-t border-[#DDEED8] bg-white px-4 pb-5 shadow-xl lg:hidden"
+          class="border-t border-border bg-card px-4 pb-5 shadow-xl lg:hidden"
         >
           <div class="mx-auto max-w-7xl pt-3">
             <div class="grid gap-2">
@@ -91,17 +91,17 @@ import { PublicNavItem } from './public-nav-item.model';
                   [routerLink]="item.routerLink"
                   [fragment]="item.fragment"
                   (click)="closeMobileMenu()"
-                  class="rounded-2xl px-4 py-3 text-left text-sm font-black text-[#1B5E20] transition-colors hover:bg-[#F3FAF1]"
+                  class="rounded-2xl px-4 py-3 text-left text-sm font-black text-accent-foreground transition-colors hover:bg-background"
                 >
                   {{ item.label }}
                 </a>
               }
 
-              <div class="mt-3 grid gap-2 border-t border-[#E8F2E2] pt-4">
+              <div class="mt-3 grid gap-2 border-t border-border pt-4">
                 <a
                   routerLink="/login"
                   (click)="closeMobileMenu()"
-                  class="inline-flex h-11 items-center justify-center rounded-2xl bg-[#2E7D32] px-5 text-sm font-black text-white transition-colors hover:bg-[#256428]"
+                  class="inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-black text-primary-foreground transition-colors hover:bg-primary/90"
                 >
                   Ingresar
                 </a>
@@ -109,7 +109,7 @@ import { PublicNavItem } from './public-nav-item.model';
                 <a
                   routerLink="/platform/login"
                   (click)="closeMobileMenu()"
-                  class="inline-flex h-11 items-center justify-center rounded-2xl border border-[#C8E6C9] bg-white px-5 text-sm font-black text-[#1B5E20] transition-colors hover:bg-[#F3FAF1]"
+                  class="inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-card px-5 text-sm font-black text-accent-foreground transition-colors hover:bg-background"
                 >
                   Superadmin
                 </a>

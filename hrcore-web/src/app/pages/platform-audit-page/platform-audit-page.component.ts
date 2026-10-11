@@ -12,18 +12,18 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
   imports: [CommonModule, LucideAngularModule, PlatformAuditTableComponent, PlatformPaginationComponent],
   template: `
     <div class="space-y-6 p-4 sm:p-6 lg:p-8">
-      <section class="rounded-[28px] border border-[#C8E6C9] bg-gradient-to-br from-white via-[#F7FBF3] to-[#EAF6EB] p-6 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+      <section class="rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-muted p-6 shadow-lg">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div class="space-y-3">
-            <div class="inline-flex items-center gap-2 rounded-full border border-[#C8E6C9] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2E7D32]">
-              <span class="h-2 w-2 rounded-full bg-[#4CAF50]"></span>
+            <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              <span class="h-2 w-2 rounded-full bg-secondary"></span>
               Plataforma superadmin
             </div>
             <div>
-              <h1 class="text-3xl font-black tracking-tight text-[#1B5E20] sm:text-4xl">
+              <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Auditoría de plataforma
               </h1>
-              <p class="mt-2 max-w-3xl text-sm leading-6 text-[#5F6F5F]">
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                 Revisa eventos, actores y recursos auditados con una vista clara y navegable.
               </p>
             </div>
@@ -33,7 +33,7 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
             <button
               type="button"
               (click)="reload()"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="refresh-ccw" class="h-4 w-4"></lucide-icon>
               Recargar
             </button>
@@ -42,47 +42,47 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
       </section>
 
       <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Eventos en página</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().total }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Cargados en la vista actual actual</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Eventos en página</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().total }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Cargados en la vista actual actual</p>
         </div>
 
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Actores</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().actors }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Sujetos únicos</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Actores</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().actors }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Sujetos únicos</p>
         </div>
 
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Recursos</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().resources }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Tipos de recurso observados</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Recursos</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().resources }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Tipos de recurso observados</p>
         </div>
 
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Filtrados</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ filteredEvents().length }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Resultado visible en pantalla</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Filtrados</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ filteredEvents().length }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Resultado visible en pantalla</p>
         </div>
       </section>
 
-      <section class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+      <section class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div class="space-y-1">
-            <h2 class="text-lg font-bold text-[#1B5E20]">Filtros y búsqueda</h2>
-            <p class="text-sm text-[#6B7D6C]">Filtra por actor, evento, recurso o contenido de detalle.</p>
+            <h2 class="text-lg font-bold text-accent-foreground">Filtros y búsqueda</h2>
+            <p class="text-sm text-muted-foreground">Filtra por actor, evento, recurso o contenido de detalle.</p>
           </div>
 
           <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <label class="flex min-w-[260px] items-center gap-3 rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3">
-              <span class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Buscar</span>
+            <label class="flex min-w-[260px] items-center gap-3 rounded-2xl border border-border bg-muted px-4 py-3">
+              <span class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Buscar</span>
               <input
                 type="text"
                 [value]="searchQuery()"
                 (input)="setSearchQuery($any($event.target).value)"
                 placeholder="Actor, evento, recurso o detalle"
-                class="w-full border-0 bg-transparent text-sm text-[#1B5E20] outline-none placeholder:text-[#9AA99A]" />
+                class="w-full border-0 bg-transparent text-sm text-accent-foreground outline-none placeholder:text-muted-foreground" />
             </label>
 
             <div class="flex flex-wrap gap-2">
@@ -91,10 +91,10 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
                   type="button"
                   (click)="setEventTypeFilter(filter.value)"
                   class="cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition-colors"
-                  [class.bg-[#2E7D32]]="eventTypeFilter() === filter.value"
-                  [class.text-white]="eventTypeFilter() === filter.value"
-                  [class.bg-[#F1F8E9]]="eventTypeFilter() !== filter.value"
-                  [class.text-[#2E7D32]]="eventTypeFilter() !== filter.value">
+                  [class.bg-primary]="eventTypeFilter() === filter.value"
+                  [class.text-primary-foreground]="eventTypeFilter() === filter.value"
+                  [class.bg-accent]="eventTypeFilter() !== filter.value"
+                  [class.text-primary]="eventTypeFilter() !== filter.value">
                   {{ filter.label }}
                 </button>
               }
@@ -106,10 +106,10 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
                   type="button"
                   (click)="setResourceTypeFilter(filter.value)"
                   class="cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition-colors"
-                  [class.bg-[#2E7D32]]="resourceTypeFilter() === filter.value"
-                  [class.text-white]="resourceTypeFilter() === filter.value"
-                  [class.bg-[#F1F8E9]]="resourceTypeFilter() !== filter.value"
-                  [class.text-[#2E7D32]]="resourceTypeFilter() !== filter.value">
+                  [class.bg-primary]="resourceTypeFilter() === filter.value"
+                  [class.text-primary-foreground]="resourceTypeFilter() === filter.value"
+                  [class.bg-accent]="resourceTypeFilter() !== filter.value"
+                  [class.text-primary]="resourceTypeFilter() !== filter.value">
                   {{ filter.label }}
                 </button>
               }
@@ -118,11 +118,11 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
         </div>
       </section>
 
-      <section class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+      <section class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
         <div class="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-bold text-[#1B5E20]">Eventos auditados</h2>
-            <p class="text-sm text-[#6B7D6C]">
+            <h2 class="text-lg font-bold text-accent-foreground">Eventos auditados</h2>
+            <p class="text-sm text-muted-foreground">
               {{ filteredEvents().length }} resultado(s) de {{ stats().total }} evento(s)
             </p>
           </div>
@@ -147,7 +147,7 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
         }
 
         @if (!isLoading && filteredEvents().length === 0) {
-          <div class="rounded-2xl border border-dashed border-[#C8E6C9] bg-[#FAFCF8] px-4 py-8 text-sm text-[#6B7D6C]">
+          <div class="rounded-2xl border border-dashed border-border bg-muted px-4 py-8 text-sm text-muted-foreground">
             No hay eventos de auditoría que coincidan con los filtros actuales.
           </div>
         }
@@ -164,88 +164,88 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
               <button
                 type="button"
                 (click)="closeModal()"
-                class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <div class="mt-6 grid gap-4 sm:grid-cols-2">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Fecha</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ formatDate(event.createdAt) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Fecha</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ formatDate(event.createdAt) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Actor</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.actorSubject }}</p>
-                <p class="mt-1 break-words text-xs text-[#6B7D6C]">{{ event.actorEmail || 'Sin correo' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Actor</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.actorSubject }}</p>
+                <p class="mt-1 break-words text-xs text-muted-foreground">{{ event.actorEmail || 'Sin correo' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Evento</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.eventType }}</p>
-                <p class="mt-1 break-words text-xs text-[#6B7D6C]">{{ event.tenantSlug || 'Sin tenant' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Evento</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.eventType }}</p>
+                <p class="mt-1 break-words text-xs text-muted-foreground">{{ event.tenantSlug || 'Sin tenant' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Recurso</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Recurso</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">
                   {{ event.resourceType }}
                 </p>
-                <p class="mt-1 break-words text-xs text-[#6B7D6C]">{{ event.resourceId }}</p>
+                <p class="mt-1 break-words text-xs text-muted-foreground">{{ event.resourceId }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 sm:col-span-2">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Origen</p>
+              <div class="rounded-2xl border border-border bg-muted p-4 sm:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Origen</p>
                 <div class="mt-2 grid gap-4 sm:grid-cols-2">
-                  <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">IP</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.ipAddress || 'N/A' }}</p>
+                  <div class="rounded-2xl border border-border bg-card p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">IP</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.ipAddress || 'N/A' }}</p>
                   </div>
-                  <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">User Agent</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.userAgent || 'N/A' }}</p>
+                  <div class="rounded-2xl border border-border bg-card p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">User Agent</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.userAgent || 'N/A' }}</p>
                   </div>
-                  <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Source</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.source || 'N/A' }}</p>
+                  <div class="rounded-2xl border border-border bg-card p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Source</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.source || 'N/A' }}</p>
                   </div>
-                  <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Resultado</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.outcome || 'SUCCESS' }}</p>
+                  <div class="rounded-2xl border border-border bg-card p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Resultado</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.outcome || 'SUCCESS' }}</p>
                   </div>
                 </div>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 sm:col-span-2">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Trazabilidad</p>
+              <div class="rounded-2xl border border-border bg-muted p-4 sm:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Trazabilidad</p>
                 <div class="mt-2 grid gap-4 sm:grid-cols-2">
-                  <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Request ID</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.requestId || 'N/A' }}</p>
+                  <div class="rounded-2xl border border-border bg-card p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Request ID</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.requestId || 'N/A' }}</p>
                   </div>
-                  <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Correlation ID</p>
-                    <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ event.correlationId || 'N/A' }}</p>
+                  <div class="rounded-2xl border border-border bg-card p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Correlation ID</p>
+                    <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ event.correlationId || 'N/A' }}</p>
                   </div>
                 </div>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 sm:col-span-2">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Detalle</p>
+              <div class="rounded-2xl border border-border bg-muted p-4 sm:col-span-2">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Detalle</p>
                 @if (parsedDetails()) {
                   <div class="mt-3 grid gap-4 sm:grid-cols-2">
                     @for (item of parsedDetailsEntries(); track item.key) {
-                      <div class="rounded-2xl border border-[#DDEED8] bg-white p-4">
-                        <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">{{ item.key }}</p>
-                        <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ item.value }}</p>
+                      <div class="rounded-2xl border border-border bg-card p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{{ item.key }}</p>
+                        <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ item.value }}</p>
                       </div>
                     }
                     @if (hasMoreParsedDetails()) {
-                      <div class="rounded-2xl border border-dashed border-[#DDEED8] bg-white p-4 sm:col-span-2">
-                        <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Más datos</p>
-                        <p class="mt-1 text-sm font-semibold text-[#1B5E20]">
+                      <div class="rounded-2xl border border-dashed border-border bg-card p-4 sm:col-span-2">
+                        <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Más datos</p>
+                        <p class="mt-1 text-sm font-semibold text-accent-foreground">
                           El payload tiene más campos, pero solo se muestran los más relevantes.
                         </p>
                       </div>
                     }
                   </div>
                 } @else {
-                  <pre class="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-2xl border border-[#DDEED8] bg-white p-4 text-xs leading-6 text-[#1B5E20]">{{ event.eventDetails }}</pre>
+                  <pre class="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-2xl border border-border bg-card p-4 text-xs leading-6 text-accent-foreground">{{ event.eventDetails }}</pre>
                 }
               </div>
             </div>
@@ -254,7 +254,7 @@ import { AuditEvent } from '../../entities/platform/api/platform.service';
               <button
                 type="button"
                 (click)="closeModal()"
-                class="cursor-pointer rounded-full bg-[#2E7D32] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#256428]">
+                class="cursor-pointer rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
                 Cerrar
               </button>
             </div>

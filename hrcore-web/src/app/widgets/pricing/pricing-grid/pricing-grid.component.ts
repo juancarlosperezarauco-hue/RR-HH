@@ -13,25 +13,25 @@ import { PricingPlanCardComponent } from '../pricing-plan-card/pricing-plan-card
     <section class="px-4 pb-20 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl">
         @if (status === 'loading') {
-          <div class="flex min-h-[360px] items-center justify-center rounded-[34px] border border-[#DDEED8] bg-white shadow-sm">
-            <div class="flex items-center gap-3 text-[#405447]">
+          <div class="flex min-h-[360px] items-center justify-center rounded-[34px] border border-border bg-card shadow-sm">
+            <div class="flex items-center gap-3 text-muted-foreground">
               <lucide-icon name="loader-circle" class="h-5 w-5 animate-spin"></lucide-icon>
               Cargando planes...
             </div>
           </div>
         } @else if (status === 'error') {
-          <div class="rounded-[34px] border border-red-200 bg-red-50 p-7">
+          <div class="rounded-[34px] border border-destructive/20 bg-destructive/5 p-7">
             <div class="flex items-start gap-3">
-              <lucide-icon name="triangle-alert" class="mt-0.5 h-5 w-5 text-red-600"></lucide-icon>
+              <lucide-icon name="triangle-alert" class="mt-0.5 h-5 w-5 text-destructive"></lucide-icon>
 
               <div>
-                <h2 class="font-black text-red-800">No se pudieron cargar los planes</h2>
-                <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+                <h2 class="font-black text-destructive">No se pudieron cargar los planes</h2>
+                <p class="mt-1 text-sm text-destructive">{{ error }}</p>
 
                 <button
                   type="button"
                   (click)="retry.emit()"
-                  class="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-[#2E7D32] px-5 text-sm font-black text-white">
+                  class="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground">
                   Reintentar
                 </button>
               </div>

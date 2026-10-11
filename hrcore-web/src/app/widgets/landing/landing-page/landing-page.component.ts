@@ -22,7 +22,7 @@ import { LandingWebPlatformComponent } from '../landing-web-platform/landing-web
     LandingPricingPreviewComponent
   ],
   template: `
-    <main class="min-h-screen bg-white text-[#101827]">
+    <main class="hrcore-brand-theme landing-theme min-h-screen bg-card text-foreground">
       <app-landing-hero />
 
       <app-landing-benefits />

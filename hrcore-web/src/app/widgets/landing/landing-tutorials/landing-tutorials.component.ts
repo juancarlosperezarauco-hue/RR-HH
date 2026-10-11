@@ -17,29 +17,29 @@ interface LandingTutorialVideo {
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
   template: `
-    <section id="tutoriales" class="relative isolate overflow-hidden bg-[#F3FAF1] px-4 py-20 sm:px-6 lg:px-8">
-      <div class="absolute inset-0 -z-10 opacity-[0.22] [background-image:radial-gradient(#2E7D32_1px,transparent_1px)] [background-size:30px_30px]"></div>
+    <section id="tutoriales" class="relative isolate overflow-hidden bg-background px-4 py-20 sm:px-6 lg:px-8">
+      <div class="absolute inset-0 -z-10 opacity-[0.22] bg-accent [background-size:30px_30px]"></div>
 
       <div class="mx-auto max-w-7xl">
         <div class="mx-auto max-w-3xl text-center">
-          <div class="mx-auto mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-5 py-2 text-sm font-black text-[#2E7D32] shadow-sm">
+          <div class="mx-auto mb-5 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card px-5 py-2 text-sm font-black text-primary shadow-sm">
             <lucide-icon name="play" class="h-4 w-4"></lucide-icon>
             Tutoriales rápidos
           </div>
 
-          <h2 class="text-4xl font-black tracking-tight text-[#101827] sm:text-5xl">
+          <h2 class="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
             Aprende a usar la plataforma con videos cortos
           </h2>
 
-          <p class="mt-5 text-base leading-8 text-[#405447]">
+          <p class="mt-5 text-base leading-8 text-muted-foreground">
             Mira los flujos principales de acceso y administración de personas antes de entrar al sistema.
           </p>
         </div>
 
         <div class="mt-14 grid gap-7 lg:grid-cols-2">
           @for (video of videos; track video.title) {
-            <article class="overflow-hidden rounded-[30px] border border-[#DDEED8] bg-white shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
-              <div class="aspect-video bg-[#102016]">
+            <article class="overflow-hidden rounded-[30px] border border-border bg-card shadow-lg">
+              <div class="aspect-video bg-sidebar">
                 <iframe
                   class="h-full w-full"
                   [src]="video.safeUrl"
@@ -51,15 +51,15 @@ interface LandingTutorialVideo {
               </div>
 
               <div class="p-6">
-                <span class="inline-flex rounded-full bg-[#E8F5E9] px-4 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-[#2E7D32]">
+                <span class="inline-flex rounded-full bg-accent px-4 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-primary">
                   {{ video.badge }}
                 </span>
 
-                <h3 class="mt-4 text-2xl font-black text-[#101827]">
+                <h3 class="mt-4 text-2xl font-black text-foreground">
                   {{ video.title }}
                 </h3>
 
-                <p class="mt-3 text-sm leading-7 text-[#405447]">
+                <p class="mt-3 text-sm leading-7 text-muted-foreground">
                   {{ video.description }}
                 </p>
               </div>
@@ -72,7 +72,7 @@ interface LandingTutorialVideo {
             [href]="youtubeChannelUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#2E7D32] px-5 text-sm font-black text-white shadow-sm transition-colors hover:bg-[#256428]">
+            class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
             Ir al canal de YouTube
             <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
           </a>

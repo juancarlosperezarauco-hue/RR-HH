@@ -14,7 +14,7 @@ export type BillingInterval = 'MONTHLY' | 'YEARLY';
   standalone: true,
   imports: [CommonModule, PricingHeroComponent, PricingGridComponent, PricingFaqComponent, PricingCtaComponent],
   template: `
-    <main class="min-h-screen bg-[#F7FBF3] text-[#101827]">
+    <main class="hrcore-brand-theme min-h-screen bg-background text-foreground">
       <app-pricing-hero
         [billingInterval]="billingInterval()"
         (billingIntervalChange)="billingInterval.set($event)" />

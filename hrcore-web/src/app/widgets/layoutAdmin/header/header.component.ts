@@ -32,9 +32,9 @@ interface MenuItem {
     ])
   ],
   template: `
-    <header class="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-[#C8E6C9] bg-white px-6 shadow-sm md:px-8">
+    <header class="hrcore-brand-theme sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-card px-6 shadow-sm md:px-8">
       <div class="flex items-center gap-4">
-        <h1 class="ml-10 text-xl font-semibold tracking-tight text-[#2E7D32] md:ml-0">
+        <h1 class="ml-10 text-xl font-semibold tracking-tight text-primary md:ml-0">
           @if (isPlatformRoute) {
             Panel de Control - Plataforma
           } @else if (isOwnerAdmin) {
@@ -51,11 +51,11 @@ interface MenuItem {
             <button
               type="button"
               (click)="toggleNotificationsMenu()"
-              class="relative flex cursor-pointer items-center justify-center rounded-full p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]"
-              [class.bg-[#F1F8E9]]="isNotificationsOpen">
+              class="relative flex cursor-pointer items-center justify-center rounded-full p-2 text-primary transition-colors hover:bg-accent"
+              [class.bg-accent]="isNotificationsOpen">
               <lucide-icon name="bell" class="h-5 w-5"></lucide-icon>
               @if (unreadNotifications() > 0) {
-                <span class="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C62828] px-1 text-[10px] font-bold text-white">
+                <span class="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-primary-foreground">
                   {{ unreadNotifications() }}
                 </span>
               }
@@ -64,23 +64,23 @@ interface MenuItem {
             @if (isNotificationsOpen) {
               <div
                 @dropdownAnimation
-                class="absolute right-0 mt-2 w-96 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-[#C8E6C9] bg-white shadow-lg z-50">
-                <div class="flex items-center justify-between border-b border-[#C8E6C9] bg-[#F1F8E9] px-4 py-3">
+                class="absolute right-0 mt-2 w-96 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border bg-card shadow-lg z-50">
+                <div class="flex items-center justify-between border-b border-border bg-accent px-4 py-3">
                   <div>
-                    <p class="text-sm font-semibold text-[#2E7D32]">Notificaciones</p>
-                    <p class="text-xs text-[#666666]">{{ unreadNotifications() }} sin leer</p>
+                    <p class="text-sm font-semibold text-primary">Notificaciones</p>
+                    <p class="text-xs text-muted-foreground">{{ unreadNotifications() }} sin leer</p>
                   </div>
                   <button
                     type="button"
                     (click)="markAllAsRead()"
-                    class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-3 py-1 text-xs font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                    class="cursor-pointer rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-accent">
                     Marcar todo
                   </button>
                 </div>
 
                 <div class="max-h-96 overflow-y-auto">
                   @if (notificationsLoading) {
-                    <div class="flex items-center justify-center gap-3 p-6 text-sm text-[#6B7D6C]">
+                    <div class="flex items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
                       <lucide-icon name="loader-2" [size]="16" class="animate-spin"></lucide-icon>
                       Cargando...
                     </div>
@@ -89,34 +89,34 @@ interface MenuItem {
                       <button
                         type="button"
                         (click)="openNotification(notification)"
-                        class="flex w-full cursor-pointer gap-3 border-b border-[#EEF5EA] px-4 py-3 text-left transition-colors hover:bg-[#F7FBF3]">
-                        <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2E7D32]/10 text-[#2E7D32]">
+                        class="flex w-full cursor-pointer gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-background">
+                        <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                           <lucide-icon name="bell" [size]="16"></lucide-icon>
                         </div>
                         <div class="min-w-0 flex-1">
                           <div class="flex items-center justify-between gap-2">
-                            <p class="truncate text-sm font-semibold text-[#1B5E20]">{{ notification.title }}</p>
+                            <p class="truncate text-sm font-semibold text-accent-foreground">{{ notification.title }}</p>
                             @if (notification.status === 'UNREAD') {
-                              <span class="shrink-0 rounded-full bg-[#2E7D32]/10 px-2 py-0.5 text-[10px] font-semibold text-[#2E7D32]">Nueva</span>
+                              <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Nueva</span>
                             }
                           </div>
-                          <p class="mt-1 line-clamp-2 text-xs leading-5 text-[#6B7D6C]">{{ notification.body }}</p>
-                          <p class="mt-1 text-[11px] text-[#8A9A8B]">{{ notification.createdAt | date:'short' }}</p>
+                          <p class="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{{ notification.body }}</p>
+                          <p class="mt-1 text-[11px] text-foreground">{{ notification.createdAt | date:'short' }}</p>
                         </div>
                       </button>
                     } @empty {
-                      <div class="p-6 text-center text-sm text-[#6B7D6C]">
+                      <div class="p-6 text-center text-sm text-muted-foreground">
                         No hay notificaciones recientes.
                       </div>
                     }
                   }
                 </div>
 
-                <div class="border-t border-[#C8E6C9] p-3">
+                <div class="border-t border-border p-3">
                   <button
                     type="button"
                     (click)="goToNotifications()"
-                    class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#256428]">
+                    class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
                     Ver bandeja
                   </button>
                 </div>
@@ -125,15 +125,15 @@ interface MenuItem {
           </div>
         }
 
-        <div class="h-6 w-px bg-[#C8E6C9] mx-1"></div>
+        <div class="h-6 w-px bg-border mx-1"></div>
 
         <div class="relative">
           <button 
             (click)="toggleProfileMenu()"
-            class="flex cursor-pointer items-center gap-2 rounded-full p-1.5 transition-colors hover:bg-[#F1F8E9] focus:outline-none md:gap-3 md:rounded-md"
-            [class.bg-[#F1F8E9]]="isProfileOpen"
+            class="flex cursor-pointer items-center gap-2 rounded-full p-1.5 transition-colors hover:bg-accent focus:outline-none md:gap-3 md:rounded-md"
+            [class.bg-accent]="isProfileOpen"
           >
-            <div class="flex h-8 w-8 overflow-hidden rounded-full border border-[#2E7D32]/20 bg-[#2E7D32]/10 text-sm font-bold uppercase text-[#2E7D32]">
+            <div class="flex h-8 w-8 overflow-hidden rounded-full border border-primary/20 bg-primary/10 text-sm font-bold uppercase text-primary">
               @if (getProfilePhotoUrl()) {
                 <img
                   [src]="getProfilePhotoUrl()"
@@ -146,16 +146,16 @@ interface MenuItem {
               }
             </div>
             <div class="hidden flex-col items-start text-left md:flex">
-              <span class="text-sm font-semibold leading-none text-[#2E7D32]">
+              <span class="text-sm font-semibold leading-none text-primary">
                 {{ getDisplayName() }}
               </span>
-              <span class="text-xs text-[#666666] mt-1 capitalize">
+              <span class="text-xs text-muted-foreground mt-1 capitalize">
                 {{ getRole() }}
               </span>
             </div>
             <lucide-icon 
               name="chevron-down" 
-              class="hidden h-4 w-4 text-[#666666] transition-transform duration-200 md:block"
+              class="hidden h-4 w-4 text-muted-foreground transition-transform duration-200 md:block"
               [class.rotate-180]="isProfileOpen"
             ></lucide-icon>
           </button>
@@ -163,13 +163,13 @@ interface MenuItem {
           <div 
             *ngIf="isProfileOpen"
             @dropdownAnimation
-            class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white border border-[#C8E6C9] ring-1 ring-black/5 focus:outline-none z-50 overflow-hidden"
+            class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-card border border-border ring-1 ring-sidebar/5 focus:outline-none z-50 overflow-hidden"
           >
-            <div class="px-4 py-3 border-b border-[#C8E6C9] bg-[#F1F8E9]">
-              <p class="text-sm font-medium text-[#2E7D32]">
+            <div class="px-4 py-3 border-b border-border bg-accent">
+              <p class="text-sm font-medium text-primary">
                 {{ getDisplayName() }}
               </p>
-              <p class="text-xs font-medium text-[#666666] truncate">
+              <p class="text-xs font-medium text-muted-foreground truncate">
                 {{ getEmail() }}
               </p>
             </div>
@@ -180,8 +180,8 @@ interface MenuItem {
                   <a
                     [routerLink]="item.route"
                     (click)="isProfileOpen = false"
-                    class="group flex cursor-pointer items-center px-4 py-2 text-sm text-[#333333] transition-colors hover:bg-[#F1F8E9]">
-                    <lucide-icon [name]="item.icon" class="mr-3 h-4 w-4 text-[#666666] group-hover:text-[#2E7D32]"></lucide-icon>
+                    class="group flex cursor-pointer items-center px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent">
+                    <lucide-icon [name]="item.icon" class="mr-3 h-4 w-4 text-muted-foreground group-hover:text-primary"></lucide-icon>
                     {{ item.label }}
                   </a>
                 }
@@ -190,20 +190,20 @@ interface MenuItem {
                   <a
                     [routerLink]="item.route"
                     (click)="isProfileOpen = false"
-                    class="group flex cursor-pointer items-center px-4 py-2 text-sm text-[#333333] transition-colors hover:bg-[#F1F8E9]">
-                    <lucide-icon [name]="item.icon" class="mr-3 h-4 w-4 text-[#666666] group-hover:text-[#2E7D32]"></lucide-icon>
+                    class="group flex cursor-pointer items-center px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent">
+                    <lucide-icon [name]="item.icon" class="mr-3 h-4 w-4 text-muted-foreground group-hover:text-primary"></lucide-icon>
                     {{ item.label }}
                   </a>
                 }
               }
             </div>
 
-            <div class="border-t border-[#C8E6C9] py-1">
+            <div class="border-t border-border py-1">
               <button 
                 (click)="onLogout()"
-                class="group flex w-full cursor-pointer items-center px-4 py-2 text-sm text-[#C62828] transition-colors hover:bg-red-50"
+                class="group flex w-full cursor-pointer items-center px-4 py-2 text-sm text-destructive transition-colors hover:bg-destructive/5"
               >
-                <lucide-icon name="log-out" class="mr-3 h-4 w-4 text-[#C62828]/70 group-hover:text-[#C62828]"></lucide-icon>
+                <lucide-icon name="log-out" class="mr-3 h-4 w-4 text-destructive/70 group-hover:text-destructive"></lucide-icon>
                 Cerrar Sesión
               </button>
             </div>

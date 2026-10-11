@@ -12,9 +12,9 @@ import { PendingCheckoutStorageService } from '../../entities/billing';
   standalone: true,
   imports: [CommonModule, LoginFormComponent],
   template: `
-    <div class="min-h-screen flex items-center justify-center p-4 bg-[#F1F8E9]">
+    <div class="hrcore-brand-theme min-h-screen flex items-center justify-center p-4 bg-accent">
       <div class="w-full max-w-md space-y-4">
-        <div *ngIf="passwordResetSuccess" class="rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm font-medium text-[#1B5E20] shadow-sm">
+        <div *ngIf="passwordResetSuccess" class="rounded-2xl border border-border bg-card px-4 py-3 text-sm font-medium text-accent-foreground shadow-sm">
           Tu contraseña fue actualizada. Ahora puedes iniciar sesión con la nueva clave.
         </div>
 

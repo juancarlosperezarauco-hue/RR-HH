@@ -31,138 +31,138 @@ interface ActivitySummaryCard {
       @if (isLoading()) {
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           @for (item of loadingSkeleton; track item) {
-            <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-              <div class="h-4 w-24 rounded bg-[#E8F5E9] animate-pulse"></div>
-              <div class="mt-4 h-8 w-20 rounded bg-[#E8F5E9] animate-pulse"></div>
-              <div class="mt-3 h-3 w-32 rounded bg-[#E8F5E9] animate-pulse"></div>
+            <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div class="h-4 w-24 rounded bg-accent animate-pulse"></div>
+              <div class="mt-4 h-8 w-20 rounded bg-accent animate-pulse"></div>
+              <div class="mt-3 h-3 w-32 rounded bg-accent animate-pulse"></div>
             </div>
           }
         </div>
       }
 
       @if (dashboard(); as data) {
-        <section class="rounded-[28px] border border-[#C8E6C9] bg-gradient-to-br from-white via-[#F7FBF3] to-[#EAF6EB] p-6 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+        <section class="rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-muted p-6 shadow-lg">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div class="space-y-3">
-              <div class="inline-flex items-center gap-2 rounded-full border border-[#C8E6C9] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2E7D32]">
-                <span class="h-2 w-2 rounded-full bg-[#4CAF50]"></span>
+              <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                <span class="h-2 w-2 rounded-full bg-secondary"></span>
                 Plataforma superadmin
               </div>
               <div>
-                <h1 class="text-3xl font-black tracking-tight text-[#1B5E20] sm:text-4xl">
+                <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                   Bienvenido, {{ displayName() }}
                 </h1>
-                <p class="mt-2 max-w-3xl text-sm leading-6 text-[#5F6F5F]">
+                <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                   Vista ejecutiva del estado global de tenants, suscripciones, planes, usuarios y auditoría.
                 </p>
               </div>
             </div>
 
             <div class="grid gap-3 sm:grid-cols-3">
-              <div class="rounded-2xl border border-[#C8E6C9] bg-white/85 px-4 py-3">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6B7D6C]">Generado el</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20]">{{ formatDate(data.metadata.generatedAt) }}</p>
+              <div class="rounded-2xl border border-border bg-card/85 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Generado el</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ formatDate(data.metadata.generatedAt) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#C8E6C9] bg-white/85 px-4 py-3">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6B7D6C]">Zona horaria</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20]">{{ data.metadata.timezone }}</p>
+              <div class="rounded-2xl border border-border bg-card/85 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Zona horaria</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ data.metadata.timezone }}</p>
               </div>
-              <div class="rounded-2xl border border-[#C8E6C9] bg-white/85 px-4 py-3">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6B7D6C]">Cobertura</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20]">{{ data.metadata.dataCompleteness }}</p>
+              <div class="rounded-2xl border border-border bg-card/85 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Cobertura</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ data.metadata.dataCompleteness }}</p>
               </div>
             </div>
           </div>
         </section>
 
         <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div class="flex items-center justify-between">
-              <p class="text-sm font-semibold text-[#567157]">Tenants</p>
-              <lucide-icon name="building-2" class="h-5 w-5 text-[#2E7D32]"></lucide-icon>
+              <p class="text-sm font-semibold text-muted-foreground">Tenants</p>
+              <lucide-icon name="building-2" class="h-5 w-5 text-primary"></lucide-icon>
             </div>
-            <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ data.summary.tenants.total }}</p>
-            <p class="mt-2 text-xs text-[#6B7D6C]">Activos {{ data.summary.tenants.active }} | Inactivos {{ data.summary.tenants.inactive }}</p>
+            <p class="mt-4 text-3xl font-black text-accent-foreground">{{ data.summary.tenants.total }}</p>
+            <p class="mt-2 text-xs text-muted-foreground">Activos {{ data.summary.tenants.active }} | Inactivos {{ data.summary.tenants.inactive }}</p>
           </div>
 
-          <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div class="flex items-center justify-between">
-              <p class="text-sm font-semibold text-[#567157]">Suscripciones</p>
-              <lucide-icon name="badge-check" class="h-5 w-5 text-[#2E7D32]"></lucide-icon>
+              <p class="text-sm font-semibold text-muted-foreground">Suscripciones</p>
+              <lucide-icon name="badge-check" class="h-5 w-5 text-primary"></lucide-icon>
             </div>
-            <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ data.summary.subscriptions.active }}</p>
-            <p class="mt-2 text-xs text-[#6B7D6C]">Trial {{ data.summary.subscriptions.trial }} | Vencidas {{ data.summary.subscriptions.expired }}</p>
+            <p class="mt-4 text-3xl font-black text-accent-foreground">{{ data.summary.subscriptions.active }}</p>
+            <p class="mt-2 text-xs text-muted-foreground">Trial {{ data.summary.subscriptions.trial }} | Vencidas {{ data.summary.subscriptions.expired }}</p>
           </div>
 
-          <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div class="flex items-center justify-between">
-              <p class="text-sm font-semibold text-[#567157]">Planes activos</p>
-              <lucide-icon name="sparkles" class="h-5 w-5 text-[#2E7D32]"></lucide-icon>
+              <p class="text-sm font-semibold text-muted-foreground">Planes activos</p>
+              <lucide-icon name="sparkles" class="h-5 w-5 text-primary"></lucide-icon>
             </div>
-            <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ data.summary.plans.active }}</p>
-            <p class="mt-2 text-xs text-[#6B7D6C]">Total registrados {{ data.summary.plans.total }}</p>
+            <p class="mt-4 text-3xl font-black text-accent-foreground">{{ data.summary.plans.active }}</p>
+            <p class="mt-2 text-xs text-muted-foreground">Total registrados {{ data.summary.plans.total }}</p>
           </div>
 
-          <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div class="flex items-center justify-between">
-              <p class="text-sm font-semibold text-[#567157]">Usuarios plataforma</p>
-              <lucide-icon name="users" class="h-5 w-5 text-[#2E7D32]"></lucide-icon>
+              <p class="text-sm font-semibold text-muted-foreground">Usuarios plataforma</p>
+              <lucide-icon name="users" class="h-5 w-5 text-primary"></lucide-icon>
             </div>
-            <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ data.summary.users.total }}</p>
-            <p class="mt-2 text-xs text-[#6B7D6C]">Admins {{ data.summary.users.platformAdmins }} | Activos {{ data.summary.users.active }}</p>
+            <p class="mt-4 text-3xl font-black text-accent-foreground">{{ data.summary.users.total }}</p>
+            <p class="mt-2 text-xs text-muted-foreground">Admins {{ data.summary.users.platformAdmins }} | Activos {{ data.summary.users.active }}</p>
           </div>
         </section>
 
         <section class="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
-          <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-6 shadow-sm">
+          <div class="rounded-[24px] border border-border bg-card p-6 shadow-sm">
             <div class="flex items-center justify-between gap-4">
               <div>
-                <h2 class="text-lg font-bold text-[#1B5E20]">Comparaciones del periodo</h2>
-                <p class="text-sm text-[#6B7D6C]">Evolución contra el periodo anterior</p>
+                <h2 class="text-lg font-bold text-accent-foreground">Comparaciones del periodo</h2>
+                <p class="text-sm text-muted-foreground">Evolución contra el periodo anterior</p>
               </div>
-              <button (click)="reload()" class="rounded-full border border-[#C8E6C9] px-4 py-2 text-sm font-semibold text-[#2E7D32] hover:bg-[#F1F8E9] transition-colors">
+              <button (click)="reload()" class="rounded-full border border-border px-4 py-2 text-sm font-semibold text-primary hover:bg-accent transition-colors">
                 Recargar
               </button>
             </div>
 
             <div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               @for (comparison of comparisonCards(); track comparison.label) {
-                <div class="rounded-2xl border border-[#E2EEDC] bg-[#FAFCF8] p-4">
-                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-[#6B7D6C]">{{ comparison.label }}</p>
-                  <p class="mt-3 text-2xl font-black" [class.text-[#1B5E20]]="comparison.value >= 0" [class.text-[#C62828]]="comparison.value < 0">
+                <div class="rounded-2xl border border-border bg-muted p-4">
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{{ comparison.label }}</p>
+                  <p class="mt-3 text-2xl font-black" [class.text-accent-foreground]="comparison.value >= 0" [class.text-destructive]="comparison.value < 0">
                     {{ formatPercent(comparison.value) }}
                   </p>
-                  <p class="mt-2 text-xs text-[#6B7D6C]">{{ comparison.hint }}</p>
+                  <p class="mt-2 text-xs text-muted-foreground">{{ comparison.hint }}</p>
                 </div>
               }
             </div>
 
             <div class="mt-6 grid gap-4 lg:grid-cols-2">
               <div>
-                <h3 class="text-sm font-bold uppercase tracking-[0.14em] text-[#6B7D6C]">Tenants por estado</h3>
+                <h3 class="text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground">Tenants por estado</h3>
                 <div class="mt-3 space-y-3">
                   @for (item of data.tenants.byStatus; track item.status) {
-                    <div class="flex items-center justify-between rounded-xl border border-[#E8F2E2] bg-white px-4 py-3">
+                    <div class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
                       <div>
-                        <p class="text-sm font-semibold text-[#1B5E20]">{{ item.label }}</p>
-                        <p class="text-xs text-[#6B7D6C]">{{ item.status }}</p>
+                        <p class="text-sm font-semibold text-accent-foreground">{{ item.label }}</p>
+                        <p class="text-xs text-muted-foreground">{{ item.status }}</p>
                       </div>
-                      <p class="text-lg font-black text-[#2E7D32]">{{ item.total }}</p>
+                      <p class="text-lg font-black text-primary">{{ item.total }}</p>
                     </div>
                   }
                 </div>
               </div>
 
               <div>
-                <h3 class="text-sm font-bold uppercase tracking-[0.14em] text-[#6B7D6C]">Suscripciones por estado</h3>
+                <h3 class="text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground">Suscripciones por estado</h3>
                 <div class="mt-3 space-y-3">
                   @for (item of data.subscriptions.byStatus; track item.status) {
-                    <div class="flex items-center justify-between rounded-xl border border-[#E8F2E2] bg-white px-4 py-3">
+                    <div class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
                       <div>
-                        <p class="text-sm font-semibold text-[#1B5E20]">{{ item.status }}</p>
-                        <p class="text-xs text-[#6B7D6C]">Estado general</p>
+                        <p class="text-sm font-semibold text-accent-foreground">{{ item.status }}</p>
+                        <p class="text-xs text-muted-foreground">Estado general</p>
                       </div>
-                      <p class="text-lg font-black text-[#2E7D32]">{{ item.total }}</p>
+                      <p class="text-lg font-black text-primary">{{ item.total }}</p>
                     </div>
                   }
                 </div>
@@ -170,34 +170,34 @@ interface ActivitySummaryCard {
             </div>
           </div>
 
-          <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-6 shadow-sm">
+          <div class="rounded-[24px] border border-border bg-card p-6 shadow-sm">
             <div class="flex items-center justify-between">
               <div>
-                <h2 class="text-lg font-bold text-[#1B5E20]">Alertas</h2>
-                <p class="text-sm text-[#6B7D6C]">Señales que requieren atención</p>
+                <h2 class="text-lg font-bold text-accent-foreground">Alertas</h2>
+                <p class="text-sm text-muted-foreground">Señales que requieren atención</p>
               </div>
-              <span class="rounded-full bg-[#F1F8E9] px-3 py-1 text-xs font-bold text-[#2E7D32]">{{ data.alerts.length }}</span>
+              <span class="rounded-full bg-accent px-3 py-1 text-xs font-bold text-primary">{{ data.alerts.length }}</span>
             </div>
 
             <div class="mt-4 space-y-3">
               @for (alert of data.alerts; track alert.id) {
                 <div class="rounded-2xl border px-4 py-4"
-                  [class.border-red-200]="severityLevel(alert.severity) === 'high'"
-                  [class.bg-red-50]="severityLevel(alert.severity) === 'high'"
-                  [class.border-amber-200]="severityLevel(alert.severity) === 'warn'"
-                  [class.bg-amber-50]="severityLevel(alert.severity) === 'warn'"
+                  [class.border-destructive/20]="severityLevel(alert.severity) === 'high'"
+                  [class.bg-destructive/5]="severityLevel(alert.severity) === 'high'"
+                  [class.border-warning/30]="severityLevel(alert.severity) === 'warn'"
+                  [class.bg-warning/10]="severityLevel(alert.severity) === 'warn'"
                   [class.border-sky-200]="severityLevel(alert.severity) === 'info'"
                   [class.bg-sky-50]="severityLevel(alert.severity) === 'info'">
                   <div class="flex items-start justify-between gap-4">
                     <div>
-                      <p class="text-sm font-bold text-[#1B5E20]">{{ alert.title }}</p>
-                      <p class="mt-1 text-sm text-[#4F5D4F]">{{ alert.description }}</p>
+                      <p class="text-sm font-bold text-accent-foreground">{{ alert.title }}</p>
+                      <p class="mt-1 text-sm text-muted-foreground">{{ alert.description }}</p>
                     </div>
                     <span class="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
-                      [class.bg-red-100]="severityLevel(alert.severity) === 'high'"
-                      [class.text-red-700]="severityLevel(alert.severity) === 'high'"
-                      [class.bg-amber-100]="severityLevel(alert.severity) === 'warn'"
-                      [class.text-amber-800]="severityLevel(alert.severity) === 'warn'"
+                      [class.bg-destructive/10]="severityLevel(alert.severity) === 'high'"
+                      [class.text-destructive]="severityLevel(alert.severity) === 'high'"
+                      [class.bg-warning/10]="severityLevel(alert.severity) === 'warn'"
+                      [class.text-warning]="severityLevel(alert.severity) === 'warn'"
                       [class.bg-sky-100]="severityLevel(alert.severity) === 'info'"
                       [class.text-sky-700]="severityLevel(alert.severity) === 'info'">
                       {{ alert.severity }}
@@ -207,7 +207,7 @@ interface ActivitySummaryCard {
               }
 
               @if (data.alerts.length === 0) {
-                <div class="rounded-2xl border border-dashed border-[#C8E6C9] bg-[#FAFCF8] px-4 py-6 text-sm text-[#6B7D6C]">
+                <div class="rounded-2xl border border-dashed border-border bg-muted px-4 py-6 text-sm text-muted-foreground">
                   No hay alertas activas.
                 </div>
               }
@@ -216,40 +216,40 @@ interface ActivitySummaryCard {
         </section>
 
         <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div class="min-w-0 rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+          <div class="min-w-0 rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
             <div class="flex items-center justify-between gap-3 min-w-0">
               <div>
-                <h2 class="text-lg font-bold text-[#1B5E20]">Tenants recientes</h2>
-                <p class="text-sm text-[#6B7D6C]">Últimos registros creados en la plataforma</p>
+                <h2 class="text-lg font-bold text-accent-foreground">Tenants recientes</h2>
+                <p class="text-sm text-muted-foreground">Últimos registros creados en la plataforma</p>
               </div>
-              <span class="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-[#6B7D6C]">{{ data.tenants.recent.length }} items</span>
+              <span class="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{{ data.tenants.recent.length }} items</span>
             </div>
 
-            <div class="mt-4 overflow-x-auto rounded-2xl border border-[#E8F2E2]">
-              <table class="min-w-[620px] w-full divide-y divide-[#E8F2E2]">
-                <thead class="bg-[#F7FBF3]">
-                  <tr class="text-left text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">
+            <div class="mt-4 overflow-x-auto rounded-2xl border border-border">
+              <table class="min-w-[620px] w-full divide-y divide-border">
+                <thead class="bg-background">
+                  <tr class="text-left text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                     <th class="px-4 py-3">Tenant</th>
                     <th class="px-4 py-3">Slug</th>
                     <th class="px-4 py-3">Plan</th>
                     <th class="px-4 py-3">Estado</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-[#EEF5EA] bg-white">
+                <tbody class="divide-y divide-border bg-card">
                   @for (tenant of data.tenants.recent; track tenant.id) {
                     <tr>
                       <td class="px-4 py-3 min-w-0">
-                        <p class="break-words font-semibold text-[#1B5E20]">{{ tenant.name }}</p>
-                        <p class="break-words text-xs text-[#6B7D6C]">{{ tenant.schemaName }}</p>
+                        <p class="break-words font-semibold text-accent-foreground">{{ tenant.name }}</p>
+                        <p class="break-words text-xs text-muted-foreground">{{ tenant.schemaName }}</p>
                       </td>
-                      <td class="px-4 py-3 text-sm text-[#4F5D4F] break-words">{{ tenant.slug }}</td>
-                      <td class="px-4 py-3 text-sm text-[#4F5D4F] break-words">{{ tenant.planCode || 'Sin plan' }}</td>
+                      <td class="px-4 py-3 text-sm text-muted-foreground break-words">{{ tenant.slug }}</td>
+                      <td class="px-4 py-3 text-sm text-muted-foreground break-words">{{ tenant.planCode || 'Sin plan' }}</td>
                       <td class="px-4 py-3">
                         <span class="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.1em]"
-                          [class.bg-[#E8F5E9]]="tenant.status === 'ACTIVE'"
-                          [class.text-[#2E7D32]]="tenant.status === 'ACTIVE'"
-                          [class.bg-red-100]="tenant.status !== 'ACTIVE'"
-                          [class.text-red-700]="tenant.status !== 'ACTIVE'">
+                          [class.bg-accent]="tenant.status === 'ACTIVE'"
+                          [class.text-primary]="tenant.status === 'ACTIVE'"
+                          [class.bg-destructive/10]="tenant.status !== 'ACTIVE'"
+                          [class.text-destructive]="tenant.status !== 'ACTIVE'">
                           {{ tenant.status }}
                         </span>
                       </td>
@@ -261,24 +261,24 @@ interface ActivitySummaryCard {
           </div>
 
           <div class="space-y-4 min-w-0">
-            <div class="min-w-0 rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+            <div class="min-w-0 rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
               <div class="flex items-center justify-between gap-3 min-w-0">
                 <div>
-                  <h2 class="text-lg font-bold text-[#1B5E20]">Actividad reciente</h2>
-                  <p class="text-sm text-[#6B7D6C]">Eventos auditados más recientes</p>
+                  <h2 class="text-lg font-bold text-accent-foreground">Actividad reciente</h2>
+                  <p class="text-sm text-muted-foreground">Eventos auditados más recientes</p>
                 </div>
-                <span class="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-[#6B7D6C]">{{ recentActivityCards().length }} items</span>
+                <span class="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{{ recentActivityCards().length }} items</span>
               </div>
 
               <div class="mt-4 space-y-3">
                 @for (activity of recentActivityCards(); track activity.id) {
-                  <div class="rounded-2xl border border-[#E8F2E2] bg-[#FAFCF8] p-4">
+                  <div class="rounded-2xl border border-border bg-muted p-4">
                     <div class="flex flex-col gap-3 min-w-0">
                       <div class="flex items-start justify-between gap-3 min-w-0">
                         <div class="min-w-0 flex-1">
-                          <p class="break-words text-sm font-bold text-[#1B5E20]">{{ activity.title }}</p>
+                          <p class="break-words text-sm font-bold text-accent-foreground">{{ activity.title }}</p>
                         </div>
-                        <span class="shrink-0 rounded-full bg-[#E8F5E9] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-[#2E7D32]">
+                        <span class="shrink-0 rounded-full bg-accent px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
                           {{ activity.type }}
                         </span>
                       </div>
@@ -286,48 +286,48 @@ interface ActivitySummaryCard {
                       @if (activity.hasSummary && activity.summary; as summary) {
                         <div class="grid gap-2 sm:grid-cols-3">
                           @if (summary.name) {
-                            <div class="rounded-xl border border-[#DDEED8] bg-white px-3 py-2">
-                              <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Nombre</p>
-                              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ summary.name }}</p>
+                            <div class="rounded-xl border border-border bg-card px-3 py-2">
+                              <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Nombre</p>
+                              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ summary.name }}</p>
                             </div>
                           }
 
                           @if (summary.slug) {
-                            <div class="rounded-xl border border-[#DDEED8] bg-white px-3 py-2">
-                              <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Slug</p>
-                              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ summary.slug }}</p>
+                            <div class="rounded-xl border border-border bg-card px-3 py-2">
+                              <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Slug</p>
+                              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ summary.slug }}</p>
                             </div>
                           }
 
                           @if (summary.planCode) {
-                            <div class="rounded-xl border border-[#DDEED8] bg-white px-3 py-2">
-                              <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Plan</p>
-                              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ summary.planCode }}</p>
+                            <div class="rounded-xl border border-border bg-card px-3 py-2">
+                              <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Plan</p>
+                              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ summary.planCode }}</p>
                             </div>
                           }
                         </div>
                       }
 
-                      <p class="text-xs text-[#6B7D6C]">{{ activity.actorName }} · {{ formatDate(activity.createdAt) }}</p>
+                      <p class="text-xs text-muted-foreground">{{ activity.actorName }} · {{ formatDate(activity.createdAt) }}</p>
                     </div>
                   </div>
                 }
               </div>
             </div>
 
-            <div class="min-w-0 rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+            <div class="min-w-0 rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
               <div class="flex items-center justify-between gap-3 min-w-0">
                 <div>
-                  <h2 class="text-lg font-bold text-[#1B5E20]">Insights</h2>
-                  <p class="text-sm text-[#6B7D6C]">Lecturas rápidas del sistema</p>
+                  <h2 class="text-lg font-bold text-accent-foreground">Insights</h2>
+                  <p class="text-sm text-muted-foreground">Lecturas rápidas del sistema</p>
                 </div>
               </div>
 
               <div class="mt-4 space-y-3 min-w-0">
                 @for (insight of data.insights; track insight.type) {
-                  <div class="rounded-2xl border border-[#E8F2E2] bg-[#FAFCF8] px-4 py-4 min-w-0">
-                    <p class="break-words text-sm font-bold text-[#1B5E20]">{{ insight.title }}</p>
-                    <p class="mt-1 break-words text-sm text-[#4F5D4F]">{{ insight.description }}</p>
+                  <div class="rounded-2xl border border-border bg-muted px-4 py-4 min-w-0">
+                    <p class="break-words text-sm font-bold text-accent-foreground">{{ insight.title }}</p>
+                    <p class="mt-1 break-words text-sm text-muted-foreground">{{ insight.description }}</p>
                   </div>
                 }
               </div>
@@ -337,7 +337,7 @@ interface ActivitySummaryCard {
       }
 
       @if (error()) {
-        <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div class="rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           {{ error() }}
         </div>
       }
