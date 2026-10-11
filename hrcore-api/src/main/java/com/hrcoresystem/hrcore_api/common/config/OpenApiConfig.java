@@ -19,10 +19,10 @@ public class OpenApiConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("Finance System API")
-                        .description("Base API for the Finance System SaaS platform")
+                        .title("HRCore API")
+                        .description("Base API for the HRCore SaaS platform")
                         .version("v1")
-                        .contact(new Contact().name("Finance System Team"))
+                        .contact(new Contact().name("HRCore Team"))
                         .license(new License().name("Internal Academic Use")))
                 .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
                 .components(new Components()

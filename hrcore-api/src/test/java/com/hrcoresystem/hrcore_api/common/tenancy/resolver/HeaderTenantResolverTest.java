@@ -19,12 +19,12 @@ class HeaderTenantResolverTest {
         HeaderTenantResolver resolver = new HeaderTenantResolver(properties, namingStrategy);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Tenant-Slug", "FinanCruz");
+        request.addHeader("X-Tenant-Slug", "TalentoHumano");
 
         var context = resolver.resolve(request);
 
-        assertEquals("financruz", context.tenantSlug());
-        assertEquals("tenant_financruz", context.schemaName());
+        assertEquals("talentohumano", context.tenantSlug());
+        assertEquals("tenant_talentohumano", context.schemaName());
     }
 
     @Test

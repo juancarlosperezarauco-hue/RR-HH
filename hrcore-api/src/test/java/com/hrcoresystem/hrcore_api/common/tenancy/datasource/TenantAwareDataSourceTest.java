@@ -72,11 +72,11 @@ class TenantAwareDataSourceTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/auth/login");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-        TenantContextHolder.set(new TenantContext("financruz", "tenant_financruz", false));
+        TenantContextHolder.set(new TenantContext("talentohumano", "tenant_talentohumano", false));
 
         Connection resolvedConnection = dataSource.getConnection();
 
         assertEquals(connection, resolvedConnection);
-        verify(statement).execute("SET search_path TO tenant_financruz, public");
+        verify(statement).execute("SET search_path TO tenant_talentohumano, public");
     }
 }

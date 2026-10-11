@@ -52,9 +52,9 @@ class PublicSignupUseCaseTest {
         Instant expiresAt = now.plusSeconds(864000);
 
         PublicSignupRequest request = new PublicSignupRequest(
-                "FinanCruz Ltda",
-                "financruz",
-                "admin@financruz.com",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
                 "Rojas"
@@ -62,9 +62,9 @@ class PublicSignupUseCaseTest {
 
         PlatformTenantResponse createdTenantResponse = new PlatformTenantResponse(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 "ACTIVE",
                 planId,
                 null,
@@ -75,9 +75,9 @@ class PublicSignupUseCaseTest {
 
         PlatformTenant createdTenant = new PlatformTenant(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 PlatformTenantStatus.ACTIVE,
                 planId,
                 true,
@@ -120,17 +120,17 @@ class PublicSignupUseCaseTest {
         PublicSignupResponse response = useCase.execute(request);
 
         assertEquals(tenantId, response.tenantId());
-        assertEquals("financruz", response.tenantSlug());
-        assertEquals("admin@financruz.com", response.adminEmail());
+        assertEquals("talentohumano", response.tenantSlug());
+        assertEquals("admin@talentohumano.com", response.adminEmail());
         assertEquals("OWNER_ADMIN", response.initialRole());
         assertEquals("DEMO", response.currentPlanCode());
         assertEquals("TRIAL", response.subscriptionStatus());
         assertEquals(expiresAt, response.trialExpiresAt());
-        assertTrue(response.loginHint().contains("financruz"));
+        assertTrue(response.loginHint().contains("talentohumano"));
         verify(tenantOwnerAdminProvisioningService).provisionOwnerAdmin(
-                "tenant_financruz",
-                "financruz",
-                "admin@financruz.com",
+                "tenant_talentohumano",
+                "talentohumano",
+                "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
                 "Rojas"

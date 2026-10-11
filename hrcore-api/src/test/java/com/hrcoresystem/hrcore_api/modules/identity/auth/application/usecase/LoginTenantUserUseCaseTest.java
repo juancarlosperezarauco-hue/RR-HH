@@ -55,11 +55,11 @@ class LoginTenantUserUseCaseTest {
                 auditTrailService
         );
 
-        TenantContextHolder.set(new TenantContext("financruz", "tenant_financruz", false));
+        TenantContextHolder.set(new TenantContext("talentohumano", "tenant_talentohumano", false));
 
         TenantUser tenantUser = new TenantUser(
                 UUID.randomUUID(),
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 "encoded-password",
                 "Admin",
                 "Tenant",
@@ -69,12 +69,12 @@ class LoginTenantUserUseCaseTest {
                 Instant.now()
         );
 
-        when(tenantUserRepository.findByEmail("admin@financruz.com")).thenReturn(Optional.of(tenantUser));
+        when(tenantUserRepository.findByEmail("admin@talentohumano.com")).thenReturn(Optional.of(tenantUser));
         when(passwordEncoder.matches("Password123!", "encoded-password")).thenReturn(true);
         when(tenantUserRoleRepository.findRoleNamesByUserId(tenantUser.id())).thenReturn(List.of("ADMIN"));
 
         AuthTokenResponse response = useCase.execute(
-                new LoginRequest("admin@financruz.com", "Password123!")
+                new LoginRequest("admin@talentohumano.com", "Password123!")
         );
 
         assertNotNull(response.accessToken());
@@ -82,7 +82,7 @@ class LoginTenantUserUseCaseTest {
         assertEquals("Bearer", response.tokenType());
         AuthenticatedUserPrincipal principal = jwtTokenService.parseAccessToken(response.accessToken());
         assertEquals(tenantUser.id().toString(), principal.subject());
-        assertEquals("financruz", principal.tenantSlug());
+        assertEquals("talentohumano", principal.tenantSlug());
         assertTrue(principal.roles().contains("ADMIN"));
         verify(auditTrailService).recordTenantEvent(
                 anyString(),
@@ -117,11 +117,11 @@ class LoginTenantUserUseCaseTest {
                 auditTrailService
         );
 
-        TenantContextHolder.set(new TenantContext("financruz", "tenant_financruz", false));
+        TenantContextHolder.set(new TenantContext("talentohumano", "tenant_talentohumano", false));
 
         TenantUser tenantUser = new TenantUser(
                 UUID.randomUUID(),
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 "encoded-password",
                 "Admin",
                 "Tenant",
@@ -131,11 +131,11 @@ class LoginTenantUserUseCaseTest {
                 Instant.now()
         );
 
-        when(tenantUserRepository.findByEmail("admin@financruz.com")).thenReturn(Optional.of(tenantUser));
+        when(tenantUserRepository.findByEmail("admin@talentohumano.com")).thenReturn(Optional.of(tenantUser));
         when(passwordEncoder.matches("Password123!", "encoded-password")).thenReturn(false);
 
         assertThrows(AuthenticationFailedException.class, () ->
-                useCase.execute(new LoginRequest("admin@financruz.com", "Password123!"))
+                useCase.execute(new LoginRequest("admin@talentohumano.com", "Password123!"))
         );
     }
 }
