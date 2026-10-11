@@ -18,7 +18,7 @@ type BillingInterval = 'MONTHLY' | 'YEARLY';
     SignupFormComponent
   ],
   template: `
-    <div class="min-h-screen bg-[#F7FBF3]">
+    <div class="hrcore-brand-theme min-h-screen bg-background">
       <app-public-navbar />
 
       <main class="px-4 py-12 sm:px-6 lg:px-8">

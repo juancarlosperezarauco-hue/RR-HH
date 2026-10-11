@@ -14,54 +14,54 @@ import { PlatformPlan } from '../../../../entities/platform/api/platform.service
       @if (isLoading) {
         <div class="space-y-3">
           @for (i of [1,2,3,4,5]; track i) {
-            <div class="bg-white rounded-xl border border-[#C8E6C9] p-4 animate-pulse">
+            <div class="bg-card rounded-xl border border-border p-4 animate-pulse">
               <div class="flex justify-between">
                 <div class="space-y-2">
-                  <div class="h-5 w-32 bg-gray-200 rounded"></div>
-                  <div class="h-4 w-24 bg-gray-200 rounded"></div>
+                  <div class="h-5 w-32 bg-muted rounded"></div>
+                  <div class="h-4 w-24 bg-muted rounded"></div>
                 </div>
-                <div class="h-6 w-16 bg-gray-200 rounded-full"></div>
+                <div class="h-6 w-16 bg-muted rounded-full"></div>
               </div>
             </div>
           }
         </div>
       } @else {
-        <table class="min-w-full divide-y divide-[#C8E6C9]">
-          <thead class="bg-[#F1F8E9]">
+        <table class="min-w-full divide-y divide-border">
+          <thead class="bg-accent">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Código</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Nombre</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Tipo</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Usuarios</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Roles</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Estado</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Acciones</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Código</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Nombre</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Tipo</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Usuarios</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Roles</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Estado</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-primary uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-[#C8E6C9]">
+          <tbody class="bg-card divide-y divide-border">
             @for (plan of plans; track plan.id) {
-              <tr class="hover:bg-[#F1F8E9] transition-colors">
+              <tr class="hover:bg-accent transition-colors">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="font-mono text-sm text-[#2E7D32]">{{ plan.code }}</span>
+                  <span class="font-mono text-sm text-primary">{{ plan.code }}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-[#2E7D32]">{{ plan.name }}</div>
-                  <div class="text-xs text-[#666666]">{{ plan.description }}</div>
+                  <div class="text-sm font-medium text-primary">{{ plan.name }}</div>
+                  <div class="text-xs text-muted-foreground">{{ plan.description }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span [class]="plan.planType === 'DEMO' ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#E3F2FD] text-[#1565C0]'" 
+                  <span [class]="plan.planType === 'DEMO' ? 'bg-accent text-primary' : 'bg-muted text-foreground'"
                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                     {{ plan.planType }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#666666]">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                   {{ plan.maxUsers }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#666666]">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                   {{ plan.maxRoles }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span [class]="plan.active ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#FFEBEE] text-[#C62828]'" 
+                  <span [class]="plan.active ? 'bg-accent text-primary' : 'bg-muted text-destructive'"
                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                     {{ plan.active ? 'ACTIVO' : 'INACTIVO' }}
                   </span>
@@ -69,19 +69,19 @@ import { PlatformPlan } from '../../../../entities/platform/api/platform.service
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end gap-2">
                     <button (click)="viewDetails.emit(plan.id)" 
-                            class="cursor-pointer text-[#4CAF50] hover:text-[#2E7D32] transition-colors"
+                            class="cursor-pointer text-secondary hover:text-primary transition-colors"
                             title="Ver detalles">
                       <lucide-icon name="eye" class="h-5 w-5"></lucide-icon>
                     </button>
                     @if (plan.active) {
                       <button (click)="deactivate.emit(plan.id)" 
-                              class="cursor-pointer text-[#FF9800] hover:text-[#F57C00] transition-colors"
+                              class="cursor-pointer text-foreground hover:text-foreground transition-colors"
                               title="Desactivar">
                         <lucide-icon name="pause-circle" class="h-5 w-5"></lucide-icon>
                       </button>
                     } @else {
                       <button (click)="activate.emit(plan.id)" 
-                              class="cursor-pointer text-[#4CAF50] hover:text-[#2E7D32] transition-colors"
+                              class="cursor-pointer text-secondary hover:text-primary transition-colors"
                               title="Activar">
                         <lucide-icon name="play-circle" class="h-5 w-5"></lucide-icon>
                       </button>
@@ -91,7 +91,7 @@ import { PlatformPlan } from '../../../../entities/platform/api/platform.service
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" class="px-6 py-10 text-center text-[#666666]">
+                <td colspan="7" class="px-6 py-10 text-center text-muted-foreground">
                   No hay planes registrados
                 </td>
               </tr>

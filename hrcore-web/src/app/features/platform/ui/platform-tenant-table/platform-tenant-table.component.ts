@@ -15,54 +15,54 @@ import { LucideAngularModule } from 'lucide-angular';
         <!-- Estado de carga (skeleton) -->
         <div class="space-y-3">
           @for (i of [1,2,3,4,5]; track i) {
-            <div class="bg-white rounded-xl border border-[#C8E6C9] p-4 animate-pulse">
+            <div class="bg-card rounded-xl border border-border p-4 animate-pulse">
               <div class="flex justify-between">
                 <div class="space-y-2">
-                  <div class="h-5 w-32 bg-gray-200 rounded"></div>
-                  <div class="h-4 w-24 bg-gray-200 rounded"></div>
+                  <div class="h-5 w-32 bg-muted rounded"></div>
+                  <div class="h-4 w-24 bg-muted rounded"></div>
                 </div>
-                <div class="h-6 w-16 bg-gray-200 rounded-full"></div>
+                <div class="h-6 w-16 bg-muted rounded-full"></div>
               </div>
             </div>
           }
         </div>
       } @else {
-        <table class="min-w-full divide-y divide-[#C8E6C9]">
-          <thead class="bg-[#F1F8E9]">
+        <table class="min-w-full divide-y divide-border">
+          <thead class="bg-accent">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Nombre</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Slug</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Estado</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Creado</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-[#2E7D32] uppercase tracking-wider">Acciones</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Nombre</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Slug</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Estado</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider">Creado</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-primary uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-[#C8E6C9]">
+          <tbody class="bg-card divide-y divide-border">
             @for (tenant of tenants; track tenant.id) {
-              <tr class="hover:bg-[#F1F8E9] transition-colors">
+              <tr class="hover:bg-accent transition-colors">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-[#2E7D32]">{{ tenant.name }}</div>
-                  <div class="text-xs text-[#666666]">Schema: {{ tenant.schemaName }}</div>
+                  <div class="text-sm font-medium text-primary">{{ tenant.name }}</div>
+                  <div class="text-xs text-muted-foreground">Schema: {{ tenant.schemaName }}</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#E8F5E9] text-[#2E7D32]">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-accent text-primary">
                     {{ tenant.slug }}
                   </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <span [class]="tenant.active ? 'bg-[#E8F5E9] text-[#2E7D32]' : 'bg-[#FFEBEE] text-[#C62828]'" 
+                  <span [class]="tenant.active ? 'bg-accent text-primary' : 'bg-muted text-destructive'"
                         class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                     {{ tenant.status }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-[#666666]">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                   {{ tenant.createdAt | date:'shortDate' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end gap-2">
                     <!-- ✅ Botón Ver detalles -->
                     <button (click)="viewDetails.emit(tenant.id)" 
-                            class="cursor-pointer text-[#4CAF50] hover:text-[#2E7D32] transition-colors"
+                            class="cursor-pointer text-secondary hover:text-primary transition-colors"
                             title="Ver detalles">
                       <lucide-icon name="eye" class="h-5 w-5"></lucide-icon>
                     </button>
@@ -70,7 +70,7 @@ import { LucideAngularModule } from 'lucide-angular';
                     <!-- ✅ Botón Desactivar (solo si está activo) -->
                     @if (tenant.active) {
                       <button (click)="deactivate.emit(tenant.id)" 
-                              class="cursor-pointer text-[#FF9800] hover:text-[#F57C00] transition-colors"
+                              class="cursor-pointer text-foreground hover:text-foreground transition-colors"
                               title="Desactivar">
                         <lucide-icon name="pause-circle" class="h-5 w-5"></lucide-icon>
                       </button>
@@ -79,7 +79,7 @@ import { LucideAngularModule } from 'lucide-angular';
                     <!-- ✅ Botón Activar (solo si está inactivo) -->
                     @if (!tenant.active) {
                       <button (click)="activate.emit(tenant.id)" 
-                              class="cursor-pointer text-[#4CAF50] hover:text-[#2E7D32] transition-colors"
+                              class="cursor-pointer text-secondary hover:text-primary transition-colors"
                               title="Activar">
                         <lucide-icon name="play-circle" class="h-5 w-5"></lucide-icon>
                       </button>
@@ -89,7 +89,7 @@ import { LucideAngularModule } from 'lucide-angular';
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="px-6 py-10 text-center text-[#666666]">
+                <td colspan="5" class="px-6 py-10 text-center text-muted-foreground">
                   No hay tenants registrados
                 </td>
               </tr>

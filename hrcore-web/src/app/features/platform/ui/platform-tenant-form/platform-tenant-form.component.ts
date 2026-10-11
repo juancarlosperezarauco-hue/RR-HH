@@ -36,34 +36,34 @@ export interface CreateTenantFormData {
       <!-- Información de la empresa -->
       <div class="space-y-3">
         <div class="flex items-center gap-3">
-          <div class="h-8 w-1 rounded-full bg-[#2E7D32]"></div>
-          <h3 class="text-base font-semibold text-[#1B5E20]">Información de la empresa</h3>
+          <div class="h-8 w-1 rounded-full bg-primary"></div>
+          <h3 class="text-base font-semibold text-accent-foreground">Información de la empresa</h3>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label class="block text-sm font-medium text-[#2E7D32] mb-1">Nombre de la empresa *</label>
+            <label class="block text-sm font-medium text-primary mb-1">Nombre de la empresa *</label>
             <input type="text" formControlName="name" placeholder="Ej: Mi Empresa SRL"
-                   [class.border-red-500]="isFieldInvalid('name')"
-                   class="w-full px-3 py-2 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
-            <span *ngIf="isFieldInvalid('name')" class="text-xs text-red-600 mt-1">El nombre es obligatorio</span>
+                   [class.border-destructive/30]="isFieldInvalid('name')"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <span *ngIf="isFieldInvalid('name')" class="text-xs text-destructive mt-1">El nombre es obligatorio</span>
           </div>
           <div>
-            <label class="block text-sm font-medium text-[#2E7D32] mb-1">Slug (identificador único) *</label>
+            <label class="block text-sm font-medium text-primary mb-1">Slug (identificador único) *</label>
             <input type="text" formControlName="slug" placeholder="Ej: miempresa"
-                   [class.border-red-500]="isFieldInvalid('slug')"
-                   class="w-full px-3 py-2 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
-            <span *ngIf="isFieldInvalid('slug')" class="text-xs text-red-600 mt-1">
+                   [class.border-destructive/30]="isFieldInvalid('slug')"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <span *ngIf="isFieldInvalid('slug')" class="text-xs text-destructive mt-1">
               Solo letras minúsculas, números y guiones. Mínimo 3 caracteres.
             </span>
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-[#2E7D32] mb-1">Plan *</label>
+          <label class="block text-sm font-medium text-primary mb-1">Plan *</label>
           <select formControlName="planCode"
-                  [class.border-red-500]="isFieldInvalid('planCode')"
-                  class="w-full px-3 py-2 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
+                  [class.border-destructive/30]="isFieldInvalid('planCode')"
+                  class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="" disabled>Selecciona un plan...</option>
             @for (plan of plans; track plan.code) {
               <option [value]="plan.code">
@@ -71,73 +71,73 @@ export interface CreateTenantFormData {
               </option>
             }
           </select>
-          <span *ngIf="isFieldInvalid('planCode')" class="text-xs text-red-600 mt-1">Selecciona un plan</span>
+          <span *ngIf="isFieldInvalid('planCode')" class="text-xs text-destructive mt-1">Selecciona un plan</span>
         </div>
       </div>
 
       <!-- Administrador principal -->
       <div class="space-y-3">
         <div class="flex items-center gap-3">
-          <div class="h-8 w-1 rounded-full bg-[#2E7D32]"></div>
-          <h3 class="text-base font-semibold text-[#1B5E20]">Administrador principal</h3>
+          <div class="h-8 w-1 rounded-full bg-primary"></div>
+          <h3 class="text-base font-semibold text-accent-foreground">Administrador principal</h3>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label class="block text-sm font-medium text-[#2E7D32] mb-1">Nombre *</label>
+            <label class="block text-sm font-medium text-primary mb-1">Nombre *</label>
             <input type="text" formControlName="firstName" placeholder="Ej: Juan"
-                   [class.border-red-500]="isFieldInvalid('firstName')"
-                   class="w-full px-3 py-2 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
-            <span *ngIf="isFieldInvalid('firstName')" class="text-xs text-red-600 mt-1">El nombre es obligatorio</span>
+                   [class.border-destructive/30]="isFieldInvalid('firstName')"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <span *ngIf="isFieldInvalid('firstName')" class="text-xs text-destructive mt-1">El nombre es obligatorio</span>
           </div>
           <div>
-            <label class="block text-sm font-medium text-[#2E7D32] mb-1">Apellido *</label>
+            <label class="block text-sm font-medium text-primary mb-1">Apellido *</label>
             <input type="text" formControlName="lastName" placeholder="Ej: Pérez"
-                   [class.border-red-500]="isFieldInvalid('lastName')"
-                   class="w-full px-3 py-2 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
-            <span *ngIf="isFieldInvalid('lastName')" class="text-xs text-red-600 mt-1">El apellido es obligatorio</span>
+                   [class.border-destructive/30]="isFieldInvalid('lastName')"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <span *ngIf="isFieldInvalid('lastName')" class="text-xs text-destructive mt-1">El apellido es obligatorio</span>
           </div>
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label class="block text-sm font-medium text-[#2E7D32] mb-1">Correo electrónico *</label>
+            <label class="block text-sm font-medium text-primary mb-1">Correo electrónico *</label>
             <input type="email" formControlName="adminEmail" placeholder="admin@empresa.com"
-                   [class.border-red-500]="isFieldInvalid('adminEmail')"
-                   class="w-full px-3 py-2 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
-            <span *ngIf="isFieldInvalid('adminEmail')" class="text-xs text-red-600 mt-1">Ingresa un correo válido</span>
+                   [class.border-destructive/30]="isFieldInvalid('adminEmail')"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+            <span *ngIf="isFieldInvalid('adminEmail')" class="text-xs text-destructive mt-1">Ingresa un correo válido</span>
           </div>
           <div>
-            <label class="block text-sm font-medium text-[#2E7D32] mb-1">Contraseña *</label>
+            <label class="block text-sm font-medium text-primary mb-1">Contraseña *</label>
             <div class="relative">
               <input
                 [type]="showPassword ? 'text' : 'password'"
                 formControlName="password"
                 placeholder="Mínimo 8 caracteres"
-                [class.border-red-500]="isFieldInvalid('password')"
-                class="w-full px-3 py-2 pr-10 border border-[#C8E6C9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4CAF50]">
+                [class.border-destructive/30]="isFieldInvalid('password')"
+                class="w-full px-3 py-2 pr-10 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
               <button
                 type="button"
                 (click)="togglePasswordVisibility()"
-                class="absolute inset-y-0 right-0 flex items-center pr-3 text-[#6B7D6C] transition-colors hover:text-[#2E7D32]"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-primary"
                 tabindex="-1">
                 <lucide-icon [name]="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></lucide-icon>
               </button>
             </div>
-            <span *ngIf="isFieldInvalid('password')" class="text-xs text-red-600 mt-1">La contraseña es requerida (mínimo 8 caracteres)</span>
+            <span *ngIf="isFieldInvalid('password')" class="text-xs text-destructive mt-1">La contraseña es requerida (mínimo 8 caracteres)</span>
           </div>
         </div>
       </div>
 
       <!-- Botones -->
-      <div class="flex justify-end gap-3 pt-4 border-t border-[#C8E6C9]">
+      <div class="flex justify-end gap-3 pt-4 border-t border-border">
         <button type="button" (click)="cancel.emit()" 
-                class="px-4 py-2 border border-[#C8E6C9] text-[#666666] rounded-lg hover:bg-[#F1F8E9] transition-colors">
+                class="px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-accent transition-colors">
           Cancelar
         </button>
         <button type="submit" 
                 [disabled]="isLoading || tenantForm.invalid" 
-                class="px-4 py-2 bg-[#2E7D32] text-white rounded-lg hover:bg-[#4CAF50] transition-colors disabled:opacity-50 disabled:bg-gray-400">
+                class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-secondary transition-colors disabled:opacity-50 disabled:bg-muted">
           {{ isLoading ? 'Creando...' : 'Crear tenant' }}
         </button>
       </div>

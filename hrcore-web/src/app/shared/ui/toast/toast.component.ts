@@ -13,19 +13,19 @@ import { LucideAngularModule, CheckCircle, AlertCircle, AlertTriangle, Info, X }
         <div 
           class="pointer-events-auto flex w-full flex-col overflow-hidden rounded-xl bg-card border shadow-lg transition-all duration-300 transform translate-y-0 opacity-100"
           [ngClass]="{
-            'border-green-500/30': toast.type === 'success',
-            'border-red-500/30': toast.type === 'error',
-            'border-yellow-500/30': toast.type === 'warning',
-            'border-blue-500/30': toast.type === 'info'
+            'border-success/30': toast.type === 'success',
+            'border-destructive/30': toast.type === 'error',
+            'border-warning/30': toast.type === 'warning',
+            'border-info/30': toast.type === 'info'
           }">
           
           <div class="p-4 flex items-start gap-3">
             <div class="flex-shrink-0 mt-0.5">
               @switch (toast.type) {
-                @case ('success') { <lucide-icon name="check-circle" [size]="20" class="text-green-500"></lucide-icon> }
-                @case ('error') { <lucide-icon name="alert-circle" [size]="20" class="text-red-500"></lucide-icon> }
-                @case ('warning') { <lucide-icon name="alert-triangle" [size]="20" class="text-yellow-500"></lucide-icon> }
-                @case ('info') { <lucide-icon name="info" [size]="20" class="text-blue-500"></lucide-icon> }
+                @case ('success') { <lucide-icon name="check-circle" [size]="20" class="text-success"></lucide-icon> }
+                @case ('error') { <lucide-icon name="alert-circle" [size]="20" class="text-destructive"></lucide-icon> }
+                @case ('warning') { <lucide-icon name="alert-triangle" [size]="20" class="text-warning"></lucide-icon> }
+                @case ('info') { <lucide-icon name="info" [size]="20" class="text-info"></lucide-icon> }
               }
             </div>
             
@@ -49,10 +49,10 @@ import { LucideAngularModule, CheckCircle, AlertCircle, AlertTriangle, Info, X }
           <div class="h-1 w-full bg-muted/50">
             <div class="h-full origin-left animate-progress"
               [ngClass]="{
-                'bg-green-500': toast.type === 'success',
-                'bg-red-500': toast.type === 'error',
-                'bg-yellow-500': toast.type === 'warning',
-                'bg-blue-500': toast.type === 'info'
+                'bg-success': toast.type === 'success',
+                'bg-destructive/50': toast.type === 'error',
+                'bg-warning': toast.type === 'warning',
+                'bg-info': toast.type === 'info'
               }"
               [style.animation-duration]="toast.duration + 'ms'">
             </div>

@@ -14,7 +14,7 @@ export interface PlatformLoginRequest {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, LucideAngularModule],
   template: `
-    <div class="min-h-screen bg-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="hrcore-brand-theme min-h-screen bg-card flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <div class="text-center">
           <img
@@ -22,13 +22,13 @@ export interface PlatformLoginRequest {
             alt="Prospera"
             class="mx-auto h-12 w-12 rounded-xl object-contain"
           >
-          <h2 class="mt-6 text-3xl font-extrabold text-[#1B5E20]">Plataforma</h2>
-          <p class="mt-2 text-sm text-[#666666]">Acceso exclusivo para administradores globales</p>
+          <h2 class="mt-6 text-3xl font-extrabold text-accent-foreground">Plataforma</h2>
+          <p class="mt-2 text-sm text-muted-foreground">Acceso exclusivo para administradores globales</p>
         </div>
 
-        <div class="mt-8 bg-white py-8 px-4 shadow-xl rounded-lg border border-[#C8E6C9] sm:px-10">
+        <div class="mt-8 bg-card py-8 px-4 shadow-xl rounded-lg border border-border sm:px-10">
           <!-- Mensaje de Error -->
-          <div *ngIf="status === 'error'" class="mb-6 p-4 bg-red-50 text-red-700 border border-red-200 rounded-md">
+          <div *ngIf="status === 'error'" class="mb-6 p-4 bg-destructive/5 text-destructive border border-destructive/20 rounded-md">
             {{ error }}
           </div>
 
@@ -36,12 +36,12 @@ export interface PlatformLoginRequest {
             
             <div>
               <div class="flex justify-between items-center mb-1">
-                <label for="email" class="block text-sm font-medium text-[#2E7D32]">Correo Electrónico</label>
+                <label for="email" class="block text-sm font-medium text-primary">Correo Electrónico</label>
                 <!-- ✅ Botón para auto-llenar credenciales -->
                 <button 
                   type="button"
                   (click)="autoFillCredentials()"
-                  class="text-xs text-[#4CAF50] hover:text-[#2E7D32] transition-colors flex items-center gap-1 cursor-pointer"
+                  class="text-xs text-secondary hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
                   title="Auto-llenar credenciales de superadmin">
                   <lucide-icon name="wand-2" class="h-3 w-3"></lucide-icon>
                   Auto-llenar
@@ -51,39 +51,39 @@ export interface PlatformLoginRequest {
                 id="email" 
                 type="email" 
                 formControlName="email"
-                class="w-full px-3 py-2 border border-[#C8E6C9] rounded-md focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent transition-colors"
-                [class.border-red-500]="isFieldInvalid('email')"
+                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                [class.border-destructive/30]="isFieldInvalid('email')"
                 placeholder="superadmin@hrcore.local">
-              <span *ngIf="isFieldInvalid('email')" class="text-xs text-red-600 mt-1">Ingresa un correo válido.</span>
+              <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive mt-1">Ingresa un correo válido.</span>
             </div>
 
             <div>
-              <label for="password" class="block text-sm font-medium text-[#2E7D32] mb-1">Contraseña</label>
+              <label for="password" class="block text-sm font-medium text-primary mb-1">Contraseña</label>
               <div class="relative">
                 <input 
                   id="password" 
                   [type]="showPassword ? 'text' : 'password'" 
                   formControlName="password"
-                  class="w-full px-3 py-2 border border-[#C8E6C9] rounded-md focus:outline-none focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent transition-colors pr-10"
-                  [class.border-red-500]="isFieldInvalid('password')"
+                  class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors pr-10"
+                  [class.border-destructive/30]="isFieldInvalid('password')"
                   placeholder="••••••••">
                 <button 
                   type="button" 
                   (click)="togglePasswordVisibility()" 
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-[#999999] hover:text-[#2E7D32] transition-colors"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
                   tabindex="-1"
                 >
                   <lucide-icon [name]="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></lucide-icon>
                 </button>
               </div>
-              <span *ngIf="isFieldInvalid('password')" class="text-xs text-red-600 mt-1">La contraseña es requerida (mínimo 8 caracteres).</span>
+              <span *ngIf="isFieldInvalid('password')" class="text-xs text-destructive mt-1">La contraseña es requerida (mínimo 8 caracteres).</span>
             </div>
 
             <div class="pt-4">
               <button 
                 type="submit" 
                 [disabled]="status === 'loading'"
-                class="w-full bg-[#1B5E20] hover:bg-[#2E7D32] text-white font-medium py-2.5 px-4 rounded-md transition-colors disabled:opacity-50 flex justify-center items-center">
+                class="w-full bg-accent-foreground hover:bg-primary text-primary-foreground font-medium py-2.5 px-4 rounded-md transition-colors disabled:opacity-50 flex justify-center items-center">
                 
                 <ng-container *ngIf="status !== 'loading'; else loadingSpinner">
                   Acceder como SuperAdmin
@@ -101,8 +101,8 @@ export interface PlatformLoginRequest {
             </div>
             
             <!-- Link to return to landing -->
-            <div class="mt-6 text-center text-sm text-[#666666] border-t border-[#C8E6C9] pt-4">
-              <a routerLink="/" class="font-medium text-[#4CAF50] hover:text-[#2E7D32] transition-colors">
+            <div class="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4">
+              <a routerLink="/" class="font-medium text-secondary hover:text-primary transition-colors">
                 ← Volver al inicio
               </a>
             </div>

@@ -1,0 +1,22 @@
+/*
+ * Compatibility aliases for the landing theme.
+ * All actual values live in the global theme tokens from styles.css so the
+ * landing and application interfaces can switch themes together.
+ */
+.hrcore-brand-theme {
+  --landing-primary: var(--primary);
+  --landing-primary-dark: var(--accent-foreground);
+  --landing-primary-hover: color-mix(in srgb, var(--primary) 90%, var(--background));
+  --landing-accent: var(--secondary);
+  --landing-accent-soft: var(--accent);
+  --landing-surface: var(--background);
+  --landing-surface-soft: var(--muted);
+  --landing-surface-hover: var(--accent);
+  --landing-border: var(--border);
+  --landing-border-soft: var(--border);
+  --landing-heading: var(--foreground);
+  --landing-text: var(--foreground);
+  --landing-muted: var(--muted-foreground);
+  --landing-white: var(--card);
+  --landing-footer: var(--sidebar);
+}

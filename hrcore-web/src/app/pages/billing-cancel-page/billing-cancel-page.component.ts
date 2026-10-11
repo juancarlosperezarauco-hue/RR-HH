@@ -18,34 +18,34 @@ import { PublicFooterComponent, PublicNavbarComponent } from '../../shared/ui/pu
     PublicFooterComponent
   ],
   template: `
-    <div class="min-h-screen bg-[#F7FBF3]">
+    <div class="min-h-screen bg-background">
       <app-public-navbar />
 
       <main class="px-4 py-20 sm:px-6 lg:px-8">
-        <section class="mx-auto max-w-3xl rounded-[34px] border border-[#DDEED8] bg-white p-8 text-center shadow-[0_24px_70px_rgba(27,94,32,0.12)]">
-          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#FBF4EA] text-[#A87824]">
+        <section class="mx-auto max-w-3xl rounded-[34px] border border-border bg-card p-8 text-center shadow-lg">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-muted text-foreground">
             <lucide-icon name="circle-alert" class="h-8 w-8"></lucide-icon>
           </div>
 
-          <h1 class="mt-6 text-4xl font-black text-[#083B16]">
+          <h1 class="mt-6 text-4xl font-black text-accent-foreground">
             Pago cancelado
           </h1>
 
-          <p class="mt-4 text-sm leading-7 text-[#405447]">
+          <p class="mt-4 text-sm leading-7 text-muted-foreground">
             No se completó el pago. Puedes volver a elegir un plan o crear una demo gratuita.
           </p>
 
           <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <a
               routerLink="/prices"
-              class="inline-flex h-11 items-center justify-center rounded-xl bg-[#2E7D32] px-5 text-sm font-black text-white hover:bg-[#256428]">
+              class="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground hover:bg-primary/90">
               Volver a precios
             </a>
 
             <a
               routerLink="/onboarding"
               [queryParams]="{ plan: 'DEMO' }"
-              class="inline-flex h-11 items-center justify-center rounded-xl border border-[#C8E6C9] bg-white px-5 text-sm font-black text-[#1B5E20] hover:bg-[#F7FBF3]">
+              class="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-black text-accent-foreground hover:bg-background">
               Crear demo
             </a>
           </div>

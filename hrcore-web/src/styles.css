@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./app/widgets/landing/landing-theme.css";
 
 /* ── Registrar variables CSS como colores del tema de Tailwind v4 ── */
 @theme {
@@ -18,6 +19,12 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -51,11 +58,11 @@
   --popover-foreground: #1f2937;
 
   /* Marca PROSPERA - Botones y acciones principales */
-  --primary: #1b4d30; /* Verde Oscuro */
+  --primary: #1268c4;
   --primary-foreground: #ffffff;
 
   /* Elementos Secundarios */
-  --secondary: #3d8c7c; /* Teal / Aqua */
+  --secondary: #13a8e8;
   --secondary-foreground: #ffffff;
 
   /* Elementos Desactivados o Muted */
@@ -63,27 +70,33 @@
   --muted-foreground: #6b7280;
 
   /* Hover states en tablas y menús */
-  --accent: #e8f5e9; /* Verde súper suave basado en tu logo */
-  --accent-foreground: #1b4d30;
+  --accent: #e7f7fd;
+  --accent-foreground: #0b3b82;
 
   /* Alertas destructivas (Mantenemos rojo estándar) */
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+  --success: #16803c;
+  --success-foreground: #ffffff;
+  --warning: #a16207;
+  --warning-foreground: #ffffff;
+  --info: #1268c4;
+  --info-foreground: #ffffff;
 
   /* Bordes e Inputs */
   --border: #e5e7eb; /* Gris limpio para dividir secciones */
   --input: #e5e7eb;
-  --ring: #8bc34a; /* Verde Lima brillante para el focus de inputs */
+  --ring: #13a8e8;
 
   /* Sidebar (Panel Lateral) - Estilo Premium B2B */
-  --sidebar: #1b4d30; /* Fondo verde oscuro corporativo */
+  --sidebar: #082d55;
   --sidebar-foreground: #ffffff; /* Texto blanco en el menú */
-  --sidebar-primary: #8bc34a; /* Verde lima para la sección activa */
-  --sidebar-primary-foreground: #1b4d30; /* Texto del ítem activo */
-  --sidebar-accent: #2e7d32; /* Hover en los ítems del menú (Verde bosque) */
+  --sidebar-primary: #1268c4;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #0d56a6;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1b4d30;
-  --sidebar-ring: #8bc34a;
+  --sidebar-border: #0b3b82;
+  --sidebar-ring: #13a8e8;
 }
 
 /* ── Variables CSS: Modo Oscuro ── */
@@ -99,34 +112,40 @@
   --popover-foreground: #f9fafb;
 
   /* En dark mode, los colores brillantes funcionan mejor para botones */
-  --primary: #8bc34a; /* Verde Lima */
-  --primary-foreground: #1b4d30;
+  --primary: #13a8e8;
+  --primary-foreground: #082d55;
 
-  --secondary: #3d8c7c;
+  --secondary: #1268c4;
   --secondary-foreground: #ffffff;
 
   --muted: #374151;
   --muted-foreground: #9ca3af;
 
-  --accent: #1b4d30; /* Hover oscuro */
+  --accent: #0b3b82;
   --accent-foreground: #ffffff;
 
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+  --success: #4ade80;
+  --success-foreground: #082d55;
+  --warning: #facc15;
+  --warning-foreground: #082d55;
+  --info: #13a8e8;
+  --info-foreground: #082d55;
 
   --border: #374151;
   --input: #374151;
-  --ring: #8bc34a;
+  --ring: #13a8e8;
 
   /* Sidebar Modo Oscuro */
-  --sidebar: #1f2937;
+  --sidebar: #082d55;
   --sidebar-foreground: #f9fafb;
-  --sidebar-primary: #8bc34a;
-  --sidebar-primary-foreground: #1b4d30;
-  --sidebar-accent: #374151;
+  --sidebar-primary: #13a8e8;
+  --sidebar-primary-foreground: #082d55;
+  --sidebar-accent: #1268c4;
   --sidebar-accent-foreground: #f9fafb;
   --sidebar-border: #374151;
-  --sidebar-ring: #8bc34a;
+  --sidebar-ring: #13a8e8;
 }
 
 /* ── Estilos Base ── */
@@ -158,11 +177,11 @@
   }
 
   .app-modal-title {
-    @apply text-2xl font-black text-[#1B5E20];
+    @apply text-2xl font-black text-primary;
   }
 
   .app-modal-subtitle {
-    @apply mt-1 text-sm text-[#6B7D6C];
+    @apply mt-1 text-sm text-muted-foreground;
   }
 
   .app-modal-content-grid {
@@ -181,7 +200,7 @@ html {
 
 body {
   margin: 0;
-  background: #ffffff;
+  background: var(--background);
 }
 
 a {

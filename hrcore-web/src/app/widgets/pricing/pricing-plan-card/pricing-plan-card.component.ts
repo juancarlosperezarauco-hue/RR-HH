@@ -11,45 +11,45 @@ import { BillingInterval } from '../pricing-page/pricing-page.component';
   imports: [CommonModule, RouterModule, LucideAngularModule],
   template: `
     <article
-      class="relative flex min-h-[650px] flex-col rounded-[30px] border bg-white p-6 shadow-[0_18px_50px_rgba(27,94,32,0.08)]"
-      [class.border-[#2E7D32]]="isRecommended()"
+      class="relative flex min-h-[650px] flex-col rounded-[30px] border bg-card p-6 shadow-lg"
+      [class.border-primary]="isRecommended()"
       [class.ring-2]="isRecommended()"
-      [class.ring-[#A5D6A7]]="isRecommended()"
-      [class.shadow-[0_30px_80px_rgba(46,125,50,0.20)]]="isRecommended()"
-      [class.border-[#DDEED8]]="!isRecommended()">
+      [class.ring-secondary]="isRecommended()"
+      [class.shadow-lg]="isRecommended()"
+      [class.border-border]="!isRecommended()">
       @if (isRecommended()) {
-        <div class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-[#2E7D32] px-6 py-2 text-xs font-black uppercase tracking-[0.18em] text-white shadow-sm">Recomendado</div>
+        <div class="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-primary px-6 py-2 text-xs font-black uppercase tracking-[0.18em] text-primary-foreground shadow-sm">Recomendado</div>
       }
 
       <div>
         <span
           class="inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em]"
-          [class.border-[#A5D6A7]]="isRecommended()"
-          [class.bg-[#E8F5E9]]="isRecommended()"
-          [class.text-[#1B5E20]]="isRecommended()"
-          [class.border-[#D6E8D1]]="!isRecommended()"
-          [class.text-[#6B7D6C]]="!isRecommended()">
+          [class.border-secondary]="isRecommended()"
+          [class.bg-accent]="isRecommended()"
+          [class.text-accent-foreground]="isRecommended()"
+          [class.border-border]="!isRecommended()"
+          [class.text-muted-foreground]="!isRecommended()">
           {{ badgeLabel() }}
         </span>
 
-        <h2 class="mt-6 text-2xl font-black text-[#083B16]">
+        <h2 class="mt-6 text-2xl font-black text-accent-foreground">
           {{ displayName() }}
         </h2>
 
-        <p class="mt-4 min-h-[72px] text-sm leading-7 text-[#405447]">
+        <p class="mt-4 min-h-[72px] text-sm leading-7 text-muted-foreground">
           {{ plan.description || defaultDescription() }}
         </p>
       </div>
 
       <div class="mt-8 min-h-[96px]">
         @if (plan.contactSales) {
-          <p class="text-5xl font-black tracking-tight text-[#083B16]">A medida</p>
+          <p class="text-5xl font-black tracking-tight text-accent-foreground">A medida</p>
         } @else {
-          <p class="text-[clamp(2.25rem,3vw,3.25rem)] font-black leading-none tracking-tight text-[#083B16]">
+          <p class="text-[clamp(2.25rem,3vw,3.25rem)] font-black leading-none tracking-tight text-accent-foreground">
             {{ priceLabel() }}
           </p>
 
-          <p class="mt-3 text-sm font-bold text-[#6B7D6C]">
+          <p class="mt-3 text-sm font-bold text-muted-foreground">
             {{ periodDescription() }}
           </p>
         }
@@ -60,14 +60,14 @@ import { BillingInterval } from '../pricing-page/pricing-page.component';
           <a
             routerLink="/onboarding"
             [queryParams]="{ plan: 'DEMO' }"
-            class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#083B16] px-5 text-sm font-black text-white transition-colors hover:bg-[#102016]">
+            class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent-foreground px-5 text-sm font-black text-primary-foreground transition-colors hover:bg-sidebar">
             Crear DEMO
             <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
           </a>
         } @else if (plan.contactSales) {
           <button
             type="button"
-            class="inline-flex h-11 w-full items-center justify-center rounded-xl border border-[#C8E6C9] bg-white px-5 text-sm font-black text-[#1B5E20] transition-colors hover:bg-[#F7FBF3]">
+            class="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-black text-accent-foreground transition-colors hover:bg-background">
             Contactar ventas
           </button>
         } @else {
@@ -75,27 +75,27 @@ import { BillingInterval } from '../pricing-page/pricing-page.component';
             routerLink="/onboarding"
             [queryParams]="{ plan: plan.code, billing: billingInterval }"
             class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-black transition-colors"
-            [class.bg-[#2E7D32]]="isRecommended()"
-            [class.text-white]="isRecommended()"
-            [class.hover:bg-[#256428]]="isRecommended()"
-            [class.bg-[#083B16]]="!isRecommended()"
-            [class.text-white]="!isRecommended()"
-            [class.hover:bg-[#102016]]="!isRecommended()">
+            [class.bg-primary]="isRecommended()"
+            [class.text-primary-foreground]="isRecommended()"
+            [class.hover:bg-primary/90]="isRecommended()"
+            [class.bg-accent-foreground]="!isRecommended()"
+            [class.text-primary-foreground]="!isRecommended()"
+            [class.hover:bg-sidebar]="!isRecommended()">
             Obtener {{ displayName() }}
             <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
           </a>
         }
       </div>
 
-      <div class="mt-8 border-t border-[#DDEED8] pt-7">
-        <p class="mb-5 text-sm font-black text-[#083B16]">
+      <div class="mt-8 border-t border-border pt-7">
+        <p class="mb-5 text-sm font-black text-accent-foreground">
           {{ featureHeader() }}
         </p>
 
         <ul class="space-y-4">
           @for (feature of features(); track feature) {
-            <li class="flex gap-3 text-sm leading-6 text-[#405447]">
-              <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-[#2E7D32]"></lucide-icon>
+            <li class="flex gap-3 text-sm leading-6 text-muted-foreground">
+              <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
               <span>{{ feature }}</span>
             </li>
           }

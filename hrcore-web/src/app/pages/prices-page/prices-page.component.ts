@@ -7,7 +7,7 @@ import { PricingPageWidgetComponent } from '../../widgets/pricing';
   standalone: true,
   imports: [PublicNavbarComponent, PricingPageWidgetComponent, PublicFooterComponent],
   template: `
-    <div class="min-h-screen bg-[#F7FBF3]">
+    <div class="hrcore-brand-theme min-h-screen bg-background">
       <app-public-navbar />
       <app-pricing-page-widget />
       <app-public-footer />

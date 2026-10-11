@@ -16,18 +16,18 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule, PlatformPaginationComponent],
   template: `
     <div class="space-y-6 p-4 sm:p-6 lg:p-8">
-      <section class="rounded-[28px] border border-[#C8E6C9] bg-gradient-to-br from-white via-[#F7FBF3] to-[#EAF6EB] p-6 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+      <section class="rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-muted p-6 shadow-lg">
         <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div class="space-y-3">
-            <div class="inline-flex items-center gap-2 rounded-full border border-[#C8E6C9] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2E7D32]">
-              <span class="h-2 w-2 rounded-full bg-[#4CAF50]"></span>
+            <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              <span class="h-2 w-2 rounded-full bg-secondary"></span>
               Plataforma superadmin
             </div>
             <div>
-              <h1 class="text-3xl font-black tracking-tight text-[#1B5E20] sm:text-4xl">
+              <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Respaldos
               </h1>
-              <p class="mt-2 max-w-3xl text-sm leading-6 text-[#5F6F5F]">
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                 Gestiona backups globales y por tenant, descarga artefactos y revisa estado.
               </p>
             </div>
@@ -38,7 +38,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
               type="button"
               (click)="openCreateModal('FULL_DATABASE')"
               title="Nuevo"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
               <lucide-icon name="arrow-down-to-line" class="h-4 w-4"></lucide-icon>
               Nuevo respaldo full
             </button>
@@ -46,7 +46,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
               type="button"
               (click)="openRestoreFromFileModal()"
               title="Restaurar"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="upload" class="h-4 w-4"></lucide-icon>
               Restaurar desde archivo
             </button>
@@ -54,7 +54,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
               type="button"
               (click)="reload()"
               title="Actualizar"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="refresh-ccw" class="h-4 w-4"></lucide-icon>
               Recargar
             </button>
@@ -63,40 +63,40 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
       </section>
 
       <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Respaldos en página</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().total }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Cargados en la vista actual</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Respaldos en página</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().total }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Cargados en la vista actual</p>
         </div>
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Completados</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().completed }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Listos para descargar o restaurar</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Completados</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().completed }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Listos para descargar o restaurar</p>
         </div>
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">En proceso</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().running }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Jobs activos o pendientes</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">En proceso</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().running }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Jobs activos o pendientes</p>
         </div>
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Fallidos</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ stats().failed }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Revisar razón de fallo</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Fallidos</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().failed }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Revisar razón de fallo</p>
         </div>
       </section>
 
-      <section class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+      <section class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
         <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 class="text-lg font-bold text-[#1B5E20]">Listado de respaldos</h2>
-            <p class="text-sm text-[#6B7D6C]">Descarga, detalle y restauración desde una sola vista.</p>
+            <h2 class="text-lg font-bold text-accent-foreground">Listado de respaldos</h2>
+            <p class="text-sm text-muted-foreground">Descarga, detalle y restauración desde una sola vista.</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
               (click)="openCreateModal('TENANT_SCHEMA')"
               title="Tenant"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-[#F1F8E9] px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#E8F5E9]">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-accent px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="building-2" class="h-4 w-4"></lucide-icon>
               Respaldo por tenant
             </button>
@@ -104,56 +104,56 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
         </div>
 
         <div class="overflow-x-auto">
-          <table class="min-w-[1100px] w-full divide-y divide-[#E8F2E2]">
-            <thead class="bg-[#FAFCF8]">
+          <table class="min-w-[1100px] w-full divide-y divide-border">
+            <thead class="bg-muted">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[#567157]">Fecha</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[#567157]">Scope</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[#567157]">Tenant</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[#567157]">Estado</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-[#567157]">Archivo</th>
-                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em] text-[#567157]">Acciones</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Fecha</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Scope</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tenant</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estado</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Archivo</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Acciones</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-[#F1F5EF]">
+            <tbody class="divide-y divide-border">
               @for (backup of filteredBackups(); track backup.id) {
-                <tr class="hover:bg-[#FAFCF8]">
-                  <td class="px-4 py-4 text-sm text-[#1B5E20]">{{ formatDate(backup.createdAt) }}</td>
-                  <td class="px-4 py-4 text-sm font-semibold text-[#1B5E20]">{{ backup.scope }}</td>
-                  <td class="px-4 py-4 text-sm text-[#1B5E20]">
+                <tr class="hover:bg-muted">
+                  <td class="px-4 py-4 text-sm text-accent-foreground">{{ formatDate(backup.createdAt) }}</td>
+                  <td class="px-4 py-4 text-sm font-semibold text-accent-foreground">{{ backup.scope }}</td>
+                  <td class="px-4 py-4 text-sm text-accent-foreground">
                     <div class="font-semibold">{{ backup.tenantSlug || 'GLOBAL' }}</div>
-                    <div class="text-xs text-[#6B7D6C]">{{ backup.schemaName || 'public' }}</div>
+                    <div class="text-xs text-muted-foreground">{{ backup.schemaName || 'public' }}</div>
                   </td>
                   <td class="px-4 py-4 text-sm">
                     <span class="rounded-full border px-3 py-1 text-xs font-semibold"
-                      [class.border-[#C8E6C9]]="isSuccessStatus(backup.status)"
-                      [class.bg-[#F1F8E9]]="isSuccessStatus(backup.status)"
-                      [class.text-[#2E7D32]]="isSuccessStatus(backup.status)"
-                      [class.border-[#FFE0A3]]="isWarningStatus(backup.status)"
-                      [class.bg-[#FFF8E6]]="isWarningStatus(backup.status)"
-                      [class.text-[#9A6700]]="isWarningStatus(backup.status)"
-                      [class.border-[#FFD59E]]="isRunningStatus(backup.status)"
-                      [class.bg-[#FFF7E6]]="isRunningStatus(backup.status)"
-                      [class.text-[#B26A00]]="isRunningStatus(backup.status)"
-                      [class.border-[#F3C6C6]]="backup.status === 'FAILED'"
-                      [class.bg-[#FFF7F7]]="backup.status === 'FAILED'"
-                      [class.text-[#B42318]]="backup.status === 'FAILED'">
+                      [class.border-border]="isSuccessStatus(backup.status)"
+                      [class.bg-accent]="isSuccessStatus(backup.status)"
+                      [class.text-primary]="isSuccessStatus(backup.status)"
+                      [class.border-border]="isWarningStatus(backup.status)"
+                      [class.bg-muted]="isWarningStatus(backup.status)"
+                      [class.text-foreground]="isWarningStatus(backup.status)"
+                      [class.border-border]="isRunningStatus(backup.status)"
+                      [class.bg-muted]="isRunningStatus(backup.status)"
+                      [class.text-foreground]="isRunningStatus(backup.status)"
+                      [class.border-border]="backup.status === 'FAILED'"
+                      [class.bg-muted]="backup.status === 'FAILED'"
+                      [class.text-foreground]="backup.status === 'FAILED'">
                       {{ statusLabel(backup.status) }}
                     </span>
                   </td>
-                  <td class="px-4 py-4 text-sm text-[#1B5E20]">
+                  <td class="px-4 py-4 text-sm text-accent-foreground">
                     <div class="font-semibold">{{ backup.fileName || 'N/A' }}</div>
-                    <div class="text-xs text-[#6B7D6C]">{{ backup.format || 'N/A' }}</div>
+                    <div class="text-xs text-muted-foreground">{{ backup.format || 'N/A' }}</div>
                   </td>
                   <td class="px-4 py-4 text-right text-sm font-medium">
                     <div class="inline-flex items-center gap-2">
-                      <button type="button" (click)="openDetail(backup)" title="Detalle" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                      <button type="button" (click)="openDetail(backup)" title="Detalle" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                         <lucide-icon name="eye" class="h-4 w-4"></lucide-icon>
                       </button>
-                      <button type="button" (click)="download(backup)" title="Descargar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                      <button type="button" (click)="download(backup)" title="Descargar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                         <lucide-icon name="arrow-down-to-line" class="h-4 w-4"></lucide-icon>
                       </button>
-                      <button type="button" (click)="openRestoreModal(backup)" title="Restaurar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                      <button type="button" (click)="openRestoreModal(backup)" title="Restaurar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                         <lucide-icon name="rotate-ccw" class="h-4 w-4"></lucide-icon>
                       </button>
                     </div>
@@ -177,7 +177,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
         }
 
         @if (filteredBackups().length === 0) {
-          <div class="rounded-2xl border border-dashed border-[#C8E6C9] bg-[#FAFCF8] px-4 py-8 text-sm text-[#6B7D6C]">
+          <div class="rounded-2xl border border-dashed border-border bg-muted px-4 py-8 text-sm text-muted-foreground">
             No hay respaldos que coincidan con los filtros actuales.
           </div>
         }
@@ -191,7 +191,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
                 <h2 class="app-modal-title">Nuevo respaldo</h2>
                 <p class="app-modal-subtitle">Crea un respaldo full o por tenant.</p>
               </div>
-              <button type="button" (click)="closeCreateModal()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeCreateModal()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
@@ -199,27 +199,27 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
             <form class="mt-6 grid gap-4" [formGroup]="createForm" (ngSubmit)="submitCreate()">
               <div class="grid gap-2 sm:grid-cols-2">
                 <button type="button" (click)="setScope('FULL_DATABASE')" class="cursor-pointer rounded-2xl border px-4 py-3 text-left transition-colors"
-                  [class.border-[#2E7D32]]="createForm.controls.scope.value === 'FULL_DATABASE'"
-                  [class.bg-[#F1F8E9]]="createForm.controls.scope.value === 'FULL_DATABASE'"
-                  [class.text-[#1B5E20]]="createForm.controls.scope.value === 'FULL_DATABASE'"
-                  [class.border-[#DDEED8]]="createForm.controls.scope.value !== 'FULL_DATABASE'">
+                  [class.border-primary]="createForm.controls.scope.value === 'FULL_DATABASE'"
+                  [class.bg-accent]="createForm.controls.scope.value === 'FULL_DATABASE'"
+                  [class.text-accent-foreground]="createForm.controls.scope.value === 'FULL_DATABASE'"
+                  [class.border-border]="createForm.controls.scope.value !== 'FULL_DATABASE'">
                   <p class="text-sm font-semibold">Full database</p>
-                  <p class="text-xs text-[#6B7D6C]">Respaldo completo de plataforma</p>
+                  <p class="text-xs text-muted-foreground">Respaldo completo de plataforma</p>
                 </button>
                 <button type="button" (click)="setScope('TENANT_SCHEMA')" class="cursor-pointer rounded-2xl border px-4 py-3 text-left transition-colors"
-                  [class.border-[#2E7D32]]="createForm.controls.scope.value === 'TENANT_SCHEMA'"
-                  [class.bg-[#F1F8E9]]="createForm.controls.scope.value === 'TENANT_SCHEMA'"
-                  [class.text-[#1B5E20]]="createForm.controls.scope.value === 'TENANT_SCHEMA'"
-                  [class.border-[#DDEED8]]="createForm.controls.scope.value !== 'TENANT_SCHEMA'">
+                  [class.border-primary]="createForm.controls.scope.value === 'TENANT_SCHEMA'"
+                  [class.bg-accent]="createForm.controls.scope.value === 'TENANT_SCHEMA'"
+                  [class.text-accent-foreground]="createForm.controls.scope.value === 'TENANT_SCHEMA'"
+                  [class.border-border]="createForm.controls.scope.value !== 'TENANT_SCHEMA'">
                   <p class="text-sm font-semibold">Tenant schema</p>
-                  <p class="text-xs text-[#6B7D6C]">Respaldo puntual por tenant</p>
+                  <p class="text-xs text-muted-foreground">Respaldo puntual por tenant</p>
                 </button>
               </div>
 
               @if (createForm.controls.scope.value === 'TENANT_SCHEMA') {
                 <label>
-                  <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Tenant</span>
-                  <select formControlName="tenantId" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]">
+                  <span class="mb-1 block text-sm font-semibold text-primary">Tenant</span>
+                  <select formControlName="tenantId" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary">
                     <option value="">Selecciona un tenant</option>
                     @for (tenant of tenants(); track tenant.id) {
                       <option [value]="tenant.id">{{ tenant.name }} ({{ tenant.slug }})</option>
@@ -229,15 +229,15 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
               }
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Motivo</span>
-                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]" placeholder="Opcional"></textarea>
+                <span class="mb-1 block text-sm font-semibold text-primary">Motivo</span>
+                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary" placeholder="Opcional"></textarea>
               </label>
 
               <div class="app-modal-footer">
-                <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
-                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {{ saving() ? 'Procesando...' : 'Crear respaldo' }}
                 </button>
             </div>
@@ -254,59 +254,59 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
                 <h2 class="app-modal-title">Detalle del respaldo</h2>
                 <p class="app-modal-subtitle">Información operativa y trazabilidad del job.</p>
               </div>
-              <button type="button" (click)="closeDetail()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeDetail()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <div class="mt-6 grid gap-4 sm:grid-cols-2">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">ID</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.id }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">ID</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.id }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Estado</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ statusLabel(backup.status) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Estado</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ statusLabel(backup.status) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Scope</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.scope }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Scope</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.scope }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Tenant</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.tenantSlug || 'GLOBAL' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Tenant</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.tenantSlug || 'GLOBAL' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Archivo</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.fileName || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Archivo</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.fileName || 'N/A' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Formato</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.format || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Formato</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.format || 'N/A' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Creado</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ formatDate(backup.createdAt) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Creado</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ formatDate(backup.createdAt) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Actualizado</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ formatDate(backup.updatedAt) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Actualizado</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ formatDate(backup.updatedAt) }}</p>
               </div>
             </div>
 
             <div class="mt-4 grid gap-4 sm:grid-cols-2">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Requested by</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.requestedBy || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Requested by</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.requestedBy || 'N/A' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Checksum</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.checksumSha256 || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Checksum</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.checksumSha256 || 'N/A' }}</p>
               </div>
             </div>
 
             <div class="app-modal-footer">
-              <button type="button" (click)="closeDetail()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeDetail()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                 Cerrar
               </button>
             </div>
@@ -322,28 +322,28 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
                 <h2 class="app-modal-title">Restaurar respaldo</h2>
                 <p class="app-modal-subtitle">Confirma explícitamente antes de restaurar.</p>
               </div>
-              <button type="button" (click)="closeRestoreModal()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeRestoreModal()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <form class="mt-6 grid gap-4" [formGroup]="restoreForm" (ngSubmit)="submitRestore()">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 text-sm text-[#1B5E20]">
+              <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Estás por restaurar: <strong>{{ backup.fileName || backup.id }}</strong>
               </div>
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Confirmación</span>
-                <input formControlName="confirmationText" type="text" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]" placeholder="RESTORE_FULL_DATABASE o RESTORE_PLATFORM_BACKUP">
+                <span class="mb-1 block text-sm font-semibold text-primary">Confirmación</span>
+                <input formControlName="confirmationText" type="text" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary" placeholder="RESTORE_FULL_DATABASE o RESTORE_PLATFORM_BACKUP">
               </label>
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Motivo</span>
-                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"></textarea>
+                <span class="mb-1 block text-sm font-semibold text-primary">Motivo</span>
+                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"></textarea>
               </label>
               <div class="app-modal-footer">
-                <button type="button" (click)="closeRestoreModal()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                <button type="button" (click)="closeRestoreModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
-                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {{ saving() ? 'Restaurando...' : 'Confirmar restauración' }}
                 </button>
               </div>
@@ -360,7 +360,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
                 <h2 class="app-modal-title">Restaurar desde archivo</h2>
                 <p class="app-modal-subtitle">Sube un backup descargado y define el alcance del restore.</p>
               </div>
-              <button type="button" (click)="closeRestoreFromFileModal()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeRestoreFromFileModal()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
@@ -371,32 +371,32 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
                   type="button"
                   (click)="setRestoreFromFileScope('FULL_DATABASE')"
                   class="cursor-pointer rounded-2xl border px-4 py-3 text-left transition-colors"
-                  [class.border-[#2E7D32]]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE'"
-                  [class.bg-[#F1F8E9]]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE'"
-                  [class.text-[#1B5E20]]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE'"
-                  [class.border-[#DDEED8]]="restoreFromFileForm.controls.scope.value !== 'FULL_DATABASE'">
+                  [class.border-primary]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE'"
+                  [class.bg-accent]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE'"
+                  [class.text-accent-foreground]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE'"
+                  [class.border-border]="restoreFromFileForm.controls.scope.value !== 'FULL_DATABASE'">
                   <p class="text-sm font-semibold">Full database</p>
-                  <p class="text-xs text-[#6B7D6C]">Restaura toda la base</p>
+                  <p class="text-xs text-muted-foreground">Restaura toda la base</p>
                 </button>
                 <button
                   type="button"
                   (click)="setRestoreFromFileScope('TENANT_SCHEMA')"
                   class="cursor-pointer rounded-2xl border px-4 py-3 text-left transition-colors"
-                  [class.border-[#2E7D32]]="restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA'"
-                  [class.bg-[#F1F8E9]]="restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA'"
-                  [class.text-[#1B5E20]]="restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA'"
-                  [class.border-[#DDEED8]]="restoreFromFileForm.controls.scope.value !== 'TENANT_SCHEMA'">
+                  [class.border-primary]="restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA'"
+                  [class.bg-accent]="restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA'"
+                  [class.text-accent-foreground]="restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA'"
+                  [class.border-border]="restoreFromFileForm.controls.scope.value !== 'TENANT_SCHEMA'">
                   <p class="text-sm font-semibold">Tenant schema</p>
-                  <p class="text-xs text-[#6B7D6C]">Restaura un tenant específico</p>
+                  <p class="text-xs text-muted-foreground">Restaura un tenant específico</p>
                 </button>
               </div>
 
               @if (restoreFromFileForm.controls.scope.value === 'TENANT_SCHEMA') {
                 <label>
-                  <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Tenant</span>
+                  <span class="mb-1 block text-sm font-semibold text-primary">Tenant</span>
                   <select
                     formControlName="tenantId"
-                    class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]">
+                    class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary">
                     <option value="">Selecciona un tenant</option>
                     @for (tenant of tenants(); track tenant.id) {
                       <option [value]="tenant.id">{{ tenant.name }} ({{ tenant.slug }})</option>
@@ -406,36 +406,36 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
               }
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Archivo</span>
+                <span class="mb-1 block text-sm font-semibold text-primary">Archivo</span>
                 <input
                   type="file"
                   accept=".dump,.backup,.sql,application/octet-stream"
                   (change)="onRestoreFromFileSelected($event)"
-                  class="block w-full cursor-pointer rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] file:mr-4 file:rounded-full file:border-0 file:bg-[#F1F8E9] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2E7D32] hover:file:bg-[#E8F5E9]" />
-                <p class="mt-2 text-xs text-[#6B7D6C]">
+                  class="block w-full cursor-pointer rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-accent" />
+                <p class="mt-2 text-xs text-muted-foreground">
                   {{ restoreFromFileFileName() || 'Ningún archivo seleccionado' }}
                 </p>
               </label>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Confirmación</span>
+                <span class="mb-1 block text-sm font-semibold text-primary">Confirmación</span>
                 <input
                   formControlName="confirmationText"
                   type="text"
-                  class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"
+                  class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"
                   [placeholder]="restoreFromFileForm.controls.scope.value === 'FULL_DATABASE' ? 'RESTORE_FULL_DATABASE' : 'RESTORE_PLATFORM_BACKUP'">
               </label>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Motivo</span>
-                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"></textarea>
+                <span class="mb-1 block text-sm font-semibold text-primary">Motivo</span>
+                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"></textarea>
               </label>
 
               <div class="app-modal-footer">
-                <button type="button" (click)="closeRestoreFromFileModal()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                <button type="button" (click)="closeRestoreFromFileModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
-                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {{ saving() ? 'Restaurando...' : 'Confirmar restauración' }}
                 </button>
               </div>

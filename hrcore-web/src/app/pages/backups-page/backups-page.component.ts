@@ -26,15 +26,15 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
   ],
   template: `
     <section class="space-y-6">
-      <div class="rounded-[28px] border border-[#C8E6C9] bg-white p-6 shadow-sm">
+      <div class="rounded-[28px] border border-border bg-card p-6 shadow-sm">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex items-start gap-4">
-            <div class="rounded-2xl bg-[#F1F8E9] p-3 text-[#2E7D32]">
+            <div class="rounded-2xl bg-accent p-3 text-primary">
               <lucide-icon name="archive" class="h-6 w-6"></lucide-icon>
             </div>
             <div>
-              <h1 class="text-2xl font-black tracking-tight text-[#1B5E20]">Respaldos</h1>
-              <p class="mt-1 text-sm text-[#6B7D6C]">
+              <h1 class="text-2xl font-black tracking-tight text-accent-foreground">Respaldos</h1>
+              <p class="mt-1 text-sm text-muted-foreground">
                 Crea respaldos del tenant actual, descarga artefactos y restaura backups completados.
               </p>
             </div>
@@ -46,7 +46,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               type="button"
               (click)="openCreateModal()"
               title="Nuevo"
-              class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-[#2E7D32] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#256428]">
+              class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
               <lucide-icon name="arrow-down-to-line" class="h-4 w-4"></lucide-icon>
               Nuevo respaldo
             </button>
@@ -56,7 +56,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               type="button"
               (click)="openRestoreFromFileModal()"
               title="Restaurar"
-              class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#DDEED8] bg-white px-5 py-2.5 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="upload" class="h-4 w-4"></lucide-icon>
               Restaurar desde archivo
             </button>
@@ -66,7 +66,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               (click)="reload()"
               [disabled]="loading()"
               title="Actualizar"
-              class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-[#DDEED8] bg-white px-5 py-2.5 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9] disabled:cursor-not-allowed disabled:opacity-60">
+              class="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60">
               <lucide-icon name="refresh-ccw" class="h-4 w-4"></lucide-icon>
               Actualizar
             </button>
@@ -75,82 +75,82 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
       </div>
 
       <section class="grid gap-4 md:grid-cols-4">
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#6B7D6C]">Total</p>
-          <p class="mt-2 text-3xl font-black text-[#1B5E20]">{{ stats().total }}</p>
+        <div class="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Total</p>
+          <p class="mt-2 text-3xl font-black text-accent-foreground">{{ stats().total }}</p>
         </div>
 
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#6B7D6C]">Completados</p>
-          <p class="mt-2 text-3xl font-black text-[#1B5E20]">{{ stats().completed }}</p>
+        <div class="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Completados</p>
+          <p class="mt-2 text-3xl font-black text-accent-foreground">{{ stats().completed }}</p>
         </div>
 
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#6B7D6C]">En proceso</p>
-          <p class="mt-2 text-3xl font-black text-[#1B5E20]">{{ stats().running }}</p>
+        <div class="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">En proceso</p>
+          <p class="mt-2 text-3xl font-black text-accent-foreground">{{ stats().running }}</p>
         </div>
 
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#6B7D6C]">Fallidos</p>
-          <p class="mt-2 text-3xl font-black text-[#1B5E20]">{{ stats().failed }}</p>
+        <div class="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Fallidos</p>
+          <p class="mt-2 text-3xl font-black text-accent-foreground">{{ stats().failed }}</p>
         </div>
       </section>
 
-      <section class="rounded-[28px] border border-[#C8E6C9] bg-white shadow-sm">
-        <div class="flex items-center justify-between border-b border-[#E8F2E2] p-5">
+      <section class="rounded-[28px] border border-border bg-card shadow-sm">
+        <div class="flex items-center justify-between border-b border-border p-5">
           <div>
-            <h2 class="text-lg font-black text-[#1B5E20]">Historial de respaldos</h2>
-            <p class="mt-1 text-sm text-[#6B7D6C]">Backups y restores del tenant actual.</p>
+            <h2 class="text-lg font-black text-accent-foreground">Historial de respaldos</h2>
+            <p class="mt-1 text-sm text-muted-foreground">Backups y restores del tenant actual.</p>
           </div>
         </div>
 
         @if (loading()) {
           <div class="p-8 text-center">
-            <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-[#C8E6C9] border-t-[#2E7D32]"></div>
-            <p class="mt-4 text-sm font-semibold text-[#1B5E20]">Cargando respaldos...</p>
+            <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary"></div>
+            <p class="mt-4 text-sm font-semibold text-accent-foreground">Cargando respaldos...</p>
           </div>
         } @else if (error()) {
           <div class="p-8 text-center">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-700">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/5 text-destructive">
               <lucide-icon name="alert-circle" class="h-6 w-6"></lucide-icon>
             </div>
-            <p class="mt-4 text-sm font-bold text-red-700">{{ error() }}</p>
+            <p class="mt-4 text-sm font-bold text-destructive">{{ error() }}</p>
             <button
               type="button"
               (click)="reload()"
-              class="mt-4 rounded-full bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white">
+              class="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
               Reintentar
             </button>
           </div>
         } @else if (backups().length === 0) {
           <div class="p-10 text-center">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F1F8E9] text-[#2E7D32]">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-primary">
               <lucide-icon name="archive" class="h-6 w-6"></lucide-icon>
             </div>
-            <p class="mt-4 text-sm font-bold text-[#1B5E20]">Aún no hay respaldos</p>
-            <p class="mt-1 text-sm text-[#6B7D6C]">Crea el primer respaldo del tenant actual.</p>
+            <p class="mt-4 text-sm font-bold text-accent-foreground">Aún no hay respaldos</p>
+            <p class="mt-1 text-sm text-muted-foreground">Crea el primer respaldo del tenant actual.</p>
           </div>
         } @else {
           <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-[#E8F2E2]">
-              <thead class="bg-[#FAFCF8]">
+            <table class="min-w-full divide-y divide-border">
+              <thead class="bg-muted">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#567157]">Operación</th>
-                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#567157]">Estado</th>
-                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#567157]">Archivo</th>
-                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#567157]">Tamaño</th>
-                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#567157]">Solicitado por</th>
-                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#567157]">Fecha</th>
-                  <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-[#567157]">Acciones</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Operación</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Estado</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Archivo</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Tamaño</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Solicitado por</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Fecha</th>
+                  <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wide text-muted-foreground">Acciones</th>
                 </tr>
               </thead>
 
-              <tbody class="divide-y divide-[#E8F2E2] bg-white">
+              <tbody class="divide-y divide-border bg-card">
                 @for (backup of backups(); track backup.id) {
-                  <tr class="hover:bg-[#FAFCF8]">
+                  <tr class="hover:bg-muted">
                     <td class="px-4 py-4 text-sm">
-                      <div class="font-bold text-[#1B5E20]">{{ operationLabel(backup.operationType) }}</div>
-                      <div class="text-xs text-[#6B7D6C]">{{ backup.scope }}</div>
+                      <div class="font-bold text-accent-foreground">{{ operationLabel(backup.operationType) }}</div>
+                      <div class="text-xs text-muted-foreground">{{ backup.scope }}</div>
                     </td>
 
                     <td class="px-4 py-4">
@@ -161,20 +161,20 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                       </span>
                     </td>
 
-                    <td class="px-4 py-4 text-sm text-[#1B5E20]">
+                    <td class="px-4 py-4 text-sm text-accent-foreground">
                       <div class="max-w-[260px] truncate font-semibold">{{ backup.fileName || 'N/A' }}</div>
-                      <div class="text-xs text-[#6B7D6C]">{{ backup.format || 'N/A' }}</div>
+                      <div class="text-xs text-muted-foreground">{{ backup.format || 'N/A' }}</div>
                     </td>
 
-                    <td class="px-4 py-4 text-sm text-[#6B7D6C]">
+                    <td class="px-4 py-4 text-sm text-muted-foreground">
                       {{ formatBytes(backup.sizeBytes) }}
                     </td>
 
-                    <td class="px-4 py-4 text-sm text-[#6B7D6C]">
+                    <td class="px-4 py-4 text-sm text-muted-foreground">
                       {{ backup.requestedBy || 'SYSTEM' }}
                     </td>
 
-                    <td class="px-4 py-4 text-sm text-[#6B7D6C]">
+                    <td class="px-4 py-4 text-sm text-muted-foreground">
                       {{ formatDate(backup.createdAt) }}
                     </td>
 
@@ -185,7 +185,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                           type="button"
                           (click)="openDetail(backup)"
                           title="Detalle"
-                          class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                          class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                           <lucide-icon name="eye" class="h-4 w-4"></lucide-icon>
                         </button>
                         <button
@@ -193,7 +193,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                           type="button"
                           (click)="download(backup)"
                           title="Descargar"
-                          class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                          class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                           <lucide-icon name="arrow-down-to-line" class="h-4 w-4"></lucide-icon>
                         </button>
                         <button
@@ -201,7 +201,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                           type="button"
                           (click)="openRestoreModal(backup)"
                           title="Restaurar"
-                          class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                          class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                           <lucide-icon name="rotate-ccw" class="h-4 w-4"></lucide-icon>
                         </button>
                       </div>
@@ -234,26 +234,26 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <h2 class="app-modal-title">Nuevo respaldo</h2>
                 <p class="app-modal-subtitle">Crea un respaldo del tenant actual.</p>
               </div>
-              <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <form class="mt-6 grid gap-4" [formGroup]="createForm" (ngSubmit)="submitCreate()">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 text-sm text-[#1B5E20]">
+              <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Este respaldo se crea sobre el tenant actual. Puedes agregar un motivo opcional.
               </div>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Motivo</span>
-                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]" placeholder="Opcional"></textarea>
+                <span class="mb-1 block text-sm font-semibold text-primary">Motivo</span>
+                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary" placeholder="Opcional"></textarea>
               </label>
 
               <div class="app-modal-footer">
-                <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
-                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {{ saving() ? 'Procesando...' : 'Crear respaldo' }}
                 </button>
               </div>
@@ -270,53 +270,53 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <h2 class="app-modal-title">Detalle del respaldo</h2>
                 <p class="app-modal-subtitle">Información operativa y trazabilidad.</p>
               </div>
-              <button type="button" (click)="closeDetail()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeDetail()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <div class="mt-6 grid gap-4 sm:grid-cols-2">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">ID</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.id }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">ID</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.id }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Estado</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ statusLabel(backup.status) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Estado</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ statusLabel(backup.status) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Scope</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.scope }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Scope</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.scope }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Archivo</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.fileName || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Archivo</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.fileName || 'N/A' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Formato</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.format || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Formato</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.format || 'N/A' }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Creado</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ formatDate(backup.createdAt) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Creado</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ formatDate(backup.createdAt) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Actualizado</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ formatDate(backup.updatedAt) }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Actualizado</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ formatDate(backup.updatedAt) }}</p>
               </div>
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Solicitado por</p>
-                <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.requestedBy || 'N/A' }}</p>
+              <div class="rounded-2xl border border-border bg-muted p-4">
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Solicitado por</p>
+                <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.requestedBy || 'N/A' }}</p>
               </div>
             </div>
 
-            <div class="mt-4 rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4">
-              <p class="text-xs font-bold uppercase tracking-[0.12em] text-[#6B7D6C]">Checksum</p>
-              <p class="mt-1 break-words text-sm font-semibold text-[#1B5E20]">{{ backup.checksumSha256 || 'N/A' }}</p>
+            <div class="mt-4 rounded-2xl border border-border bg-muted p-4">
+              <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Checksum</p>
+              <p class="mt-1 break-words text-sm font-semibold text-accent-foreground">{{ backup.checksumSha256 || 'N/A' }}</p>
             </div>
 
             <div class="app-modal-footer">
-              <button type="button" (click)="closeDetail()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeDetail()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                 Cerrar
               </button>
             </div>
@@ -332,35 +332,35 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <h2 class="app-modal-title">Restaurar respaldo</h2>
                 <p class="app-modal-subtitle">Confirma explícitamente antes de restaurar.</p>
               </div>
-              <button type="button" (click)="closeRestoreModal()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeRestoreModal()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <form class="mt-6 grid gap-4" [formGroup]="restoreForm" (ngSubmit)="submitRestore()">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 text-sm text-[#1B5E20]">
+              <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Estás por restaurar: <strong>{{ backup.fileName || backup.id }}</strong>
               </div>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Confirmación</span>
+                <span class="mb-1 block text-sm font-semibold text-primary">Confirmación</span>
                 <input
                   formControlName="confirmationText"
                   type="text"
-                  class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"
+                  class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"
                   placeholder="RESTORE_TENANT_BACKUP">
               </label>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Motivo</span>
-                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"></textarea>
+                <span class="mb-1 block text-sm font-semibold text-primary">Motivo</span>
+                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"></textarea>
               </label>
 
               <div class="app-modal-footer">
-                <button type="button" (click)="closeRestoreModal()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                <button type="button" (click)="closeRestoreModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
-                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {{ saving() ? 'Restaurando...' : 'Confirmar restauración' }}
                 </button>
               </div>
@@ -377,47 +377,47 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <h2 class="app-modal-title">Restaurar desde archivo</h2>
                 <p class="app-modal-subtitle">Sube un backup descargado y confirma la restauración.</p>
               </div>
-              <button type="button" (click)="closeRestoreFromFileModal()" title="Cerrar" class="cursor-pointer rounded-full border border-[#DDEED8] p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              <button type="button" (click)="closeRestoreFromFileModal()" title="Cerrar" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
                 <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
               </button>
             </div>
 
             <form class="mt-6 grid gap-4" [formGroup]="restoreFromFileForm" (ngSubmit)="submitRestoreFromFile()">
-              <div class="rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] p-4 text-sm text-[#1B5E20]">
+              <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Selecciona el archivo descargado y confirma antes de iniciar.
               </div>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Archivo</span>
+                <span class="mb-1 block text-sm font-semibold text-primary">Archivo</span>
                 <input
                   type="file"
                   accept=".dump,.backup,.sql,application/octet-stream"
                   (change)="onRestoreFromFileSelected($event)"
-                  class="block w-full cursor-pointer rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] file:mr-4 file:rounded-full file:border-0 file:bg-[#F1F8E9] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#2E7D32] hover:file:bg-[#E8F5E9]" />
-                <p class="mt-2 text-xs text-[#6B7D6C]">
+                  class="block w-full cursor-pointer rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-accent" />
+                <p class="mt-2 text-xs text-muted-foreground">
                   {{ restoreFromFileFileName() || 'Ningún archivo seleccionado' }}
                 </p>
               </label>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Confirmación</span>
+                <span class="mb-1 block text-sm font-semibold text-primary">Confirmación</span>
                 <input
                   formControlName="confirmationText"
                   type="text"
-                  class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"
+                  class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"
                   placeholder="RESTORE_TENANT_BACKUP">
               </label>
 
               <label>
-                <span class="mb-1 block text-sm font-semibold text-[#2E7D32]">Motivo</span>
-                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-[#C8E6C9] bg-white px-4 py-3 text-sm text-[#1B5E20] outline-none focus:border-[#2E7D32]"></textarea>
+                <span class="mb-1 block text-sm font-semibold text-primary">Motivo</span>
+                <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"></textarea>
               </label>
 
               <div class="app-modal-footer">
-                <button type="button" (click)="closeRestoreFromFileModal()" class="cursor-pointer rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                <button type="button" (click)="closeRestoreFromFileModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
-                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-[#1B5E20] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2E7D32] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
                   {{ saving() ? 'Restaurando...' : 'Confirmar restauración' }}
                 </button>
               </div>
@@ -715,18 +715,18 @@ export class BackupsPageComponent implements OnInit, OnDestroy {
 
   statusClass(status: string): string {
     if (status === 'COMPLETED' || status === 'RESTORED') {
-      return 'border-[#C8E6C9] bg-[#F1F8E9] text-[#2E7D32]';
+      return 'border-border bg-accent text-primary';
     }
 
     if (status === 'RESTORED_WITH_WARNINGS') {
-      return 'border-[#FFE0A3] bg-[#FFF8E6] text-[#9A6700]';
+      return 'border-border bg-muted text-foreground';
     }
 
     if (status === 'RUNNING' || status === 'PENDING' || status === 'RESTORING') {
-      return 'border-[#FFD59E] bg-[#FFF7E6] text-[#B26A00]';
+      return 'border-border bg-muted text-foreground';
     }
 
-    return 'border-[#F3C6C6] bg-[#FFF7F7] text-[#B42318]';
+    return 'border-border bg-muted text-foreground';
   }
 
   operationLabel(operationType: string): string {

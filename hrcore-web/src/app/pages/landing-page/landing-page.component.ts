@@ -7,7 +7,7 @@ import { LandingPageWidgetComponent } from '../../widgets/landing';
   standalone: true,
   imports: [PublicNavbarComponent, LandingPageWidgetComponent, PublicFooterComponent],
   template: `
-    <div class="min-h-screen bg-white">
+    <div class="min-h-screen bg-card">
       <app-public-navbar />
       <app-landing-page-widget />
       <app-public-footer />

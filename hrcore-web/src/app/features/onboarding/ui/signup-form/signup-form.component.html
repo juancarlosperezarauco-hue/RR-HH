@@ -68,7 +68,7 @@
             class="px-3 py-2 bg-muted text-muted-foreground border border-r-0 border-input rounded-l-md text-sm">app.com/</span>
           <input id="tenantSlug" type="text" formControlName="tenantSlug"
             class="w-full px-3 py-2 border border-input rounded-r-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-          [class.border-destructive]="isFieldInvalid('tenantSlug')" placeholder="talento-humano">
+          [class.border-destructive]="isFieldInvalid('tenantSlug')" placeholder="empresa">
         </div>
         <span *ngIf="isFieldInvalid('tenantSlug')" class="text-xs text-destructive mt-1">Solo letras minúsculas y
           números (ej: miempresa).</span>

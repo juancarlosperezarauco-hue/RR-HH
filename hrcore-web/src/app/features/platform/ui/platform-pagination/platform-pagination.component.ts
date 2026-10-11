@@ -7,15 +7,15 @@ import { LucideAngularModule } from 'lucide-angular';
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
   template: `
-    <div class="flex flex-col gap-3 rounded-2xl border border-[#DDEED8] bg-[#FAFCF8] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div class="text-sm text-[#567157]">
-        <span class="font-semibold text-[#1B5E20]">{{ totalElements }}</span>
+    <div class="flex flex-col gap-3 rounded-2xl border border-border bg-muted px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-sm text-muted-foreground">
+        <span class="font-semibold text-accent-foreground">{{ totalElements }}</span>
         registro(s)
         <span class="mx-1">·</span>
         Página
-        <span class="font-semibold text-[#1B5E20]">{{ currentPageLabel }}</span>
+        <span class="font-semibold text-accent-foreground">{{ currentPageLabel }}</span>
         de
-        <span class="font-semibold text-[#1B5E20]">{{ totalPagesLabel }}</span>
+        <span class="font-semibold text-accent-foreground">{{ totalPagesLabel }}</span>
       </div>
 
       <div class="flex items-center gap-2">
@@ -23,7 +23,7 @@ import { LucideAngularModule } from 'lucide-angular';
           type="button"
           (click)="goToPage(currentPage - 1)"
           [disabled]="isLoading || currentPage <= 0"
-          class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-3 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9] disabled:cursor-not-allowed disabled:opacity-50">
+          class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
           <lucide-icon name="arrow-left" class="h-4 w-4"></lucide-icon>
           Anterior
         </button>
@@ -32,7 +32,7 @@ import { LucideAngularModule } from 'lucide-angular';
           type="button"
           (click)="goToPage(currentPage + 1)"
           [disabled]="isLoading || currentPage + 1 >= totalPages"
-          class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-3 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9] disabled:cursor-not-allowed disabled:opacity-50">
+          class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
           Siguiente
           <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
         </button>

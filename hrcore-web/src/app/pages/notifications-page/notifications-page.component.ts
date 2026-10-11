@@ -12,18 +12,18 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
   providers: [DatePipe],
   template: `
     <div class="space-y-6 relative">
-      <section class="rounded-[28px] border border-[#C8E6C9] bg-gradient-to-br from-white via-[#F7FBF3] to-[#EAF6EB] p-6 shadow-[0_18px_50px_rgba(27,94,32,0.08)]">
+      <section class="rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-muted p-6 shadow-lg">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div class="space-y-3">
-            <div class="inline-flex items-center gap-2 rounded-full border border-[#C8E6C9] bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#2E7D32]">
-              <span class="h-2 w-2 rounded-full bg-[#4CAF50]"></span>
+            <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              <span class="h-2 w-2 rounded-full bg-secondary"></span>
               Bandeja de entrada
             </div>
             <div>
-              <h1 class="text-3xl font-black tracking-tight text-[#1B5E20] sm:text-4xl">
+              <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Notificaciones
               </h1>
-              <p class="mt-2 max-w-3xl text-sm leading-6 text-[#5F6F5F]">
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                 Revisa, marca y archiva las notificaciones del tenant sin salir del panel.
               </p>
             </div>
@@ -33,14 +33,14 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
             <button
               type="button"
               (click)="refreshAll()"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="refresh-ccw" [size]="16"></lucide-icon>
               Recargar
             </button>
             <button
               type="button"
               (click)="markAllAsRead()"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#2E7D32] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#256428]">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
               <lucide-icon name="check-circle" [size]="16"></lucide-icon>
               Marcar todo como leído
             </button>
@@ -49,42 +49,42 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
       </section>
 
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">No leídas</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ unreadCount() }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Pendientes por revisar</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">No leídas</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ unreadCount() }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Pendientes por revisar</p>
         </div>
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">En página</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ currentPageCount() }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">Resultados visibles</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">En página</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ currentPageCount() }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">Resultados visibles</p>
         </div>
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Leídas</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ readVisibleCount() }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">En esta vista</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Leídas</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ readVisibleCount() }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">En esta vista</p>
         </div>
-        <div class="rounded-2xl border border-[#C8E6C9] bg-white p-5 shadow-sm">
-          <p class="text-sm font-semibold text-[#567157]">Archivadas</p>
-          <p class="mt-4 text-3xl font-black text-[#1B5E20]">{{ archivedVisibleCount() }}</p>
-          <p class="mt-2 text-xs text-[#6B7D6C]">En esta vista</p>
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p class="text-sm font-semibold text-muted-foreground">Archivadas</p>
+          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ archivedVisibleCount() }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">En esta vista</p>
         </div>
       </section>
 
-      <section class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm space-y-4">
+      <section class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm space-y-4">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 class="text-lg font-bold text-[#1B5E20]">Filtros</h2>
-            <p class="text-sm text-[#6B7D6C]">Filtra por estado o busca por texto libre.</p>
+            <h2 class="text-lg font-bold text-accent-foreground">Filtros</h2>
+            <p class="text-sm text-muted-foreground">Filtra por estado o busca por texto libre.</p>
           </div>
           <label class="relative w-full lg:max-w-md">
-            <lucide-icon name="search" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7D6C]" [size]="16"></lucide-icon>
+            <lucide-icon name="search" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" [size]="16"></lucide-icon>
             <input
               type="text"
               [value]="searchTerm()"
               (input)="onSearch(($any($event.target).value || '').toString())"
               placeholder="Buscar notificación..."
-              class="w-full rounded-full border border-[#C8E6C9] bg-[#FAFCF8] py-3 pl-10 pr-4 text-sm text-[#1B5E20] outline-none transition focus:border-[#2E7D32] focus:bg-white">
+              class="w-full rounded-full border border-border bg-muted py-3 pl-10 pr-4 text-sm text-accent-foreground outline-none transition focus:border-primary focus:bg-card">
           </label>
         </div>
 
@@ -94,7 +94,7 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
               type="button"
               (click)="filter.set(item.value)"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
-              [ngClass]="filter() === item.value ? 'border-[#2E7D32] bg-[#2E7D32] text-white shadow-sm' : 'border-[#C8E6C9] bg-white text-[#2E7D32] hover:bg-[#F1F8E9]'">
+              [ngClass]="filter() === item.value ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border bg-card text-primary hover:bg-accent'">
               {{ item.label }}
             </button>
           }
@@ -102,19 +102,19 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
       </section>
 
       @if (status() === 'error') {
-        <div class="rounded-2xl border border-red-200 bg-red-50 p-6 flex items-start gap-4">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-700 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        <div class="rounded-2xl border border-destructive/20 bg-destructive/5 p-6 flex items-start gap-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-destructive mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
           <div>
-            <h3 class="font-semibold text-red-700">Error al cargar notificaciones</h3>
-            <p class="mt-1 text-sm text-red-700/80">{{ error() }}</p>
-            <button (click)="refreshAll()" class="mt-3 cursor-pointer text-sm font-semibold text-red-700 hover:underline">Intentar nuevamente</button>
+            <h3 class="font-semibold text-destructive">Error al cargar notificaciones</h3>
+            <p class="mt-1 text-sm text-destructive/80">{{ error() }}</p>
+            <button (click)="refreshAll()" class="mt-3 cursor-pointer text-sm font-semibold text-destructive hover:underline">Intentar nuevamente</button>
           </div>
         </div>
       }
 
       @if (status() === 'loading' && visibleNotifications().length === 0) {
-        <div class="flex flex-col items-center justify-center gap-4 p-12 text-[#6B7D6C]">
-          <svg class="h-8 w-8 animate-spin text-[#2E7D32]" viewBox="0 0 24 24">
+        <div class="flex flex-col items-center justify-center gap-4 p-12 text-muted-foreground">
+          <svg class="h-8 w-8 animate-spin text-primary" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -125,29 +125,29 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
       @if (status() === 'success' || (status() === 'loading' && visibleNotifications().length > 0)) {
         <div class="space-y-3">
           @for (notification of visibleNotifications(); track notification.id) {
-            <article class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-5 shadow-sm transition-colors hover:bg-[#F7FBF3]">
+            <article class="rounded-[24px] border border-border bg-card p-4 sm:p-5 shadow-sm transition-colors hover:bg-background">
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0 space-y-2">
                   <div class="flex flex-wrap items-center gap-2">
-                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [ngClass]="notification.status === 'UNREAD' ? 'bg-[#2E7D32]/10 text-[#2E7D32]' : 'bg-slate-500/10 text-slate-600'">
+                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold" [ngClass]="notification.status === 'UNREAD' ? 'bg-primary/10 text-primary' : 'bg-muted-foreground/10 text-muted-foreground'">
                       {{ statusLabel(notification.status) }}
                     </span>
-                    <span class="rounded-full border border-[#DDEED8] bg-white px-2.5 py-1 text-xs font-semibold text-[#4F5D4F]">
+                    <span class="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                       {{ priorityLabel(notification.priority) }}
                     </span>
-                    <span class="rounded-full border border-[#DDEED8] bg-white px-2.5 py-1 text-xs font-semibold text-[#4F5D4F]">
+                    <span class="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground">
                       {{ notification.category }}
                     </span>
                   </div>
-                  <h3 class="text-base font-bold text-[#1B5E20] break-words">{{ notification.title }}</h3>
-                  <p class="text-sm leading-6 text-[#4F5D4F] break-words">{{ notification.body }}</p>
-                  <div class="flex flex-wrap items-center gap-3 text-xs text-[#6B7D6C]">
+                  <h3 class="text-base font-bold text-accent-foreground break-words">{{ notification.title }}</h3>
+                  <p class="text-sm leading-6 text-muted-foreground break-words">{{ notification.body }}</p>
+                  <div class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <span>{{ notification.type }}</span>
                     <span>•</span>
                     <span>{{ notification.createdAt | date:'short' }}</span>
                     @if (notification.actionUrl) {
                       <span>•</span>
-                      <a class="font-semibold text-[#2E7D32] hover:underline" [href]="notification.actionUrl" target="_blank" rel="noreferrer">Acción</a>
+                      <a class="font-semibold text-primary hover:underline" [href]="notification.actionUrl" target="_blank" rel="noreferrer">Acción</a>
                     }
                   </div>
                 </div>
@@ -156,21 +156,21 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
                   <button
                     type="button"
                     (click)="openDetail(notification)"
-                    class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] px-3 py-1.5 text-xs font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                    class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-accent">
                     <lucide-icon name="eye" [size]="14"></lucide-icon>
                     Ver
                   </button>
                   <button
                     type="button"
                     (click)="markAsRead(notification)"
-                    class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] px-3 py-1.5 text-xs font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                    class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-accent">
                     <lucide-icon name="check-circle" [size]="14"></lucide-icon>
                     Leída
                   </button>
                   <button
                     type="button"
                     (click)="archive(notification)"
-                    class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] px-3 py-1.5 text-xs font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]">
+                    class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-accent">
                     <lucide-icon name="archive" [size]="14"></lucide-icon>
                     Archivar
                   </button>
@@ -178,13 +178,13 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
               </div>
             </article>
           } @empty {
-            <div class="rounded-2xl border border-dashed border-[#D8E8D7] bg-[#F7FBF3] p-8 text-center text-sm text-[#6B7D6C]">
+            <div class="rounded-2xl border border-dashed border-border bg-background p-8 text-center text-sm text-muted-foreground">
               No hay notificaciones para el filtro seleccionado.
             </div>
           }
         </div>
 
-        <div class="rounded-[24px] border border-[#C8E6C9] bg-white p-4 sm:p-6 shadow-sm">
+        <div class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm">
           <app-platform-pagination
             [currentPage]="currentPage()"
             [totalPages]="totalPages()"
@@ -205,41 +205,41 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
               </div>
               <button
                 type="button"
-                class="inline-flex cursor-pointer items-center justify-center rounded-full border border-[#C8E6C9] bg-white p-2 text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]"
+                class="inline-flex cursor-pointer items-center justify-center rounded-full border border-border bg-card p-2 text-primary transition-colors hover:bg-accent"
                 (click)="closeDetail()">
                 <lucide-icon name="x" [size]="18"></lucide-icon>
               </button>
             </div>
 
             <div class="app-modal-content-grid">
-              <div class="rounded-2xl border border-[#E8F2E2] bg-[#F7FBF3] p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Título</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20] break-words">{{ selectedNotification()?.title }}</p>
+              <div class="rounded-2xl border border-border bg-background p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Título</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground break-words">{{ selectedNotification()?.title }}</p>
               </div>
-              <div class="rounded-2xl border border-[#E8F2E2] bg-[#F7FBF3] p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Estado</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20]">{{ statusLabel(selectedNotification()?.status || '') }}</p>
+              <div class="rounded-2xl border border-border bg-background p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Estado</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ statusLabel(selectedNotification()?.status || '') }}</p>
               </div>
-              <div class="rounded-2xl border border-[#E8F2E2] bg-[#F7FBF3] p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Categoría</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20]">{{ selectedNotification()?.category }}</p>
+              <div class="rounded-2xl border border-border bg-background p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Categoría</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ selectedNotification()?.category }}</p>
               </div>
-              <div class="rounded-2xl border border-[#E8F2E2] bg-[#F7FBF3] p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Prioridad</p>
-                <p class="mt-1 text-sm font-semibold text-[#1B5E20]">{{ priorityLabel(selectedNotification()?.priority || '') }}</p>
+              <div class="rounded-2xl border border-border bg-background p-4">
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Prioridad</p>
+                <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ priorityLabel(selectedNotification()?.priority || '') }}</p>
               </div>
             </div>
 
-            <div class="rounded-2xl border border-[#E8F2E2] bg-white p-4 space-y-3">
+            <div class="rounded-2xl border border-border bg-card p-4 space-y-3">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Mensaje</p>
-                <p class="mt-2 text-sm leading-6 text-[#4F5D4F] break-words">{{ selectedNotification()?.body }}</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Mensaje</p>
+                <p class="mt-2 text-sm leading-6 text-muted-foreground break-words">{{ selectedNotification()?.body }}</p>
               </div>
 
               @if (selectedNotification()?.actionUrl) {
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Acción</p>
-                  <a class="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-[#2E7D32] hover:underline" [href]="selectedNotification()?.actionUrl" target="_blank" rel="noreferrer">
+                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Acción</p>
+                  <a class="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-primary hover:underline" [href]="selectedNotification()?.actionUrl" target="_blank" rel="noreferrer">
                     Abrir enlace
                   </a>
                 </div>
@@ -247,12 +247,12 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
 
               @if (dataEntries().length > 0) {
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">Datos</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Datos</p>
                   <div class="mt-3 grid gap-3 sm:grid-cols-2">
                     @for (entry of dataEntries(); track entry[0]) {
-                      <div class="rounded-2xl border border-[#E8F2E2] bg-[#F7FBF3] p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#6B7D6C]">{{ entry[0] }}</p>
-                        <p class="mt-1 text-sm font-semibold text-[#1B5E20] break-words">{{ entry[1] }}</p>
+                      <div class="rounded-2xl border border-border bg-background p-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{{ entry[0] }}</p>
+                        <p class="mt-1 text-sm font-semibold text-accent-foreground break-words">{{ entry[1] }}</p>
                       </div>
                     }
                   </div>
@@ -263,7 +263,7 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
             <div class="app-modal-footer">
               <button
                 type="button"
-                class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#C8E6C9] bg-white px-4 py-2 text-sm font-semibold text-[#2E7D32] transition-colors hover:bg-[#F1F8E9]"
+                class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent"
                 (click)="closeDetail()">
                 Cerrar
               </button>
