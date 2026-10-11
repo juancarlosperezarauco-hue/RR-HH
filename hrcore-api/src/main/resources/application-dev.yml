@@ -17,9 +17,6 @@ spring:
     enabled: true
     locations: classpath:db/migration/public
     baseline-on-migrate: true
-    placeholders:
-      tenant_readonly_password: ${TENANT_READONLY_DB_PASSWORD:tenant_ro_pass}
-      platform_readonly_password: ${PLATFORM_READONLY_DB_PASSWORD:platform_ro_pass}
 
   mail:
     host: ${MAIL_HOST:mailpit}

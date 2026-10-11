@@ -60,7 +60,8 @@
             },
             "development": {
               "buildTarget": "hrcore-web:build:development",
-              "poll": 2000
+              "poll": 2000,
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"
