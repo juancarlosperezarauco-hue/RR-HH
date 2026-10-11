@@ -22,7 +22,7 @@ class JwtTokenServiceTest {
 
         String token = jwtTokenService.generateAccessToken(
                 "admin@tenant.com",
-                "financruz",
+                "talentohumano",
                 List.of("ADMIN", "USER")
         );
 
@@ -30,7 +30,7 @@ class JwtTokenServiceTest {
 
         assertEquals("admin@tenant.com", principal.subject());
         assertNull(principal.email());
-        assertEquals("financruz", principal.tenantSlug());
+        assertEquals("talentohumano", principal.tenantSlug());
         assertEquals(List.of("ADMIN", "USER"), principal.roles());
     }
 
@@ -47,7 +47,7 @@ class JwtTokenServiceTest {
                 "admin@tenant.com",
                 "admin@tenant.com",
                 "Admin Tenant",
-                "financruz",
+                "talentohumano",
                 List.of("ADMIN"),
                 List.of("users.read")
         );
@@ -57,7 +57,7 @@ class JwtTokenServiceTest {
         assertEquals("admin@tenant.com", principal.subject());
         assertEquals("admin@tenant.com", principal.email());
         assertEquals("Admin Tenant", principal.displayName());
-        assertEquals("financruz", principal.tenantSlug());
+        assertEquals("talentohumano", principal.tenantSlug());
         assertEquals(List.of("ADMIN"), principal.roles());
         assertEquals(List.of("users.read"), principal.permissions());
     }
@@ -73,13 +73,13 @@ class JwtTokenServiceTest {
 
         String token = jwtTokenService.generateRefreshToken(
                 "admin@tenant.com",
-                "financruz"
+                "talentohumano"
         );
 
         Claims claims = jwtTokenService.parseRefreshToken(token);
 
         assertEquals("admin@tenant.com", claims.getSubject());
-        assertEquals("financruz", claims.get(JwtClaimNames.TENANT, String.class));
+        assertEquals("talentohumano", claims.get(JwtClaimNames.TENANT, String.class));
         assertEquals(JwtClaimNames.REFRESH, claims.get(JwtClaimNames.TOKEN_TYPE, String.class));
     }
 }

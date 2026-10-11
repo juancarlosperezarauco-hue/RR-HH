@@ -63,9 +63,9 @@ class PublicPaidSignupUseCaseTest {
         Instant now = Instant.now();
 
         PublicPaidSignupRequest request = new PublicPaidSignupRequest(
-                "FinanCruz Ltda",
-                "financruz",
-                "admin@financruz.com",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
                 "Rojas",
@@ -75,9 +75,9 @@ class PublicPaidSignupUseCaseTest {
 
         PlatformTenantResponse createdTenantResponse = new PlatformTenantResponse(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 "ACTIVE",
                 UUID.randomUUID(),
                 null,
@@ -88,9 +88,9 @@ class PublicPaidSignupUseCaseTest {
 
         PlatformTenant createdTenant = new PlatformTenant(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 PlatformTenantStatus.ACTIVE,
                 UUID.randomUUID(),
                 null,
@@ -101,9 +101,9 @@ class PublicPaidSignupUseCaseTest {
 
         PlatformTenant tenantWithCustomer = new PlatformTenant(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 PlatformTenantStatus.ACTIVE,
                 UUID.randomUUID(),
                 "cus_123",
@@ -170,7 +170,7 @@ class PublicPaidSignupUseCaseTest {
                 tenantId,
                 planId,
                 null,
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 BillingInterval.MONTHLY,
                 "OPEN",
                 "cus_123",
@@ -193,7 +193,7 @@ class PublicPaidSignupUseCaseTest {
         when(platformPlanRepository.findByCode("PRO")).thenReturn(Optional.of(selectedPlan));
         when(platformSubscriptionRepository.findCurrentByTenantId(tenantId)).thenReturn(Optional.of(currentSubscription));
         when(platformPlanRepository.findById(currentSubscription.planId())).thenReturn(Optional.of(initialPlan));
-        when(stripeCustomerService.ensureStripeCustomer(createdTenant, "admin@financruz.com")).thenReturn(tenantWithCustomer);
+        when(stripeCustomerService.ensureStripeCustomer(createdTenant, "admin@talentohumano.com")).thenReturn(tenantWithCustomer);
         when(stripeCheckoutService.createSubscriptionCheckoutSession(tenantWithCustomer, selectedPlan, BillingInterval.MONTHLY)).thenReturn(stripeSession);
         when(stripeSession.getStatus()).thenReturn("open");
         when(stripeSession.getId()).thenReturn("cs_test_123");
@@ -204,16 +204,16 @@ class PublicPaidSignupUseCaseTest {
         PublicPaidSignupResponse response = useCase.execute(request);
 
         assertEquals(tenantId, response.tenantId());
-        assertEquals("financruz", response.tenantSlug());
+        assertEquals("talentohumano", response.tenantSlug());
         assertEquals("PRO", response.selectedPlanCode());
         assertEquals("MONTHLY", response.billingInterval());
         assertEquals("cs_test_123", response.checkoutSessionId());
         assertEquals("https://checkout.example", response.checkoutUrl());
         assertEquals("OPEN", response.checkoutStatus());
         verify(tenantOwnerAdminProvisioningService).provisionOwnerAdmin(
-                "tenant_financruz",
-                "financruz",
-                "admin@financruz.com",
+                "tenant_talentohumano",
+                "talentohumano",
+                "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
                 "Rojas"

@@ -28,10 +28,10 @@ class CreatePlatformTenantUseCaseTest {
         Instant now = Instant.now();
 
         CreatePlatformTenantRequest request = new CreatePlatformTenantRequest(
-                "FinanCruz Ltda",
-                "financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
                 "DEMO",
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
                 "Rojas"
@@ -39,9 +39,9 @@ class CreatePlatformTenantUseCaseTest {
 
         PlatformTenantResponse createdTenantResponse = new PlatformTenantResponse(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 "ACTIVE",
                 UUID.randomUUID(),
                 null,
@@ -57,9 +57,9 @@ class CreatePlatformTenantUseCaseTest {
         assertEquals(createdTenantResponse, actualResponse);
         verify(createTenantUseCase).execute(any());
         verify(tenantOwnerAdminProvisioningService).provisionOwnerAdmin(
-                "tenant_financruz",
-                "financruz",
-                "admin@financruz.com",
+                "tenant_talentohumano",
+                "talentohumano",
+                "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
                 "Rojas"

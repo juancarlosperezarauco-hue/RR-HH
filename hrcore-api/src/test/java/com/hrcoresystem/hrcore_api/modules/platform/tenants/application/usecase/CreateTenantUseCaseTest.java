@@ -42,7 +42,7 @@ class CreateTenantUseCaseTest {
                 mock(com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService.class)
         );
 
-        CreateTenantRequest request = new CreateTenantRequest("FinanCruz Ltda", "financruz", "DEMO");
+        CreateTenantRequest request = new CreateTenantRequest("TalentoHumano Ltda", "talentohumano", "DEMO");
 
         UUID tenantId = UUID.randomUUID();
         UUID planId = UUID.randomUUID();
@@ -50,9 +50,9 @@ class CreateTenantUseCaseTest {
 
         PlatformTenant createdTenant = new PlatformTenant(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 PlatformTenantStatus.ACTIVE,
                 null,
                 true,
@@ -62,9 +62,9 @@ class CreateTenantUseCaseTest {
 
         PlatformTenant updatedTenant = new PlatformTenant(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 PlatformTenantStatus.ACTIVE,
                 planId,
                 true,
@@ -74,9 +74,9 @@ class CreateTenantUseCaseTest {
 
         PlatformTenantResponse expectedResponse = new PlatformTenantResponse(
                 tenantId,
-                "FinanCruz Ltda",
-                "financruz",
-                "tenant_financruz",
+                "TalentoHumano Ltda",
+                "talentohumano",
+                "tenant_talentohumano",
                 "ACTIVE",
                 planId,
                 null,
@@ -85,10 +85,10 @@ class CreateTenantUseCaseTest {
                 now
         );
 
-        when(namingStrategy.normalizeSlug("financruz")).thenReturn("financruz");
-        when(namingStrategy.toSchemaName("financruz")).thenReturn("tenant_financruz");
-        when(tenantRepository.existsBySlug("financruz")).thenReturn(false);
-        when(tenantRepository.existsBySchemaName("tenant_financruz")).thenReturn(false);
+        when(namingStrategy.normalizeSlug("talentohumano")).thenReturn("talentohumano");
+        when(namingStrategy.toSchemaName("talentohumano")).thenReturn("tenant_talentohumano");
+        when(tenantRepository.existsBySlug("talentohumano")).thenReturn(false);
+        when(tenantRepository.existsBySchemaName("tenant_talentohumano")).thenReturn(false);
         when(tenantRepository.save(any())).thenReturn(createdTenant);
         when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(updatedTenant));
         when(mapper.toResponse(updatedTenant)).thenReturn(expectedResponse);
@@ -96,8 +96,8 @@ class CreateTenantUseCaseTest {
         PlatformTenantResponse actualResponse = useCase.execute(request);
 
         assertEquals(expectedResponse, actualResponse);
-        verify(migrationService).migrateSchema("tenant_financruz");
-        verify(bootstrapService).initializeTenantData("tenant_financruz", "FinanCruz Ltda");
+        verify(migrationService).migrateSchema("tenant_talentohumano");
+        verify(bootstrapService).initializeTenantData("tenant_talentohumano", "TalentoHumano Ltda");
         verify(subscriptionProvisioningService).assignCurrentSubscription(tenantId, "DEMO", null, true);
     }
 }

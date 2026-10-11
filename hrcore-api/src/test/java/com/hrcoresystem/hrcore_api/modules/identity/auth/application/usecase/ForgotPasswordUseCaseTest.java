@@ -55,11 +55,11 @@ class ForgotPasswordUseCaseTest {
                 objectMapper
         );
 
-        TenantContextHolder.set(new TenantContext("financruz", "tenant_financruz", false));
+        TenantContextHolder.set(new TenantContext("talentohumano", "tenant_talentohumano", false));
 
         TenantUser tenantUser = new TenantUser(
                 UUID.randomUUID(),
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 "hash",
                 "Admin",
                 "Tenant",
@@ -69,11 +69,11 @@ class ForgotPasswordUseCaseTest {
                 Instant.now()
         );
 
-        when(tenantUserRepository.findByEmail("admin@financruz.com")).thenReturn(Optional.of(tenantUser));
+        when(tenantUserRepository.findByEmail("admin@talentohumano.com")).thenReturn(Optional.of(tenantUser));
 
-        useCase.execute(new ForgotPasswordRequest("admin@financruz.com"));
+        useCase.execute(new ForgotPasswordRequest("admin@talentohumano.com"));
 
-        verify(passwordResetTokenRepository).invalidateAllByEmail(eq("admin@financruz.com"), any());
+        verify(passwordResetTokenRepository).invalidateAllByEmail(eq("admin@talentohumano.com"), any());
         verify(passwordResetTokenRepository).save(any());
         verify(sendPasswordResetNotificationUseCase).execute(any());
         verify(notificationPublisherPort).publish(any(NotificationPublishRequest.class));

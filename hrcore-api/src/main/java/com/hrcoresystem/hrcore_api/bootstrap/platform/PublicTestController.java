@@ -14,7 +14,7 @@ public class PublicTestController {
     @GetMapping("/ping")
     public ApiResponse<Map<String, String>> ping() {
         return ApiResponse.success(
-                "Finance API is running correctly",
+                "HRCore API is running correctly",
                 Map.of("status", "ok")
         );
     }

@@ -46,7 +46,7 @@ class ChangePasswordUseCaseTest {
         UUID userId = UUID.randomUUID();
         TenantUser tenantUser = new TenantUser(
                 userId,
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 "old-hash",
                 "Admin",
                 "Tenant",
@@ -96,7 +96,7 @@ class ChangePasswordUseCaseTest {
         UUID userId = UUID.randomUUID();
         TenantUser tenantUser = new TenantUser(
                 userId,
-                "admin@financruz.com",
+                "admin@talentohumano.com",
                 "old-hash",
                 "Admin",
                 "Tenant",
