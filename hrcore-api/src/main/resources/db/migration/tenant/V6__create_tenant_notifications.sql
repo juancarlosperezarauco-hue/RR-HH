@@ -1,3 +1,28 @@
+
+-- ============================================================
+-- V6__create_tenant_notifications.sql
+-- HRCore - Sistema de notificaciones por tenant
+-- ============================================================
+-- Incluye:
+-- 1. Dispositivos registrados para notificaciones push
+-- 2. Notificaciones de los usuarios
+-- 3. Historial de entregas por canal
+-- 4. Preferencias de notificacion
+-- 5. Plantillas de notificacion
+--
+-- Categorias:
+-- SECURITY, SYSTEM, ADMIN
+--
+-- Canales:
+-- PUSH, IN_APP, EMAIL, SMS
+--
+-- ============================================================
+
+
+-- ============================================================
+-- 1. DISPOSITIVOS DE NOTIFICACION
+-- ============================================================
+
 CREATE TABLE IF NOT EXISTS tenant_notification_devices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
@@ -24,10 +49,25 @@ CREATE TABLE IF NOT EXISTS tenant_notification_devices (
         UNIQUE (fcm_token),
 
     CONSTRAINT chk_tenant_notification_devices_platform
-        CHECK (platform IN ('ANDROID', 'IOS', 'WEB', 'DESKTOP', 'UNKNOWN')),
+        CHECK (
+            platform IN (
+                'ANDROID',
+                'IOS',
+                'WEB',
+                'DESKTOP',
+                'UNKNOWN'
+            )
+        ),
 
     CONSTRAINT chk_tenant_notification_devices_status
-        CHECK (status IN ('ACTIVE', 'INACTIVE', 'EXPIRED', 'REVOKED'))
+        CHECK (
+            status IN (
+                'ACTIVE',
+                'INACTIVE',
+                'EXPIRED',
+                'REVOKED'
+            )
+        )
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notification_devices_user_id
@@ -35,6 +75,11 @@ CREATE INDEX IF NOT EXISTS idx_tenant_notification_devices_user_id
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notification_devices_status
     ON tenant_notification_devices(status);
+
+
+-- ============================================================
+-- 2. NOTIFICACIONES DE LOS USUARIOS
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS tenant_notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,19 +105,23 @@ CREATE TABLE IF NOT EXISTS tenant_notifications (
         ON DELETE RESTRICT,
 
     CONSTRAINT chk_tenant_notifications_category
-        CHECK (category IN (
-            'TRANSACTIONS',
-            'PAYMENTS',
-            'ACCOUNTS',
-            'SECURITY',
-            'SYSTEM',
-            'FX',
-            'LIMITS',
-            'ADMIN'
-        )),
+        CHECK (
+            category IN (
+                'SECURITY',
+                'SYSTEM',
+                'ADMIN'
+            )
+        ),
 
     CONSTRAINT chk_tenant_notifications_priority
-        CHECK (priority IN ('LOW', 'NORMAL', 'HIGH', 'CRITICAL'))
+        CHECK (
+            priority IN (
+                'LOW',
+                'NORMAL',
+                'HIGH',
+                'CRITICAL'
+            )
+        )
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notifications_user_id
@@ -86,6 +135,11 @@ CREATE INDEX IF NOT EXISTS idx_tenant_notifications_category
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notifications_created_at
     ON tenant_notifications(created_at DESC);
+
+
+-- ============================================================
+-- 3. HISTORIAL DE ENTREGAS
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS tenant_notification_deliveries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -114,10 +168,25 @@ CREATE TABLE IF NOT EXISTS tenant_notification_deliveries (
         ON DELETE SET NULL,
 
     CONSTRAINT chk_tenant_notification_deliveries_channel
-        CHECK (channel IN ('PUSH', 'IN_APP', 'EMAIL', 'SMS')),
+        CHECK (
+            channel IN (
+                'PUSH',
+                'IN_APP',
+                'EMAIL',
+                'SMS'
+            )
+        ),
 
     CONSTRAINT chk_tenant_notification_deliveries_status
-        CHECK (status IN ('PENDING', 'SENT', 'FAILED', 'SKIPPED', 'EXPIRED'))
+        CHECK (
+            status IN (
+                'PENDING',
+                'SENT',
+                'FAILED',
+                'SKIPPED',
+                'EXPIRED'
+            )
+        )
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notification_deliveries_notification_id
@@ -128,6 +197,11 @@ CREATE INDEX IF NOT EXISTS idx_tenant_notification_deliveries_device_id
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notification_deliveries_status
     ON tenant_notification_deliveries(status);
+
+
+-- ============================================================
+-- 4. PREFERENCIAS DE NOTIFICACION
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS tenant_notification_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -149,17 +223,19 @@ CREATE TABLE IF NOT EXISTS tenant_notification_preferences (
         UNIQUE (user_id, category),
 
     CONSTRAINT chk_tenant_notification_preferences_category
-        CHECK (category IN (
-            'TRANSACTIONS',
-            'PAYMENTS',
-            'ACCOUNTS',
-            'SECURITY',
-            'SYSTEM',
-            'FX',
-            'LIMITS',
-            'ADMIN'
-        ))
+        CHECK (
+            category IN (
+                'SECURITY',
+                'SYSTEM',
+                'ADMIN'
+            )
+        )
 );
+
+
+-- ============================================================
+-- 5. PLANTILLAS DE NOTIFICACION
+-- ============================================================
 
 CREATE TABLE IF NOT EXISTS tenant_notification_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -175,7 +251,14 @@ CREATE TABLE IF NOT EXISTS tenant_notification_templates (
         UNIQUE (type, channel),
 
     CONSTRAINT chk_tenant_notification_templates_channel
-        CHECK (channel IN ('PUSH', 'IN_APP', 'EMAIL', 'SMS'))
+        CHECK (
+            channel IN (
+                'PUSH',
+                'IN_APP',
+                'EMAIL',
+                'SMS'
+            )
+        )
 );
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notification_templates_type
