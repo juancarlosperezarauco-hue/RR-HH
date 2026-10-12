@@ -1,3 +1,4 @@
+<p align="center"> <img src="docs/logo.png" alt="Logo del proyecto" width="180"> </p>
 <div align="center">
    <h1> Sistema de Recursos Humanos HRCORE</h1>
 </div>
