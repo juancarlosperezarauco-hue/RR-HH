@@ -278,6 +278,7 @@ public class PlatformBootstrapService {
         );
 
         seedPermissions(permissions);
+        seedLeavePermissions();
 
         logger.info("Base system permissions seeded successfully.");
     }
@@ -613,6 +614,40 @@ public class PlatformBootstrapService {
             String description
             ) {
 
+    }
+
+    private void seedLeavePermissions() {
+        List<PermissionSeed> permissions = List.of(
+                new PermissionSeed("leaves.types.create", "leaves", "Create leave types"),
+                new PermissionSeed("leaves.types.list", "leaves", "List leave types"),
+                new PermissionSeed("leaves.types.detail", "leaves", "Read leave type details"),
+                new PermissionSeed("leaves.types.update", "leaves", "Update leave types"),
+                new PermissionSeed("leaves.types.activate", "leaves", "Activate leave types"),
+                new PermissionSeed("leaves.types.deactivate", "leaves", "Deactivate leave types"),
+                new PermissionSeed("leaves.balances.list", "leaves", "List leave balances"),
+                new PermissionSeed("leaves.balances.detail", "leaves", "Read leave balance details"),
+                new PermissionSeed("leaves.balances.create", "leaves", "Initialize annual leave balances"),
+                new PermissionSeed("leaves.balances.adjust", "leaves", "Adjust annual leave balances"),
+                new PermissionSeed("leaves.requests.create", "leaves", "Create leave drafts"),
+                new PermissionSeed("leaves.requests.list", "leaves", "List leave requests"),
+                new PermissionSeed("leaves.requests.detail", "leaves", "Read leave request details"),
+                new PermissionSeed("leaves.requests.update", "leaves", "Update leave drafts"),
+                new PermissionSeed("leaves.requests.submit", "leaves", "Submit leave requests"),
+                new PermissionSeed("leaves.requests.approve", "leaves", "Approve leave requests"),
+                new PermissionSeed("leaves.requests.reject", "leaves", "Reject leave requests"),
+                new PermissionSeed("leaves.requests.cancel", "leaves", "Cancel leave requests"),
+                new PermissionSeed("leaves.history.read", "leaves", "Read leave request history"),
+                new PermissionSeed("leaves.attachments.upload", "leaves", "Upload leave attachments"),
+                new PermissionSeed("leaves.attachments.list", "leaves", "List leave attachments"),
+                new PermissionSeed("leaves.attachments.download", "leaves", "Download leave attachments"));
+        validatePermissionSeeds(permissions);
+        for (PermissionSeed permission : permissions) {
+            jdbcTemplate.update("""
+                    INSERT INTO public.system_permissions (code, module, description, active, created_at)
+                    VALUES (?, ?, ?, true, NOW())
+                    ON CONFLICT (code) DO NOTHING
+                    """, permission.code(), permission.module(), permission.description());
+        }
     }
 
     private void seedPermissions(List<PermissionSeed> permissions) {
