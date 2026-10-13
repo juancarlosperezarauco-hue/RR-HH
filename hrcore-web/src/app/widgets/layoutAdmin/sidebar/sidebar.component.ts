@@ -41,6 +41,7 @@ export class SidebarComponent {
 
   readonly tenantItems: MenuItem[] = [
     { label: 'Usuarios', route: '/dashboard/users', icon: 'users' },
+    { label: 'Contratos', route: '/dashboard/contracts', icon: 'file-signature' },
     { label: 'Roles', route: '/dashboard/roles', icon: 'key' },
     { label: 'Permisos', route: '/dashboard/permissions', icon: 'badge-check' },
     { label: 'Expedientes', route: '/dashboard/dossiers', icon: 'file-text' },

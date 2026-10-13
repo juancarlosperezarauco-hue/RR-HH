@@ -109,6 +109,11 @@ export const routes: Routes = [
         path: 'notifications',
         loadComponent: () => import('./pages/notifications-page/notifications-page.component').then(m => m.NotificationsPageComponent)
       },
+      {
+        path: 'contracts',
+        canActivate: [permissionGuard('contracts.list')],
+        loadComponent: () => import('./pages/contracts-page/contracts-page.component').then(m => m.ContractsPageComponent)
+      },
       { path: '', redirectTo: 'users', pathMatch: 'full' }
     ]
   },

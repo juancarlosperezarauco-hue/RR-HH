@@ -1,11 +1,12 @@
+<p align="center"> <img src="docs/logo.png" alt="Logo del proyecto" width="180"> </p>
 <div align="center">
-   <h1>Sistema Financiero</h1>
+   <h1> Sistema de Recursos Humanos HRCORE</h1>
 </div>
 
 ## 🏗 Estructura del proyecto
 
 Frontend `hrcore_mobile` en flutter <br>
-Backend `hrcore-api` desarrollado con FastAPI <br>
+Backend `hrcore-api` desarrollado con Spring Boot <br>
 Frontend `hrcore-web` en Angular.
 
 ```
@@ -20,8 +21,8 @@ hrcore-system/
 │   ├── .devcontainer/         # Configuración para entorno de desarrollo
 │   │   ├── Dockerfile
 │   │   └── devcontainer.json
-│   ├── app/                   # Código principal de la API
-│   ├── requirements.txt       # Dependencias Python
+│   ├── src/                   # Código principal de la API
+│   ├── pom.xml				   # Dependencias de Spring Boots
 │   ├── Dockerfile.dev         # Imagen para desarrollo
 │   └── ...
 │
@@ -33,7 +34,6 @@ hrcore-system/
 │
 ├── .env                       # Variables de entorno (desarrollo)
 ├── .env.sample                # Ejemplo de variables de entorno
-├── .env.prod                  # Variables de entorno para producción
 ├── docker-compose.yml         # Orquestación para desarrollo
 └── README.md
 ```
@@ -184,4 +184,4 @@ docker volume prune
 </div>
 <hr>
 
-last modified: 7/10/2026
+last modified: 12/10/2026

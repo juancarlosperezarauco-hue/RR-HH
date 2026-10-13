@@ -18,7 +18,10 @@ public class TenantBootstrapService {
             "users.deactivate", "audit.events.read", "notifications.templates.read",
             "notifications.templates.detail", "notifications.deliveries.read",
             "billing.subscription.manage", "backups.create", "backups.list", "backups.detail",
-            "backups.download", "backups.restore");
+            "backups.download", "backups.restore",
+            "contracts.create", "contracts.list", "contracts.detail", "contracts.update",
+            "contracts.status.update", "contracts.renew", "contracts.history.read",
+            "contracts.document.download");
 
     private final JdbcTemplate jdbcTemplate;
 
