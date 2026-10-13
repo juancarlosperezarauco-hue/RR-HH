@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
 public class PlatformBootstrapService {
 
     private static final Logger logger = LoggerFactory.getLogger(PlatformBootstrapService.class);
-    private static final Pattern PERMISSION_CODE_PATTERN = Pattern.compile("^[a-z][a-z0-9-]*(?:[.][a-z0-9-]+)*$");
-    private static final Pattern MODULE_PATTERN = Pattern.compile("^[a-z][a-z0-9-]*$");
+    private static final Pattern PERMISSION_CODE_PATTERN = Pattern.compile("^[a-z][a-z0-9_-]*(?:[.][a-z0-9_-]+)*$");
+    private static final Pattern MODULE_PATTERN = Pattern.compile("^[a-z][a-z0-9_-]*$");
 
     private final JdbcTemplate jdbcTemplate;
     private final PasswordEncoder passwordEncoder;
@@ -224,6 +224,29 @@ public class PlatformBootstrapService {
                 new PermissionSeed("employee_files.documents.upload", "employee_files", "Upload employee document versions"),
                 new PermissionSeed("employee_files.documents.download", "employee_files", "Download employee document versions"),
                 new PermissionSeed("employee_files.documents.confidential.read", "employee_files", "Read confidential employee documents"),
+                new PermissionSeed("shifts.create", "shifts", "Create work shifts"),
+                new PermissionSeed("shifts.list", "shifts", "List work shifts"),
+                new PermissionSeed("shifts.detail", "shifts", "Read work shift details"),
+                new PermissionSeed("shifts.update", "shifts", "Update work shifts"),
+                new PermissionSeed("shifts.activate", "shifts", "Activate work shifts"),
+                new PermissionSeed("shifts.deactivate", "shifts", "Deactivate work shifts"),
+                new PermissionSeed("shifts.breaks.create", "shifts", "Create shift breaks"),
+                new PermissionSeed("shifts.breaks.list", "shifts", "List shift breaks"),
+                new PermissionSeed("shifts.breaks.detail", "shifts", "Read shift break details"),
+                new PermissionSeed("shifts.breaks.update", "shifts", "Update shift breaks"),
+                new PermissionSeed("shifts.breaks.delete", "shifts", "Delete shift breaks"),
+                new PermissionSeed("shifts.assignments.create", "shifts", "Create employee shift assignments"),
+                new PermissionSeed("shifts.assignments.list", "shifts", "List employee shift assignments"),
+                new PermissionSeed("shifts.assignments.detail", "shifts", "Read employee shift assignment details"),
+                new PermissionSeed("shifts.assignments.update", "shifts", "Update future employee shift assignments"),
+                new PermissionSeed("shifts.assignments.cancel", "shifts", "Cancel future employee shift assignments"),
+                new PermissionSeed("shifts.assignments.close", "shifts", "Close employee shift assignments"),
+                new PermissionSeed("shifts.calendar.create", "shifts", "Create work calendar exceptions"),
+                new PermissionSeed("shifts.calendar.list", "shifts", "List work calendar exceptions"),
+                new PermissionSeed("shifts.calendar.detail", "shifts", "Read work calendar exception details"),
+                new PermissionSeed("shifts.calendar.update", "shifts", "Update future work calendar exceptions"),
+                new PermissionSeed("shifts.calendar.delete", "shifts", "Delete future work calendar exceptions"),
+                new PermissionSeed("shifts.schedule.read", "shifts", "Read effective employee work schedules"),
                 // GOVERNANCE PERMISSIONS
                 new PermissionSeed("audit.events.read", "audit", "Read tenant audit events"),
                 new PermissionSeed("notifications.templates.read", "notifications", "Read notification templates"),
