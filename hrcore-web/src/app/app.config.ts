@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
-import { authTokenInterceptor } from './shared/api';
+import { authTokenInterceptor, mockHttpInterceptor } from './shared/api';
 
 import {
   AlertCircle,
@@ -106,7 +106,7 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       }),
     ),
-    provideHttpClient(withInterceptors([authTokenInterceptor])),
+    provideHttpClient(withInterceptors([authTokenInterceptor, mockHttpInterceptor])),
     provideAnimationsAsync(),
     importProvidersFrom(
       LucideAngularModule.pick({
