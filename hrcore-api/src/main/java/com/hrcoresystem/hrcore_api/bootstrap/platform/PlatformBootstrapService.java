@@ -247,6 +247,25 @@ public class PlatformBootstrapService {
                 new PermissionSeed("shifts.calendar.update", "shifts", "Update future work calendar exceptions"),
                 new PermissionSeed("shifts.calendar.delete", "shifts", "Delete future work calendar exceptions"),
                 new PermissionSeed("shifts.schedule.read", "shifts", "Read effective employee work schedules"),
+                new PermissionSeed("attendance.records.list", "attendance", "List attendance records"),
+                new PermissionSeed("attendance.records.detail", "attendance", "Read attendance records"),
+                new PermissionSeed("attendance.records.calculate", "attendance", "Calculate attendance records"),
+                new PermissionSeed("attendance.punches.create", "attendance", "Record own attendance punches"),
+                new PermissionSeed("attendance.punches.manage", "attendance", "Record administrative and historical punches"),
+                new PermissionSeed("attendance.punches.list", "attendance", "List attendance punches"),
+                new PermissionSeed("attendance.punches.detail", "attendance", "Read attendance punches"),
+                new PermissionSeed("attendance.adjustments.create", "attendance", "Request attendance adjustments"),
+                new PermissionSeed("attendance.adjustments.list", "attendance", "List attendance adjustments"),
+                new PermissionSeed("attendance.adjustments.detail", "attendance", "Read attendance adjustments"),
+                new PermissionSeed("attendance.adjustments.approve", "attendance", "Approve attendance adjustments"),
+                new PermissionSeed("attendance.adjustments.reject", "attendance", "Reject attendance adjustments"),
+                new PermissionSeed("attendance.adjustments.cancel", "attendance", "Cancel own attendance adjustments"),
+                new PermissionSeed("attendance.overtime.create", "attendance", "Request attendance overtime"),
+                new PermissionSeed("attendance.overtime.list", "attendance", "List attendance overtime"),
+                new PermissionSeed("attendance.overtime.detail", "attendance", "Read attendance overtime"),
+                new PermissionSeed("attendance.overtime.approve", "attendance", "Approve attendance overtime"),
+                new PermissionSeed("attendance.overtime.reject", "attendance", "Reject attendance overtime"),
+                new PermissionSeed("attendance.overtime.cancel", "attendance", "Cancel own attendance overtime"),
                 // GOVERNANCE PERMISSIONS
                 new PermissionSeed("audit.events.read", "audit", "Read tenant audit events"),
                 new PermissionSeed("notifications.templates.read", "notifications", "Read notification templates"),
@@ -259,6 +278,7 @@ public class PlatformBootstrapService {
         );
 
         seedPermissions(permissions);
+        seedLeavePermissions();
 
         logger.info("Base system permissions seeded successfully.");
     }
@@ -594,6 +614,40 @@ public class PlatformBootstrapService {
             String description
             ) {
 
+    }
+
+    private void seedLeavePermissions() {
+        List<PermissionSeed> permissions = List.of(
+                new PermissionSeed("leaves.types.create", "leaves", "Create leave types"),
+                new PermissionSeed("leaves.types.list", "leaves", "List leave types"),
+                new PermissionSeed("leaves.types.detail", "leaves", "Read leave type details"),
+                new PermissionSeed("leaves.types.update", "leaves", "Update leave types"),
+                new PermissionSeed("leaves.types.activate", "leaves", "Activate leave types"),
+                new PermissionSeed("leaves.types.deactivate", "leaves", "Deactivate leave types"),
+                new PermissionSeed("leaves.balances.list", "leaves", "List leave balances"),
+                new PermissionSeed("leaves.balances.detail", "leaves", "Read leave balance details"),
+                new PermissionSeed("leaves.balances.create", "leaves", "Initialize annual leave balances"),
+                new PermissionSeed("leaves.balances.adjust", "leaves", "Adjust annual leave balances"),
+                new PermissionSeed("leaves.requests.create", "leaves", "Create leave drafts"),
+                new PermissionSeed("leaves.requests.list", "leaves", "List leave requests"),
+                new PermissionSeed("leaves.requests.detail", "leaves", "Read leave request details"),
+                new PermissionSeed("leaves.requests.update", "leaves", "Update leave drafts"),
+                new PermissionSeed("leaves.requests.submit", "leaves", "Submit leave requests"),
+                new PermissionSeed("leaves.requests.approve", "leaves", "Approve leave requests"),
+                new PermissionSeed("leaves.requests.reject", "leaves", "Reject leave requests"),
+                new PermissionSeed("leaves.requests.cancel", "leaves", "Cancel leave requests"),
+                new PermissionSeed("leaves.history.read", "leaves", "Read leave request history"),
+                new PermissionSeed("leaves.attachments.upload", "leaves", "Upload leave attachments"),
+                new PermissionSeed("leaves.attachments.list", "leaves", "List leave attachments"),
+                new PermissionSeed("leaves.attachments.download", "leaves", "Download leave attachments"));
+        validatePermissionSeeds(permissions);
+        for (PermissionSeed permission : permissions) {
+            jdbcTemplate.update("""
+                    INSERT INTO public.system_permissions (code, module, description, active, created_at)
+                    VALUES (?, ?, ?, true, NOW())
+                    ON CONFLICT (code) DO NOTHING
+                    """, permission.code(), permission.module(), permission.description());
+        }
     }
 
     private void seedPermissions(List<PermissionSeed> permissions) {
