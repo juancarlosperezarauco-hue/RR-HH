@@ -172,6 +172,13 @@ public class PlatformBootstrapService {
                 new PermissionSeed("users.update", "users", "Update tenant users"),
                 new PermissionSeed("users.activate", "users", "Activate tenant users"),
                 new PermissionSeed("users.deactivate", "users", "Deactivate tenant users"),
+                new PermissionSeed("departments.create", "departments", "Create departments"),
+                new PermissionSeed("departments.list", "departments", "List departments"),
+                new PermissionSeed("departments.detail", "departments", "Read department details"),
+                new PermissionSeed("departments.update", "departments", "Update departments"),
+                new PermissionSeed("departments.activate", "departments", "Activate departments"),
+                new PermissionSeed("departments.deactivate", "departments", "Deactivate departments"),
+                new PermissionSeed("departments.history.read", "departments", "Read department history"),
                 // GOVERNANCE PERMISSIONS
                 new PermissionSeed("audit.events.read", "audit", "Read tenant audit events"),
                 new PermissionSeed("notifications.templates.read", "notifications", "Read notification templates"),
