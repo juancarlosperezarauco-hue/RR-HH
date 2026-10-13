@@ -31,6 +31,11 @@ spring:
             enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
 
 app:
+  storage:
+    documents:
+      bucket: ${DOCUMENT_S3_BUCKET:hrcore-documents-dev}
+      region: ${DOCUMENT_S3_REGION:us-east-1}
+      endpoint: ${DOCUMENT_S3_ENDPOINT:http://127.0.0.1:9000}
   backups:
     local-path: ${BACKUP_LOCAL_PATH:/storage/backups}
     pg-dump-path: ${PG_DUMP_PATH:pg_dump}
