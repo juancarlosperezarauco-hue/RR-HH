@@ -14,18 +14,21 @@ public class LogoutPlatformSuperadminUseCase {
     private final AuditTrailService auditTrailService;
     private final AuthSessionService authSessionService;
 
-    public LogoutPlatformSuperadminUseCase(
-            SecurityContextFacade securityContextFacade,
-            AuditTrailService auditTrailService, AuthSessionService authSessionService
-    ) {
+    public LogoutPlatformSuperadminUseCase(SecurityContextFacade securityContextFacade,
+                                           AuditTrailService auditTrailService,
+                                           AuthSessionService authSessionService) {
         this.securityContextFacade = securityContextFacade;
         this.auditTrailService = auditTrailService;
         this.authSessionService = authSessionService;
     }
-    public LogoutPlatformSuperadminUseCase(SecurityContextFacade securityContextFacade,AuditTrailService auditTrailService){this(securityContextFacade,auditTrailService,null);}
-
     public void execute() {
-        if(authSessionService!=null&&securityContextFacade.getCurrentSessionId()!=null)authSessionService.revokePlatformSession(securityContextFacade.getCurrentSessionId());
+        if (!securityContextFacade.isPlatformAuthenticated()
+                || securityContextFacade.getCurrentSessionId() == null) {
+            throw new IllegalStateException("Platform session is required");
+        }
+        authSessionService.revokePlatformSession(
+                securityContextFacade.getCurrentSessionId(),
+                securityContextFacade.requireCurrentUserId());
         String currentSubject = securityContextFacade.getCurrentSubject();
 
         auditTrailService.recordPlatformEvent(

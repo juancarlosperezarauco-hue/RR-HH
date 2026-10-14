@@ -18,6 +18,9 @@ public final class SessionTokenHasher {
   }
 
   public static boolean matches(String token, String expected) {
+    if (token == null || expected == null || expected.isBlank()) {
+      return false;
+    }
     return MessageDigest.isEqual(hash(token).getBytes(StandardCharsets.US_ASCII),
         expected.getBytes(StandardCharsets.US_ASCII));
   }

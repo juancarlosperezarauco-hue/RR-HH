@@ -1,158 +1,227 @@
 package com.hrcoresystem.hrcore_api.common.security.jwt;
 
 import com.hrcoresystem.hrcore_api.common.security.principal.AuthenticatedUserPrincipal;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthenticatedSessionValidator;
 import com.hrcoresystem.hrcore_api.common.tenancy.TenancyProperties;
-import com.hrcoresystem.hrcore_api.modules.platform.auth.domain.model.PlatformAuthConstants;
+import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContext;
+import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContextHolder;
+
 import io.jsonwebtoken.JwtException;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import com.hrcoresystem.hrcore_api.common.security.session.AuthenticatedSessionValidator;
 
 import java.io.IOException;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.NoSuchElementException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String BEARER_PREFIX = "Bearer ";
+  private static final String BEARER_PREFIX = "Bearer ";
 
-    private final JwtTokenService jwtTokenService;
-    private final TenancyProperties tenancyProperties;
-    private final AuthenticationEntryPoint authenticationEntryPoint;
-    private final AuthenticatedSessionValidator sessionValidator;
-    private final JwtAuthorityMapper authorityMapper = new JwtAuthorityMapper();
-    private final AntPathMatcher antPathMatcher = new AntPathMatcher();
+  private final JwtTokenService jwtTokenService;
+  private final TenancyProperties tenancyProperties;
+  private final AuthenticationEntryPoint authenticationEntryPoint;
+  private final AuthenticatedSessionValidator sessionValidator;
 
-    public JwtAuthenticationFilter(
-            JwtTokenService jwtTokenService,
-            TenancyProperties tenancyProperties,
-            AuthenticationEntryPoint authenticationEntryPoint, AuthenticatedSessionValidator sessionValidator
-    ) {
-        this.jwtTokenService = jwtTokenService;
-        this.tenancyProperties = tenancyProperties;
-        this.authenticationEntryPoint = authenticationEntryPoint;
-        this.sessionValidator = sessionValidator;
-    }
-    public JwtAuthenticationFilter(JwtTokenService jwtTokenService,TenancyProperties tenancyProperties,AuthenticationEntryPoint authenticationEntryPoint){this(jwtTokenService,tenancyProperties,authenticationEntryPoint,null);}
+  private final JwtAuthorityMapper authorityMapper = new JwtAuthorityMapper();
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String requestUri = request.getRequestURI();
+  private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-        if (tenancyProperties.isPublicPath(requestUri)) {
-            return true;
-        }
+  // Único constructor: todas las dependencias son obligatorias.
+  public JwtAuthenticationFilter(
+      JwtTokenService jwtTokenService,
+      TenancyProperties tenancyProperties,
+      AuthenticationEntryPoint authenticationEntryPoint,
+      AuthenticatedSessionValidator sessionValidator) {
+    this.jwtTokenService = jwtTokenService;
+    this.tenancyProperties = tenancyProperties;
+    this.authenticationEntryPoint = authenticationEntryPoint;
+    this.sessionValidator = sessionValidator;
+  }
 
-        return antPathMatcher.match("/api/auth/login", requestUri)
-                || antPathMatcher.match("/api/auth/refresh", requestUri)
-                || antPathMatcher.match("/api/auth/forgot-password", requestUri)
-                || antPathMatcher.match("/api/auth/reset-password", requestUri)
-                || antPathMatcher.match("/api/auth/activate-account", requestUri)
-                || antPathMatcher.match("/api/auth/resend-activation", requestUri)
-                || antPathMatcher.match("/api/auth/face/login", requestUri)
-                || antPathMatcher.match("/api/platform/auth/login", requestUri)
-                || antPathMatcher.match("/api/platform/auth/refresh", requestUri);
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    String uri = request.getRequestURI();
+
+    if (tenancyProperties.isPublicPath(uri)) {
+      return true;
     }
 
-    @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
-        try {
-            String authorizationHeader = request.getHeader("Authorization");
+    return pathMatcher.match("/api/auth/login", uri)
+        || pathMatcher.match("/api/auth/refresh", uri)
+        || pathMatcher.match("/api/auth/forgot-password", uri)
+        || pathMatcher.match("/api/auth/reset-password", uri)
+        || pathMatcher.match("/api/auth/activate-account", uri)
+        || pathMatcher.match("/api/auth/resend-activation", uri)
+        || pathMatcher.match("/api/auth/face/login", uri)
+        || pathMatcher.match("/api/platform/auth/login", uri)
+        || pathMatcher.match("/api/platform/auth/refresh", uri);
+  }
 
-            if (!StringUtils.hasText(authorizationHeader) || !authorizationHeader.startsWith(BEARER_PREFIX)) {
-                throw new InsufficientAuthenticationException("Missing or invalid Authorization header");
-            }
+  @Override
+  protected void doFilterInternal(
+      @NonNull HttpServletRequest request,
+      @NonNull HttpServletResponse response,
+      @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-            String token = authorizationHeader.substring(BEARER_PREFIX.length());
-            AuthenticatedUserPrincipal principal = jwtTokenService.parseAccessToken(token);
-            if(sessionValidator!=null)sessionValidator.validate(principal);
+    try {
+      String authorizationHeader = request.getHeader("Authorization");
 
-            String requestUri = request.getRequestURI();
-            if (isPlatformToken(principal)) {
-                if (!isPlatformRequest(requestUri)) {
-                    throw new BadCredentialsException("Platform token cannot be used for tenant resources");
-                }
-            } else {
-                String tenantHeaderValue = request.getHeader(tenancyProperties.getHeaderName());
-                if (StringUtils.hasText(tenantHeaderValue)
-                        && !tenantHeaderValue.equalsIgnoreCase(principal.tenantSlug())) {
-                    throw new BadCredentialsException("Token tenant does not match request tenant header");
-                }
-            }
+      if (!StringUtils.hasText(authorizationHeader)
+          || !authorizationHeader.startsWith(BEARER_PREFIX)) {
 
-            List<SimpleGrantedAuthority> authorities = authorityMapper.toAuthorities(principal);
+        throw new InsufficientAuthenticationException(
+            "Missing or invalid Authorization header");
+      }
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
+      String token = authorizationHeader.substring(
+          BEARER_PREFIX.length());
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+      if (!StringUtils.hasText(token)) {
+        throw new BadCredentialsException(
+            "Access token is missing");
+      }
 
-            filterChain.doFilter(request, response);
-        } catch (JwtException | InsufficientAuthenticationException | BadCredentialsException ex) {
-            SecurityContextHolder.clearContext();
-            authenticationEntryPoint.commence(
-                    request,
-                    response,
-                    new BadCredentialsException(ex.getMessage(), ex)
-            );
-        }
+      // 1. Validar firma, expiración y claims del JWT.
+      AuthenticatedUserPrincipal principal = jwtTokenService.parseAccessToken(token);
+
+      // 2. Validar obligatoriamente la sesión persistida.
+      validateSession(principal);
+
+      // 3. Verificar que el token pertenece al ámbito correcto.
+      validateRequestScope(principal, request);
+
+      // 4. Construir las autoridades del usuario.
+      var authorities = authorityMapper.toAuthorities(principal);
+
+      // 5. Crear la autenticación.
+      UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+          principal,
+          null,
+          authorities);
+
+      SecurityContextHolder.getContext()
+          .setAuthentication(authentication);
+
+    } catch (JwtException | AuthenticationException ex) {
+
+      SecurityContextHolder.clearContext();
+
+      authenticationEntryPoint.commence(
+          request,
+          response,
+          new BadCredentialsException(
+              "Invalid or expired authentication",
+              ex));
+
+      return;
     }
 
-    private List<SimpleGrantedAuthority> buildAuthorities(AuthenticatedUserPrincipal principal) {
-        LinkedHashSet<String> authorityValues = new LinkedHashSet<>();
+    // No capturar aquí errores de controladores o casos de uso.
+    filterChain.doFilter(request, response);
+  }
 
-        for (String role : principal.roles()) {
-            if (!StringUtils.hasText(role)) {
-                throw new JwtException("Token roles contain blank values");
-            }
+  private void validateSession(
+      AuthenticatedUserPrincipal principal) {
 
-            String normalizedRole = role.trim();
-            if (!normalizedRole.startsWith("ROLE_")) {
-                normalizedRole = "ROLE_" + normalizedRole.toUpperCase();
-            }
+    try {
+      sessionValidator.validate(principal);
 
-            authorityValues.add(normalizedRole);
-        }
+    } catch (IllegalStateException | NoSuchElementException ex) {
 
-        for (String permission : principal.permissions()) {
-            if (!StringUtils.hasText(permission)) {
-                throw new JwtException("Token permissions contain blank values");
-            }
+      throw new BadCredentialsException(
+          "Authentication session is invalid",
+          ex);
+    }
+  }
 
-            authorityValues.add(permission.trim());
-        }
+  private void validateRequestScope(
+      AuthenticatedUserPrincipal principal,
+      HttpServletRequest request) {
 
-        return authorityValues.stream()
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+    String scope = principal.scope();
+    String tenantSlug = principal.tenantSlug();
+    String requestUri = request.getRequestURI();
+
+    boolean platformRequest = isPlatformRequest(requestUri);
+
+    if ("PLATFORM".equals(scope)) {
+
+      if (!"platform".equals(tenantSlug)) {
+        throw new BadCredentialsException(
+            "Invalid platform token");
+      }
+
+      if (!platformRequest) {
+        throw new BadCredentialsException(
+            "Platform token cannot access tenant resources");
+      }
+
+      return;
     }
 
-    private boolean isPlatformToken(AuthenticatedUserPrincipal principal) {
-        return principal != null
-                && principal.tenantSlug() != null
-                && PlatformAuthConstants.PLATFORM_TENANT_SLUG.equalsIgnoreCase(principal.tenantSlug());
+    if (!"TENANT".equals(scope)) {
+      throw new BadCredentialsException(
+          "Invalid authentication scope");
     }
 
-    private boolean isPlatformRequest(String requestUri) {
-        return antPathMatcher.match("/api/platform/**", requestUri)
-                || antPathMatcher.match("/api/dashboard/superadmin/**", requestUri);
+    if (!StringUtils.hasText(tenantSlug)
+        || "platform".equalsIgnoreCase(tenantSlug)) {
+
+      throw new BadCredentialsException(
+          "Invalid tenant token");
     }
+
+    if (platformRequest) {
+      throw new BadCredentialsException(
+          "Tenant token cannot access platform resources");
+    }
+
+    // El tenant debe haber sido resuelto por el filtro anterior.
+    TenantContext tenantContext = TenantContextHolder.get();
+
+    if (tenantContext == null
+        || tenantContext.publicRequest()
+        || !StringUtils.hasText(tenantContext.tenantSlug())) {
+
+      throw new BadCredentialsException(
+          "Tenant context is missing");
+    }
+
+    if (!tenantSlug.equals(tenantContext.tenantSlug())) {
+      throw new BadCredentialsException(
+          "Token tenant does not match request tenant");
+    }
+
+    String tenantHeader = request.getHeader(
+        tenancyProperties.getHeaderName());
+
+    if (!StringUtils.hasText(tenantHeader)) {
+      throw new BadCredentialsException(
+          "Tenant header is missing");
+    }
+  }
+
+  private boolean isPlatformRequest(String requestUri) {
+
+    return tenancyProperties.isGlobalPath(requestUri)
+        || pathMatcher.match(
+            "/api/dashboard/superadmin/**",
+            requestUri);
+  }
 }

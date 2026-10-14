@@ -1,8 +1,7 @@
 package com.hrcoresystem.hrcore_api.modules.platform.auth.application.usecase;
 
-import com.hrcoresystem.hrcore_api.common.security.JwtProperties;
-import com.hrcoresystem.hrcore_api.common.security.jwt.JwtTokenService;
-import com.hrcoresystem.hrcore_api.common.security.principal.AuthenticatedUserPrincipal;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
+import com.hrcoresystem.hrcore_api.common.security.session.IssuedTokens;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.platform.auth.application.dto.PlatformAuthTokenResponse;
 import com.hrcoresystem.hrcore_api.modules.platform.auth.application.dto.PlatformLoginRequest;
@@ -28,18 +27,12 @@ class LoginPlatformSuperadminUseCaseTest {
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         AuditTrailService auditTrailService = mock(AuditTrailService.class);
 
-        JwtProperties jwtProperties = new JwtProperties();
-        jwtProperties.setSecret("this-is-a-very-secure-jwt-secret-key-with-more-than-32-chars");
-        jwtProperties.setAccessExpirationMs(900000);
-        jwtProperties.setRefreshExpirationMs(604800000);
-
-        JwtTokenService jwtTokenService = new JwtTokenService(jwtProperties);
+        AuthSessionService sessions = mock(AuthSessionService.class);
 
         LoginPlatformSuperadminUseCase useCase = new LoginPlatformSuperadminUseCase(
                 platformSuperadminRepository,
                 passwordEncoder,
-                jwtTokenService,
-                jwtProperties,
+                sessions,
                 auditTrailService
         );
 
@@ -58,19 +51,17 @@ class LoginPlatformSuperadminUseCaseTest {
         when(platformSuperadminRepository.findByEmail("superadmin@hrcore.local"))
                 .thenReturn(Optional.of(superadmin));
         when(passwordEncoder.matches("SuperAdmin123!", "encoded-password")).thenReturn(true);
+        when(sessions.createPlatformSession(superadmin))
+                .thenReturn(new IssuedTokens("access", "refresh", 900000));
 
         PlatformAuthTokenResponse response = useCase.execute(
                 new PlatformLoginRequest("superadmin@hrcore.local", "SuperAdmin123!")
         );
 
-        assertNotNull(response.accessToken());
-        assertNotNull(response.refreshToken());
+        assertEquals("access", response.accessToken());
+        assertEquals("refresh", response.refreshToken());
         assertEquals("Bearer", response.tokenType());
-
-        AuthenticatedUserPrincipal principal = jwtTokenService.parseAccessToken(response.accessToken());
-        assertEquals("superadmin@hrcore.local", principal.subject());
-        assertEquals("platform", principal.tenantSlug());
-        assertTrue(principal.roles().contains("SUPERADMIN"));
+        verify(sessions).createPlatformSession(superadmin);
 
         verify(auditTrailService).recordPlatformEvent(anyString(), anyString(), anyString(), any());
     }

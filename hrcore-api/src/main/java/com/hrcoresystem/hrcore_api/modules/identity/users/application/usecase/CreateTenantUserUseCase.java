@@ -10,6 +10,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.application.mapper.Ten
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.exception.TenantUserAlreadyExistsException;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUser;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.AssignedRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -110,7 +111,10 @@ public class CreateTenantUserUseCase {
                 )
         );
 
-        return tenantUserMapper.toResponse(createdTenantUser);
+        List<AssignedRoleResponse> assignedRoleResponses = initialRoles.stream()
+                .map(role -> new AssignedRoleResponse(role.id(), role.code(), role.name(), role.active()))
+                .toList();
+        return tenantUserMapper.toResponse(createdTenantUser, assignedRoleResponses);
     }
 
     private String normalizeNullable(String value) {

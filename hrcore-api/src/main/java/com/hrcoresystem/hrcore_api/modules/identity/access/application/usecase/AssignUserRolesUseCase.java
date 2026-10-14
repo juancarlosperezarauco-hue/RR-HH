@@ -61,9 +61,8 @@ public class AssignUserRolesUseCase {
         List<UUID> roleIds = request.roleIds() == null ? List.of() : request.roleIds();
 
         ownershipPolicy.assertNotCurrentOwner(userId);
+        List<String> previousRoleCodes = tenantUserRoleRepository.findRoleCodesByUserId(userId);
         List<TenantRole> roles = assignmentService.replaceRoles(userId, roleIds);
-
-        List<String> previousRoleNames = tenantUserRoleRepository.findRoleNamesByUserId(userId);
 
         List<TenantRoleResponse> roleResponses = roles.stream()
                 .map(role -> tenantRoleMapper.toResponse(
@@ -82,11 +81,11 @@ public class AssignUserRolesUseCase {
                         "roleCount", roleIds.size()
                 ),
                 IdentityAuditPayloads.of(
-                        "roleNames", previousRoleNames,
-                        "roleCount", previousRoleNames.size()
+                        "roleCodes", previousRoleCodes,
+                        "roleCount", previousRoleCodes.size()
                 ),
                 IdentityAuditPayloads.of(
-                        "roleNames", roleResponses.stream().map(TenantRoleResponse::name).toList(),
+                        "roleCodes", roleResponses.stream().map(TenantRoleResponse::code).toList(),
                         "roleCount", roleResponses.size()
                 )
         );

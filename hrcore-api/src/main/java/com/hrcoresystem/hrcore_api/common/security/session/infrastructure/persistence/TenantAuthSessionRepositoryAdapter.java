@@ -15,10 +15,13 @@ public class TenantAuthSessionRepositoryAdapter implements TenantAuthSessionRepo
     public TenantAuthSessionRepositoryAdapter(TenantAuthSessionJpaRepository repository) { this.repository = repository; }
     @Override public AuthSession save(AuthSession session) { return toDomain(repository.save(toEntity(session))); }
     @Override public Optional<AuthSession> findById(UUID id) { return repository.findById(id).map(this::toDomain); }
+    @Override public Optional<AuthSession> findByIdForUpdate(UUID id) { return repository.findLockedById(id).map(this::toDomain); }
     @Override public Optional<AuthSession> findByRefreshTokenHash(String hash) { return repository.findByRefreshTokenHash(hash).map(this::toDomain); }
     @Override public List<AuthSession> findByUserId(UUID userId) { return repository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(this::toDomain).toList(); }
     @Override public int revokeOwnedSession(UUID sessionId, UUID userId) { return repository.revokeOwnedSession(sessionId, userId); }
     @Override public int revokeOtherSessions(UUID userId, UUID currentSessionId) { return repository.revokeOtherSessions(userId, currentSessionId); }
+    @Override public int revokeAllByUserId(UUID userId) { return repository.revokeAllByUserId(userId); }
+    @Override public int rotate(UUID sessionId, UUID userId, long expectedGeneration, String expectedHash, String newHash, long newGeneration, java.time.Instant now) { return repository.rotate(sessionId, userId, expectedGeneration, expectedHash, newHash, newGeneration, now); }
 
     private TenantAuthSessionEntity toEntity(AuthSession s) {
         TenantAuthSessionEntity e = new TenantAuthSessionEntity();

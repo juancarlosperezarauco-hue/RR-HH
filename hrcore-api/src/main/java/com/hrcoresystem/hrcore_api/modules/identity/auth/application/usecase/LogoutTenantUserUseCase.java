@@ -14,18 +14,21 @@ public class LogoutTenantUserUseCase {
     private final AuditTrailService auditTrailService;
     private final AuthSessionService authSessionService;
 
-    public LogoutTenantUserUseCase(
-            SecurityContextFacade securityContextFacade,
-            AuditTrailService auditTrailService, AuthSessionService authSessionService
-    ) {
+    public LogoutTenantUserUseCase(SecurityContextFacade securityContextFacade,
+                                   AuditTrailService auditTrailService,
+                                   AuthSessionService authSessionService) {
         this.securityContextFacade = securityContextFacade;
         this.auditTrailService = auditTrailService;
         this.authSessionService = authSessionService;
     }
-    public LogoutTenantUserUseCase(SecurityContextFacade securityContextFacade,AuditTrailService auditTrailService){this(securityContextFacade,auditTrailService,null);}
-
     public void execute() {
-        if(authSessionService!=null&&securityContextFacade.getCurrentSessionId()!=null)authSessionService.revokeTenantSession(securityContextFacade.getCurrentSessionId());
+        if (!securityContextFacade.isTenantAuthenticated()
+                || securityContextFacade.getCurrentSessionId() == null) {
+            throw new IllegalStateException("Tenant session is required");
+        }
+        authSessionService.revokeTenantSession(
+                securityContextFacade.getCurrentSessionId(),
+                securityContextFacade.requireCurrentUserId());
         String currentSubject = securityContextFacade.getCurrentSubject();
 
         auditTrailService.recordTenantEvent(
