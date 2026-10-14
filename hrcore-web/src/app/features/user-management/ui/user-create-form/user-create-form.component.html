@@ -37,6 +37,17 @@
     <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive">Ingresa un correo válido.</span>
   </div>
 
+  @if (canAssignRoles) {
+    <fieldset class="space-y-2 rounded-2xl border border-border bg-muted p-4">
+      <legend class="px-1 text-sm font-semibold text-accent-foreground">Roles iniciales (opcional)</legend>
+      @for (role of availableRoles; track role.id) {
+        <label class="flex items-center gap-2 text-sm text-accent-foreground"><input type="checkbox" [checked]="userForm.get('roleIds')?.value?.includes(role.id)" (change)="toggleRole(role.id, $event)">{{ role.name }} <span class="text-xs text-muted-foreground">({{ role.code }})</span></label>
+      } @empty { <p class="text-xs text-muted-foreground">No hay roles personalizados activos.</p> }
+    </fieldset>
+  } @else {
+    <p class="rounded-2xl border border-border bg-muted p-3 text-xs text-muted-foreground">El usuario se creará sin roles. Solo el propietario puede asignar roles iniciales.</p>
+  }
+
   <div class="space-y-2">
     <label for="password" class="text-sm font-semibold text-muted-foreground">Contraseña temporal</label>
     <div class="relative">

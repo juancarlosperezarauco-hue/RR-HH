@@ -9,6 +9,6 @@ export interface PublicPaidSignupResponse {
   checkoutSessionId: string;
   checkoutUrl: string;
   checkoutStatus: string;
-  expiresAt: string | null;
-  message?: string;
+  checkoutExpiresAt: string | null;
+  message: string;
 }

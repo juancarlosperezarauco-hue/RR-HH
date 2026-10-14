@@ -6,3 +6,5 @@ export * from './model/update-tenant-profile-request.model';
 export * from './model/forgot-password-request.model';
 export * from './model/reset-password-request.model';
 export * from './api/auth.service';
+export * from './api/tenant-session.service';
+export * from './model/auth-session-response.model';

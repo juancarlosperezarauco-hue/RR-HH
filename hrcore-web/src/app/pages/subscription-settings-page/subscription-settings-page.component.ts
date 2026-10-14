@@ -136,11 +136,11 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                 <ul class="mt-7 space-y-3 text-sm text-muted-foreground">
                   <li class="flex gap-3">
                     <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                    Hasta {{ displayMaxUsers(plan) }} usuarios
+                    Gestión de usuarios según el plan contratado
                   </li>
                   <li class="flex gap-3">
                     <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                    Hasta {{ displayMaxRoles(plan) }} roles
+                    Roles y permisos para tu equipo
                   </li>
                   <li class="flex gap-3">
                     <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
@@ -156,13 +156,6 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                     disabled
                     class="h-11 w-full rounded-xl bg-muted text-sm font-black text-muted-foreground">
                     Plan actual
-                  </button>
-                } @else if (plan.contactSales) {
-                  <button
-                    type="button"
-                    disabled
-                    class="h-11 w-full rounded-xl border border-border bg-card text-sm font-black text-muted-foreground">
-                    Contactar ventas
                   </button>
                 } @else if (!canUpgrade(plan)) {
                   <button
@@ -223,7 +216,7 @@ export class SubscriptionSettingsPageComponent implements OnInit {
       return 0;
     }
 
-    return this.resolvePlanLimit(current.planCode, current.maxUsers, 'users');
+    return current.maxUsers;
   }
 
   currentMaxRoles(): number {
@@ -232,15 +225,11 @@ export class SubscriptionSettingsPageComponent implements OnInit {
       return 0;
     }
 
-    return this.resolvePlanLimit(current.planCode, current.maxRoles, 'roles');
+    return current.maxRoles;
   }
 
   canUpgrade(plan: TenantBillingPlan): boolean {
     if (this.isCurrentPlan(plan)) {
-      return false;
-    }
-
-    if (plan.contactSales) {
       return false;
     }
 
@@ -260,19 +249,11 @@ export class SubscriptionSettingsPageComponent implements OnInit {
       ? plan.monthlyAmount
       : plan.yearlyAmount;
 
-    if (plan.contactSales || amount == null) {
+    if (amount == null) {
       return 'A medida';
     }
 
     return `${plan.currency || 'USD'} ${amount}`;
-  }
-
-  displayMaxUsers(plan: TenantBillingPlan): number {
-    return this.resolvePlanLimit(plan.code, plan.maxUsers, 'users');
-  }
-
-  displayMaxRoles(plan: TenantBillingPlan): number {
-    return this.resolvePlanLimit(plan.code, plan.maxRoles, 'roles');
   }
 
   upgrade(plan: TenantBillingPlan): void {
@@ -283,28 +264,4 @@ export class SubscriptionSettingsPageComponent implements OnInit {
     void this.useCase.createCheckout(plan.code, this.billingInterval());
   }
 
-  private resolvePlanLimit(code: string | null | undefined, value: number | null | undefined, kind: 'users' | 'roles'): number {
-    const normalized = (code || '').trim().toUpperCase();
-    const direct = typeof value === 'number' && value > 0 ? value : null;
-
-    if (direct !== null) {
-      return direct;
-    }
-
-    const fallback = this.planLimitFallbacks()[normalized];
-    if (fallback) {
-      return kind === 'users' ? fallback.users : fallback.roles;
-    }
-
-    return 0;
-  }
-
-  private planLimitFallbacks(): Record<string, { users: number; roles: number }> {
-    return {
-      DEMO: { users: 5, roles: 3 },
-      BASIC: { users: 10, roles: 5 },
-      PRO: { users: 25, roles: 10 },
-      ENTERPRISE: { users: 9999, roles: 999 }
-    };
-  }
 }

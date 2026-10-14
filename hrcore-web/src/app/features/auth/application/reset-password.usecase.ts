@@ -30,7 +30,6 @@ export class ResetPasswordUseCase {
 
     try {
       const response = await firstValueFrom(this.authService.resetPassword(request));
-      console.log('reset password response', response);
 
       if (response.success) {
         this.state.set({

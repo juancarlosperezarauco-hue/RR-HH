@@ -53,7 +53,7 @@ export class LoginPageComponent implements OnInit {
     }
 
     await this.authFacade.loadCurrentUser();
-    await this.router.navigateByUrl(this.authFacade.getTenantLandingRoute(), {
+    await this.router.navigateByUrl(this.safeReturnUrl() ?? this.authFacade.getTenantLandingRoute(), {
       replaceUrl: true
     });
   }
@@ -67,9 +67,15 @@ export class LoginPageComponent implements OnInit {
     }
 
     await this.authFacade.loadCurrentUser();
-    await this.router.navigateByUrl(this.authFacade.getTenantLandingRoute(), {
+    await this.router.navigateByUrl(this.safeReturnUrl() ?? this.authFacade.getTenantLandingRoute(), {
       replaceUrl: true
     });
+  }
+
+  private safeReturnUrl(): string | null {
+    const value = this.route.snapshot.queryParamMap.get('returnUrl');
+    if (!value || !value.startsWith('/dashboard/') || value.startsWith('//') || value.includes('\\')) return null;
+    return value;
   }
 
   displayStatus(): 'idle' | 'loading' | 'success' | 'error' {

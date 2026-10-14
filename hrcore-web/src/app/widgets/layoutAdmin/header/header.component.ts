@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, HostListener, ElementRef, inject, OnInit, signal } from '@angular/core';
+import { Component, EventEmitter, Output, HostListener, ElementRef, inject, OnInit, signal, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -9,6 +9,7 @@ import { PlatformFacade } from '../../../features/platform/lib/platform.facade';
 import { PermissionService } from '../../../shared/lib/auth/permission.service';
 import { NotificationsService, NotificationResponse } from '../../../entities/notifications';
 import { environment } from '../../../../environments/environment';
+import { NavigationScope } from '../../../shared/lib/navigation';
 
 interface MenuItem {
   label: string;
@@ -214,6 +215,7 @@ interface MenuItem {
   `
 })
 export class HeaderComponent implements OnInit {
+  @Input({ required: true }) scope!: NavigationScope;
   @Output() logoutAction = new EventEmitter<void>();
   isProfileOpen = false;
   isNotificationsOpen = false;
@@ -256,15 +258,15 @@ export class HeaderComponent implements OnInit {
   }
 
   get isPlatformRoute(): boolean {
-    return this.router.url.startsWith('/platform');
+    return this.scope === 'PLATFORM';
   }
 
   get isOwnerAdmin(): boolean {
-    return this.permissionService.hasRole('OWNER_ADMIN');
+    return this.permissionService.isCurrentOwner();
   }
 
   get dashboardRoute(): string {
-    return this.isOwnerAdmin ? '/dashboard/summary' : '/dashboard/me';
+    return '/dashboard/home';
   }
 
   getDisplayName(): string {
@@ -335,7 +337,9 @@ export class HeaderComponent implements OnInit {
       return 'Super Administrador';
     }
 
-    return this.isOwnerAdmin ? 'Owner Admin' : 'Usuario';
+    if (this.isOwnerAdmin) return 'Propietario de la organización';
+    const roles = this.tenantUser()?.roles ?? [];
+    return roles.length > 0 ? roles.join(', ') : 'Usuario de la organización';
   }
 
   toggleProfileMenu(): void {

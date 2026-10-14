@@ -1,5 +1,5 @@
 export interface UpdateTenantUserRequest {
   email: string;
-  firstName?: string;
-  lastName?: string;
+  firstName?: string | null;
+  lastName?: string | null;
 }
