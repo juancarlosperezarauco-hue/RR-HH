@@ -43,6 +43,7 @@ export class ShiftFormUseCase {
 
   /**
    * Valida restricciones laborales según la Ley General del Trabajo (LGT) de Bolivia
+   * y las reglas temporales estrictas del backend Spring Boot
    */
   validateLaborLaw(request: CreateShiftRequest): { isValid: boolean; message?: string } {
     const { hours, isOvernight } = this.calculateEffectiveHours(
@@ -51,8 +52,28 @@ export class ShiftFormUseCase {
       request.breakMinutes
     );
 
+    // Validación de consistencia temporal (ShiftTimeRules de Spring Boot)
+    const effectiveCrosses = request.crossesMidnight ?? isOvernight;
+    const [sh, sm] = request.startTime.split(':').map(Number);
+    const [eh, em] = request.endTime.split(':').map(Number);
+    const startMins = sh * 60 + sm;
+    const endMins = eh * 60 + em;
+
+    if (!effectiveCrosses && endMins <= startMins) {
+      return {
+        isValid: false,
+        message: 'La hora de fin debe ser posterior a la hora de inicio cuando el turno no cruza medianoche.'
+      };
+    }
+    if (effectiveCrosses && endMins > startMins) {
+      return {
+        isValid: false,
+        message: 'Para turnos que cruzan la medianoche, la hora de fin debe ser menor o igual a la hora de inicio (+1 día).'
+      };
+    }
+
     // Validación de horario nocturno (máximo 7 horas continuas)
-    if (request.shiftType === 'NIGHT' || isOvernight) {
+    if (request.shiftType === 'NIGHT' || effectiveCrosses) {
       if (hours > 7) {
         return {
           isValid: false,
@@ -70,10 +91,11 @@ export class ShiftFormUseCase {
     }
 
     // Validación de tolerancia de puntualidad (5 a 15 min)
-    if (request.gracePeriodMinutes < 5 || request.gracePeriodMinutes > 15) {
+    const lateTol = request.lateToleranceMinutes ?? request.gracePeriodMinutes ?? 10;
+    if (lateTol < 5 || lateTol > 15) {
       return {
         isValid: false,
-        message: 'La tolerancia de puntualidad debe estar configurada entre 5 y 15 minutos.'
+        message: 'La tolerancia de llegada tarde debe estar configurada entre 5 y 15 minutos.'
       };
     }
 
@@ -95,6 +117,13 @@ export class ShiftFormUseCase {
       this.toastService.error(val.message!);
       return false;
     }
+
+    // Sincronizar campos de Spring Boot
+    const { isOvernight } = this.calculateEffectiveHours(request.startTime, request.endTime, request.breakMinutes);
+    request.crossesMidnight = request.crossesMidnight ?? isOvernight;
+    request.isOvernight = request.crossesMidnight;
+    request.lateToleranceMinutes = request.lateToleranceMinutes ?? request.gracePeriodMinutes ?? 10;
+    request.earlyDepartureToleranceMinutes = request.earlyDepartureToleranceMinutes ?? 5;
 
     this.saving.set(true);
     this.validationError.set(null);

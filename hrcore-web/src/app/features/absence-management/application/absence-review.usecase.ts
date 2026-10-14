@@ -26,7 +26,24 @@ export class AbsenceReviewUseCase {
     this.error.set(null);
 
     try {
-      await firstValueFrom(this.absenceService.reviewRequest(payload));
+      if (payload.approved) {
+        try {
+          await firstValueFrom(
+            this.absenceService.approveRequest(payload.requestId, payload.rejectionReason)
+          );
+        } catch {
+          await firstValueFrom(this.absenceService.reviewRequest(payload));
+        }
+      } else {
+        try {
+          await firstValueFrom(
+            this.absenceService.rejectRequest(payload.requestId, payload.rejectionReason)
+          );
+        } catch {
+          await firstValueFrom(this.absenceService.reviewRequest(payload));
+        }
+      }
+
       const msg = payload.approved
         ? 'Solicitud aprobada exitosamente y sincronizada con el control de asistencia.'
         : 'Solicitud rechazada con justificación auditada.';
@@ -36,6 +53,20 @@ export class AbsenceReviewUseCase {
       const msg = err?.error?.message || err?.message || 'Error al procesar la revisión de la solicitud';
       this.error.set(msg);
       this.toastService.error(msg);
+      return false;
+    } finally {
+      this.reviewing.set(false);
+    }
+  }
+
+  async cancel(requestId: string, comment?: string): Promise<boolean> {
+    this.reviewing.set(true);
+    try {
+      await firstValueFrom(this.absenceService.cancelRequest(requestId, comment));
+      this.toastService.success('Solicitud cancelada correctamente.');
+      return true;
+    } catch (err: any) {
+      this.toastService.error(err?.error?.message || 'Error al cancelar la solicitud');
       return false;
     } finally {
       this.reviewing.set(false);

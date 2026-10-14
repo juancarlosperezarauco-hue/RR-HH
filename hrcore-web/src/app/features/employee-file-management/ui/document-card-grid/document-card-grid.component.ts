@@ -26,20 +26,45 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
         <!-- Header de la Tarjeta -->
         <div class="space-y-3">
           <div class="flex items-start justify-between gap-2">
-            <!-- Badge de Categoría -->
-            <span
-              [class]="getCategoryBadgeClass(doc.documentCategory)"
-              class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider">
-              {{ doc.documentCategory }}
-            </span>
+            <!-- Badges: Categoría y Estado de Verificación -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span
+                [class]="getCategoryBadgeClass(doc.documentCategory)"
+                class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider">
+                {{ doc.documentCategory }}
+              </span>
 
-            <!-- Badge Sensible -->
+              <!-- Badge de Verificación Spring Boot -->
+              <span
+                *ngIf="doc.verificationStatus === 'VERIFIED'"
+                class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 border border-emerald-500/20"
+                title="Documento formalmente validado por RRHH">
+                <lucide-icon name="check-circle" [size]="10"></lucide-icon>
+                VERIFICADO
+              </span>
+              <span
+                *ngIf="doc.verificationStatus === 'REJECTED'"
+                class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-500/20"
+                title="Documento observado o rechazado">
+                <lucide-icon name="circle-x" [size]="10"></lucide-icon>
+                RECHAZADO
+              </span>
+              <span
+                *ngIf="!doc.verificationStatus || doc.verificationStatus === 'PENDING'"
+                class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600 border border-amber-500/20"
+                title="Pendiente de revisión documental">
+                <lucide-icon name="clock" [size]="10"></lucide-icon>
+                PENDIENTE
+              </span>
+            </div>
+
+            <!-- Badge Confidencial / Sensible -->
             <span
-              *ngIf="doc.documentCategory === 'HEALTH'"
-              class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600 border border-red-500/20"
-              title="Documento confidencial con acceso RBAC">
-              <lucide-icon name="shield-alert" [size]="10"></lucide-icon>
-              SENSIBLE
+              *ngIf="doc.confidential || doc.documentCategory === 'HEALTH'"
+              class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600 border border-red-500/20 shrink-0"
+              title="Documento confidencial con acceso RBAC restringido">
+              <lucide-icon name="lock" [size]="10"></lucide-icon>
+              CONFIDENCIAL
             </span>
           </div>
 
@@ -80,32 +105,56 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
         </div>
 
         <!-- Acciones Inferiores (Protegidas por RBAC si es documento confidencial) -->
-        <div *ngIf="canAccessDocument(doc); else sensitiveBlocked" class="flex items-center justify-between gap-2 pt-1">
-          <button
-            type="button"
-            (click)="previewUseCase.openPreview(doc)"
-            class="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border bg-muted/40 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
-            <lucide-icon name="eye" [size]="14"></lucide-icon>
-            Ver
-          </button>
+        <div *ngIf="canAccessDocument(doc); else sensitiveBlocked" class="space-y-2 pt-1">
+          <div class="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              (click)="previewUseCase.openPreview(doc)"
+              class="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border bg-muted/40 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
+              <lucide-icon name="eye" [size]="14"></lucide-icon>
+              Ver
+            </button>
 
-          <a
-            *ngIf="doc.downloadUrl"
-            [href]="doc.downloadUrl"
-            target="_blank"
-            download
-            class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="Descargar">
-            <lucide-icon name="download" [size]="14"></lucide-icon>
-          </a>
+            <a
+              *ngIf="doc.downloadUrl"
+              [href]="doc.downloadUrl"
+              target="_blank"
+              download
+              class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="Descargar">
+              <lucide-icon name="download" [size]="14"></lucide-icon>
+            </a>
 
-          <button
-            type="button"
-            (click)="onDelete(doc.id)"
-            class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-            title="Archivar documento">
-            <lucide-icon name="trash-2" [size]="14"></lucide-icon>
-          </button>
+            <button
+              type="button"
+              (click)="onDelete(doc.id)"
+              class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+              title="Archivar documento">
+              <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+            </button>
+          </div>
+
+          <!-- Acciones de Verificación / Auditoría (RRHH / Admin) -->
+          <div *ngIf="canVerify()" class="flex items-center gap-1.5 pt-1.5 border-t border-border/40">
+            <button
+              *ngIf="doc.verificationStatus !== 'VERIFIED'"
+              type="button"
+              (click)="onVerify(doc.id, 'VERIFIED')"
+              class="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-500/10 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-500 hover:text-white transition-colors cursor-pointer"
+              title="Validar y aprobar formalmente el documento">
+              <lucide-icon name="check" [size]="12"></lucide-icon>
+              Verificar
+            </button>
+            <button
+              *ngIf="doc.verificationStatus !== 'REJECTED'"
+              type="button"
+              (click)="onVerify(doc.id, 'REJECTED')"
+              class="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-rose-500/10 py-1 text-[11px] font-semibold text-rose-600 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer"
+              title="Rechazar documento con observación">
+              <lucide-icon name="x" [size]="12"></lucide-icon>
+              Rechazar
+            </button>
+          </div>
         </div>
 
         <ng-template #sensitiveBlocked>
@@ -121,15 +170,32 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
 export class DocumentCardGridComponent {
   @Input() documents: EmployeeDocumentResponse[] = [];
   @Output() delete = new EventEmitter<string>();
+  @Output() verify = new EventEmitter<{ id: string; status: 'VERIFIED' | 'REJECTED' }>();
 
   readonly previewUseCase = inject(EmployeeDocumentPreviewUseCase);
   readonly permissionService = inject(PermissionService);
 
   canAccessDocument(doc: EmployeeDocumentResponse): boolean {
-    if (doc.documentCategory !== 'HEALTH') return true;
-    return this.permissionService.hasPermission('dossiers.sensitive.read') ||
-           this.permissionService.hasRole('ADMIN') ||
-           this.permissionService.hasRole('OWNER_ADMIN');
+    if (!doc.confidential && doc.documentCategory !== 'HEALTH') return true;
+    return (
+      this.permissionService.hasPermission('dossiers.sensitive.read') ||
+      this.permissionService.hasPermission('employee_files.documents.read') ||
+      this.permissionService.hasRole('ADMIN') ||
+      this.permissionService.hasRole('OWNER_ADMIN')
+    );
+  }
+
+  canVerify(): boolean {
+    return (
+      this.permissionService.hasPermission('employee_files.documents.verify') ||
+      this.permissionService.hasPermission('dossiers.manage') ||
+      this.permissionService.hasRole('ADMIN') ||
+      this.permissionService.hasRole('OWNER_ADMIN')
+    );
+  }
+
+  onVerify(id: string, status: 'VERIFIED' | 'REJECTED'): void {
+    this.verify.emit({ id, status });
   }
 
   onDelete(id: string): void {

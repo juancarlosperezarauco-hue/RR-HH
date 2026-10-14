@@ -1,9 +1,10 @@
-import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShiftResponse } from '../../../../entities/shift';
 import { ShiftAssignmentUseCase } from '../../application/shift-assignment.usecase';
+import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker.component';
 
 export interface EmployeeSelectOption {
   id: string;
@@ -15,7 +16,7 @@ export interface EmployeeSelectOption {
 @Component({
   selector: 'app-shift-assign-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, ShiftDaysPickerComponent],
   template: `
     <div
       *ngIf="isOpen && shift"
@@ -94,7 +95,7 @@ export interface EmployeeSelectOption {
 
           <!-- Switch Recurrente Semanal -->
           <div class="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3">
-            <div>
+            <div class="space-y-0.5 pr-2">
               <p class="text-xs font-bold text-accent-foreground">Asignación Recurrente</p>
               <p class="text-[11px] text-muted-foreground">Repite automáticamente cada semana según los días laborales configurados.</p>
             </div>
@@ -102,8 +103,14 @@ export interface EmployeeSelectOption {
               type="checkbox"
               [(ngModel)]="isRecurring"
               name="isRecurring"
-              class="rounded border-border text-primary focus:ring-primary h-4 w-4" />
+              class="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer" />
           </div>
+
+          <!-- Días de Aplicación de la Asignación (HU16: weekdays short array) -->
+          <app-shift-days-picker
+            [selectedDays]="weekdays"
+            (daysChange)="weekdays = $event">
+          </app-shift-days-picker>
 
           <!-- Alerta de Solapamiento (Escenario 5 BDD) -->
           <div
@@ -141,7 +148,7 @@ export interface EmployeeSelectOption {
     </div>
   `
 })
-export class ShiftAssignModalComponent {
+export class ShiftAssignModalComponent implements OnChanges {
   @Input() isOpen = false;
   @Input() shift: ShiftResponse | null = null;
   @Output() closeModal = new EventEmitter<void>();
@@ -174,6 +181,17 @@ export class ShiftAssignModalComponent {
   startDate = '2026-11-01';
   endDate = '2026-11-30';
   isRecurring = true;
+  weekdays: number[] = [1, 2, 3, 4, 5];
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['shift'] && this.shift) {
+      if (this.shift.days && this.shift.days.length > 0) {
+        this.weekdays = this.shift.days.filter((d) => d.isWorkDay).map((d) => d.dayOfWeek);
+      } else {
+        this.weekdays = [1, 2, 3, 4, 5];
+      }
+    }
+  }
 
   isSelected(id: string): boolean {
     return this.selectedEmployeeIds.includes(id);
@@ -203,6 +221,7 @@ export class ShiftAssignModalComponent {
       !!this.shift &&
       this.selectedEmployeeIds.length > 0 &&
       !!this.startDate &&
+      this.weekdays.length > 0 &&
       !this.overlapError
     );
   }
@@ -215,7 +234,8 @@ export class ShiftAssignModalComponent {
       employeeIds: this.selectedEmployeeIds,
       startDate: this.startDate,
       endDate: this.endDate || null,
-      isRecurring: this.isRecurring
+      isRecurring: this.isRecurring,
+      weekdays: this.weekdays
     });
 
     if (ok) {

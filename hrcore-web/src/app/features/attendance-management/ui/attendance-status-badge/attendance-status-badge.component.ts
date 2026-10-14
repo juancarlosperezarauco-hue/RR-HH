@@ -34,11 +34,17 @@ export class AttendanceStatusBadgeComponent {
       case 'ABSENT':
         return 'Inasistencia';
       case 'EXCUSED':
+      case 'JUSTIFIED':
         return 'Justificado';
       case 'HOLIDAY':
         return 'Feriado';
       case 'REST_DAY':
+      case 'DAY_OFF':
         return 'Día de Descanso';
+      case 'PENDING':
+        return 'Pendiente';
+      case 'INCOMPLETE':
+        return 'Jornada Incompleta';
       default:
         return this.status;
     }
@@ -55,11 +61,17 @@ export class AttendanceStatusBadgeComponent {
       case 'ABSENT':
         return 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20';
       case 'EXCUSED':
+      case 'JUSTIFIED':
         return 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20';
       case 'HOLIDAY':
         return 'bg-teal-500/10 text-teal-700 dark:text-teal-400 border-teal-500/20';
       case 'REST_DAY':
+      case 'DAY_OFF':
         return 'bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/20';
+      case 'PENDING':
+        return 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20';
+      case 'INCOMPLETE':
+        return 'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20';
       default:
         return 'bg-muted text-muted-foreground border-border';
     }
@@ -76,11 +88,17 @@ export class AttendanceStatusBadgeComponent {
       case 'ABSENT':
         return 'bg-rose-500';
       case 'EXCUSED':
+      case 'JUSTIFIED':
         return 'bg-sky-500';
       case 'HOLIDAY':
         return 'bg-teal-500';
       case 'REST_DAY':
+      case 'DAY_OFF':
         return 'bg-slate-400';
+      case 'PENDING':
+        return 'bg-amber-400';
+      case 'INCOMPLETE':
+        return 'bg-purple-500';
       default:
         return 'bg-muted-foreground';
     }

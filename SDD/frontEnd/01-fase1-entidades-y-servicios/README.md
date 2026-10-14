@@ -17,21 +17,25 @@ Esta capa es completamente independiente de componentes visuales y contiene:
 
 ```
 hrcore-web/src/app/entities/
-├── employee-file/                    # HU15: Dominio 6 DB (document_type, employee_document)
+├── employee-file/                    # HU15: Dominio 6 DB (EmployeeFile, EmployeeDocument, Version)
 │   ├── index.ts
 │   ├── model/
-│   │   ├── document-type.model.ts
-│   │   ├── employee-document.model.ts
+│   │   ├── employee-file.model.ts    # Expediente raíz por empleado
+│   │   ├── document-type.model.ts    # Enum DocumentType oficial de Spring Boot
+│   │   ├── employee-document.model.ts # DocumentResponse, VersionResponse y metadatos
 │   │   └── document-audit.model.ts
 │   └── api/
 │       └── employee-file.service.ts
 │
-├── shift/                            # HU16: Dominio 7 DB (shift, shift_day, assignment)
+├── shift/                            # HU16: Dominio 7 DB (WorkShift, Breaks, Assignments, Schedule)
 │   ├── index.ts
 │   ├── model/
-│   │   ├── shift.model.ts
+│   │   ├── shift.model.ts            # WorkShiftResponse con tolerancias y crossesMidnight
+│   │   ├── shift-break.model.ts      # ShiftBreakResponse (CRUD descansos anidados)
 │   │   ├── shift-day.model.ts
-│   │   └── shift-assignment.model.ts
+│   │   ├── shift-assignment.model.ts # ShiftAssignmentResponse con weekdays
+│   │   ├── calendar-exception.model.ts # WorkCalendarExceptionResponse
+│   │   └── schedule.model.ts         # ScheduleResponse y horario resuelto
 │   └── api/
 │       └── shift.service.ts
 │

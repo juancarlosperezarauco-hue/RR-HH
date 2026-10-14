@@ -99,28 +99,54 @@ export interface ClockEmployeeOption {
         </div>
 
         <!-- Right: Botones de Marcación & Debounce -->
-        <div class="flex flex-col items-stretch sm:items-end gap-3 min-w-[240px]">
-          <div class="flex items-center gap-2 w-full sm:w-auto">
+        <div class="flex flex-col items-stretch sm:items-end gap-3 min-w-[320px]">
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full">
             <!-- Botón Entrada -->
             <button
               (click)="punch('IN')"
               [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
-              class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar inicio de jornada laboral"
             >
-              <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-in" class="h-4 w-4"></lucide-icon>
-              <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
-              Marcar Entrada
+              <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-in" class="h-3.5 w-3.5"></lucide-icon>
+              <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
+              Entrada
+            </button>
+
+            <!-- Botón Pausa Almuerzo -->
+            <button
+              (click)="punch('BREAK_START')"
+              [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-amber-500 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar inicio de pausa o almuerzo"
+            >
+              <lucide-icon *ngIf="!clockUseCase.clocking()" name="coffee" class="h-3.5 w-3.5"></lucide-icon>
+              <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
+              Pausa
+            </button>
+
+            <!-- Botón Fin Pausa -->
+            <button
+              (click)="punch('BREAK_END')"
+              [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar fin de pausa y retorno al puesto"
+            >
+              <lucide-icon *ngIf="!clockUseCase.clocking()" name="play" class="h-3.5 w-3.5"></lucide-icon>
+              <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
+              Retorno
             </button>
 
             <!-- Botón Salida -->
             <button
               (click)="punch('OUT')"
               [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
-              class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-5 py-3 text-sm font-bold text-white shadow-md hover:from-indigo-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-rose-500 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar cierre de jornada laboral"
             >
-              <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-out" class="h-4 w-4"></lucide-icon>
-              <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
-              Marcar Salida
+              <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-out" class="h-3.5 w-3.5"></lucide-icon>
+              <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
+              Salida
             </button>
           </div>
 
@@ -196,7 +222,7 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
     this.todayRecord.set(record);
   }
 
-  async punch(type: 'IN' | 'OUT'): Promise<void> {
+  async punch(type: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END'): Promise<void> {
     const result = await this.clockUseCase.registerClock(this.selectedEmployeeId, type);
     if (result) {
       this.todayRecord.set(result);

@@ -59,8 +59,13 @@ SDD/
     ├── 05-fase5-hu18-ausencias/      # HU18: Features, balance de vacaciones y aprobaciones
     │   └── README.md
     │
-    └── 06-fase6-integracion-rutas/   # Integración en app.routes.ts, sidebar y RBAC
-        └── README.md
+    │   └── README.md
+    │
+    ├── 06-fase6-integracion-rutas/   # Integración en app.routes.ts, sidebar y RBAC
+    │   └── README.md
+    │
+    ├── 07-analisis-integracion-backend-hu15-hu16.md # Análisis a profundidad y plan de sincronización backend HU15/HU16
+    └── 08-analisis-integracion-backend-hu17-hu18.md # Análisis a profundidad y plan de sincronización backend HU17/HU18
 ```
 
 ---
@@ -76,6 +81,8 @@ SDD/
 | **Fase 4** | [04-fase4-hu17-asistencia](./04-fase4-hu17-asistencia/README.md) | Reloj virtual, geolocalización vs radio sucursal, debounce 2 min, regularizaciones y vista `/dashboard/attendance`. DoD y escenarios BDD. | Tablas: `work_location`, `attendance_record`, `attendance_punch`, `attendance_correction`. |
 | **Fase 5** | [05-fase5-hu18-ausencias](./05-fase5-hu18-ausencias/README.md) | Escala legal 15/20/30 días, cómputo de días hábiles, adjuntos vinculados con HU15 y vista `/dashboard/absences`. DoD y escenarios BDD. | Tablas: `holiday`, `leave_balance`, `leave_request`. |
 | **Fase 6** | [06-fase6-integracion-rutas](./06-fase6-integracion-rutas/README.md) | Enrutamiento seguro en `app.routes.ts`, menú lateral en `sidebar.component.ts`, permisos RBAC y verificación de build. DoD y escenarios BDD. | Tablas: `tenant_role_permission`. |
+| **Integración Back HU15/HU16** | [07-analisis-integracion-backend-hu15-hu16.md](./07-analisis-integracion-backend-hu15-hu16.md) | Análisis exhaustivo de los controladores reales Spring Boot (`/api/employee-files`, `/api/shifts`), matriz de brechas y migración. | Dominio 6 y Dominio 7 (`hrcore-api`). |
+| **Integración Back HU17/HU18** | [08-analisis-integracion-backend-hu17-hu18.md](./08-analisis-integracion-backend-hu17-hu18.md) | Análisis exhaustivo de los controladores reales Spring Boot (`/api/attendance`, `/api/leaves`), matriz de brechas y plan de 5 fases. | Dominio 8 y Dominio 9 (`hrcore-api`). |
 
 ---
 

@@ -169,6 +169,7 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
       <div *ngIf="activeView === 'GRID'" class="space-y-4">
         <app-document-card-grid
           [documents]="fileListUseCase.filteredDocuments()"
+          (verify)="onVerifyDocument($event)"
           (delete)="onDeleteDocument($event)">
         </app-document-card-grid>
 
@@ -273,6 +274,10 @@ export class EmployeeFilesPageComponent implements OnInit {
 
   onDocumentUploaded(): void {
     this.fileListUseCase.loadDocuments();
+  }
+
+  onVerifyDocument(event: { id: string; status: 'VERIFIED' | 'REJECTED' }): void {
+    this.fileListUseCase.verifyDocument(event.id, event.status);
   }
 
   onDeleteDocument(docId: string): void {

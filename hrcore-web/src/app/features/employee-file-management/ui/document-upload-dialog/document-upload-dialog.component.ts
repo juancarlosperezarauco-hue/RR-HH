@@ -2,7 +2,11 @@ import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { DocumentTypeResponse } from '../../../../entities/employee-file';
+import {
+  DocumentTypeResponse,
+  DocumentType,
+  DOCUMENT_TYPE_LABELS
+} from '../../../../entities/employee-file';
 import { EmployeeDocumentUploadUseCase } from '../../application/employee-document-upload.usecase';
 import { ToastService } from '../../../../shared/ui/toast/toast.service';
 
@@ -20,7 +24,7 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
         <!-- Header -->
         <div class="flex items-center justify-between border-b border-border pb-4">
           <div>
-            <h3 class="text-xl font-bold text-accent-foreground">Adjuntar Documento</h3>
+            <h3 class="text-xl font-bold text-accent-foreground">Adjuntar Documento Legal</h3>
             <p class="text-xs text-muted-foreground mt-0.5">Clasifica y archiva un documento en el expediente del trabajador.</p>
           </div>
           <button
@@ -44,10 +48,30 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
               required
               class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary">
               <option value="" disabled selected>Selecciona una categoría de documento...</option>
-              <option *ngFor="let t of documentTypes" [value]="t.id">
-                {{ t.name }} ({{ t.category }})
-              </option>
+              <ng-container *ngIf="documentTypes && documentTypes.length > 0; else fallbackTypesTpl">
+                <option *ngFor="let t of documentTypes" [value]="t.id">
+                  {{ t.name }} ({{ t.category }})
+                </option>
+              </ng-container>
+              <ng-template #fallbackTypesTpl>
+                <option *ngFor="let opt of defaultDocumentTypeOptions" [value]="opt.type">
+                  {{ opt.label }}
+                </option>
+              </ng-template>
             </select>
+          </div>
+
+          <!-- Título del Documento -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Título o Nombre Descriptivo (Opcional)
+            </label>
+            <input
+              type="text"
+              [(ngModel)]="documentTitle"
+              name="documentTitle"
+              placeholder="Ej: Contrato de Trabajo Indefinido 2026, Carnet de Identidad"
+              class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </div>
 
           <!-- Nro de Documento / Folio -->
@@ -85,6 +109,24 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
                 name="expirationDate"
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </div>
+          </div>
+
+          <!-- Documento Confidencial (HU15) -->
+          <div class="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3">
+            <div class="space-y-0.5 pr-2">
+              <div class="flex items-center gap-1.5 text-xs font-bold text-accent-foreground">
+                <lucide-icon name="lock" [size]="14" class="text-amber-500"></lucide-icon>
+                <span>Documento Confidencial</span>
+              </div>
+              <p class="text-[11px] text-muted-foreground">
+                Restringe el acceso exclusivamente a roles de RRHH autorizados y administradores.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              [(ngModel)]="isConfidential"
+              name="isConfidential"
+              class="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer" />
           </div>
 
           <!-- Selector de Archivo / Drop Area con Validación Inmediata -->
@@ -178,10 +220,16 @@ export class DocumentUploadDialogComponent {
   readonly uploadUseCase = inject(EmployeeDocumentUploadUseCase);
   private readonly toastService = inject(ToastService);
 
+  readonly defaultDocumentTypeOptions: { type: DocumentType; label: string }[] = Object.entries(
+    DOCUMENT_TYPE_LABELS
+  ).map(([type, label]) => ({ type: type as DocumentType, label }));
+
   selectedTypeId = '';
+  documentTitle = '';
   documentNumber = '';
   issueDate = '';
   expirationDate = '';
+  isConfidential = false;
   selectedFile: File | null = null;
   fileError: string | null = null;
   isDragging = false;
@@ -217,6 +265,9 @@ export class DocumentUploadDialogComponent {
     }
     this.fileError = null;
     this.selectedFile = file;
+    if (!this.documentTitle) {
+      this.documentTitle = file.name.replace(/\.[^/.]+$/, '');
+    }
   }
 
   clearFile(event: Event): void {
@@ -232,12 +283,19 @@ export class DocumentUploadDialogComponent {
   async submit(): Promise<void> {
     if (!this.isValid()) return;
 
+    // Detectar si selectedTypeId es un enum canónico de Spring Boot
+    const isCanonicalEnum = Object.keys(DOCUMENT_TYPE_LABELS).includes(this.selectedTypeId);
+    const documentType = isCanonicalEnum ? (this.selectedTypeId as DocumentType) : undefined;
+
     const ok = await this.uploadUseCase.upload({
       employeeId: this.employeeId,
       documentTypeId: this.selectedTypeId,
+      documentType,
+      title: this.documentTitle || undefined,
       documentNumber: this.documentNumber || undefined,
       issueDate: this.issueDate || undefined,
       expirationDate: this.expirationDate || undefined,
+      confidential: this.isConfidential,
       file: this.selectedFile!
     });
 
@@ -255,9 +313,11 @@ export class DocumentUploadDialogComponent {
 
   private resetForm(): void {
     this.selectedTypeId = '';
+    this.documentTitle = '';
     this.documentNumber = '';
     this.issueDate = '';
     this.expirationDate = '';
+    this.isConfidential = false;
     this.selectedFile = null;
     this.fileError = null;
     this.isDragging = false;

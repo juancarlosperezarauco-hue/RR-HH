@@ -124,22 +124,56 @@ import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker
             </div>
           </div>
 
-          <!-- Tolerancia de puntualidad (5 a 15 min) -->
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Tolerancia de Puntualidad (LGT: 5 a 15 min) *
-              </label>
-              <span class="text-xs font-bold text-primary">{{ gracePeriodMinutes }} minutos</span>
+          <!-- Tolerancias de Puntualidad (HU16: Entrada y Salida) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Tol. Entrada (5 a 15 min) *
+                </label>
+                <span class="text-xs font-bold text-primary">{{ lateToleranceMinutes }} min</span>
+              </div>
+              <input
+                type="range"
+                [(ngModel)]="lateToleranceMinutes"
+                name="lateToleranceMinutes"
+                min="5"
+                max="15"
+                step="1"
+                class="w-full accent-primary cursor-pointer" />
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Tol. Salida Anticipada (0 a 15 min)
+                </label>
+                <span class="text-xs font-bold text-primary">{{ earlyDepartureToleranceMinutes }} min</span>
+              </div>
+              <input
+                type="range"
+                [(ngModel)]="earlyDepartureToleranceMinutes"
+                name="earlyDepartureToleranceMinutes"
+                min="0"
+                max="15"
+                step="1"
+                class="w-full accent-primary cursor-pointer" />
+            </div>
+          </div>
+
+          <!-- Cruce de Medianoche (Toggle explícito) -->
+          <div class="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3">
+            <div class="space-y-0.5">
+              <p class="text-xs font-bold text-accent-foreground">Cruza Medianoche (+1 Día)</p>
+              <p class="text-[11px] text-muted-foreground">
+                Habilita si la jornada laboral finaliza al día siguiente (Turno Nocturno).
+              </p>
             </div>
             <input
-              type="range"
-              [(ngModel)]="gracePeriodMinutes"
-              name="gracePeriodMinutes"
-              min="5"
-              max="15"
-              step="1"
-              class="w-full accent-primary cursor-pointer" />
+              type="checkbox"
+              [(ngModel)]="crossesMidnight"
+              name="crossesMidnight"
+              class="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer" />
           </div>
 
           <!-- Panel de Cálculo y Cumplimiento Normativo en Vivo -->
@@ -154,7 +188,7 @@ import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker
                 Cálculo de Jornada Efectiva:
               </span>
               <div class="flex items-center gap-2">
-                <span *ngIf="effectiveCalculation.isOvernight" class="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                <span *ngIf="effectiveCalculation.isOvernight || crossesMidnight" class="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
                   <lucide-icon name="clock" [size]="10"></lucide-icon>
                   +1 DÍA (CRUCE MEDIANOCHE)
                 </span>
@@ -220,7 +254,9 @@ export class ShiftFormModalComponent implements OnChanges {
   startTime = '08:30';
   endTime = '16:30';
   breakMinutes = 45;
-  gracePeriodMinutes = 10;
+  lateToleranceMinutes = 10;
+  earlyDepartureToleranceMinutes = 5;
+  crossesMidnight = false;
   workDays: number[] = [1, 2, 3, 4, 5];
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -231,7 +267,9 @@ export class ShiftFormModalComponent implements OnChanges {
       this.startTime = this.shiftToEdit.startTime.substring(0, 5);
       this.endTime = this.shiftToEdit.endTime.substring(0, 5);
       this.breakMinutes = this.shiftToEdit.breakMinutes;
-      this.gracePeriodMinutes = this.shiftToEdit.gracePeriodMinutes;
+      this.lateToleranceMinutes = this.shiftToEdit.lateToleranceMinutes ?? this.shiftToEdit.gracePeriodMinutes ?? 10;
+      this.earlyDepartureToleranceMinutes = this.shiftToEdit.earlyDepartureToleranceMinutes ?? 5;
+      this.crossesMidnight = this.shiftToEdit.crossesMidnight ?? this.shiftToEdit.isOvernight ?? false;
       this.workDays = this.shiftToEdit.days
         ? this.shiftToEdit.days.filter((d) => d.isWorkDay).map((d) => d.dayOfWeek)
         : [1, 2, 3, 4, 5];
@@ -241,7 +279,8 @@ export class ShiftFormModalComponent implements OnChanges {
   }
 
   get effectiveCalculation() {
-    return this.formUseCase.calculateEffectiveHours(this.startTime, this.endTime, this.breakMinutes);
+    const calc = this.formUseCase.calculateEffectiveHours(this.startTime, this.endTime, this.breakMinutes);
+    return calc;
   }
 
   get lawValidation() {
@@ -252,8 +291,11 @@ export class ShiftFormModalComponent implements OnChanges {
       startTime: this.startTime,
       endTime: this.endTime,
       breakMinutes: this.breakMinutes,
-      gracePeriodMinutes: this.gracePeriodMinutes,
-      isOvernight: this.effectiveCalculation.isOvernight,
+      lateToleranceMinutes: this.lateToleranceMinutes,
+      earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes,
+      gracePeriodMinutes: this.lateToleranceMinutes,
+      crossesMidnight: this.crossesMidnight,
+      isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight,
       workDays: this.workDays
     });
   }
@@ -273,8 +315,11 @@ export class ShiftFormModalComponent implements OnChanges {
         startTime: this.startTime.length === 5 ? `${this.startTime}:00` : this.startTime,
         endTime: this.endTime.length === 5 ? `${this.endTime}:00` : this.endTime,
         breakMinutes: this.breakMinutes,
-        gracePeriodMinutes: this.gracePeriodMinutes,
-        isOvernight: this.effectiveCalculation.isOvernight,
+        lateToleranceMinutes: this.lateToleranceMinutes,
+        earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes,
+        gracePeriodMinutes: this.lateToleranceMinutes,
+        crossesMidnight: this.crossesMidnight,
+        isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight,
         workDays: this.workDays
       },
       this.shiftToEdit?.id
@@ -297,7 +342,9 @@ export class ShiftFormModalComponent implements OnChanges {
     this.startTime = '08:30';
     this.endTime = '16:30';
     this.breakMinutes = 45;
-    this.gracePeriodMinutes = 10;
+    this.lateToleranceMinutes = 10;
+    this.earlyDepartureToleranceMinutes = 5;
+    this.crossesMidnight = false;
     this.workDays = [1, 2, 3, 4, 5];
   }
 }

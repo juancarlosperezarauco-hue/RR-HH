@@ -3,7 +3,8 @@ import { firstValueFrom } from 'rxjs';
 import {
   ShiftService,
   EmployeeShiftAssignmentResponse,
-  AssignShiftRequest
+  AssignShiftRequest,
+  CreateShiftAssignmentRequest
 } from '../../../entities/shift';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 
@@ -20,11 +21,20 @@ export class ShiftAssignmentUseCase {
   async loadAssignments(): Promise<void> {
     this.loading.set(true);
     try {
-      // Obtenemos asignaciones generales simuladas o del backend
+      // 1. Intentar listado canónico de Spring Boot: /api/shifts/assignments
+      const res = await firstValueFrom(this.shiftService.listAssignments());
+      if (res?.data?.content) {
+        this.assignments.set(res.data.content);
+        return;
+      }
+    } catch {
+      // Fallback a ruta legada
+    }
+
+    try {
       const res = await firstValueFrom(this.shiftService.getEmployeeAssignments('all'));
       this.assignments.set(res.data);
     } catch {
-      // Fallback a asignaciones precargadas
       this.assignments.set([]);
     } finally {
       this.loading.set(false);
@@ -77,10 +87,40 @@ export class ShiftAssignmentUseCase {
 
     this.assigning.set(true);
     this.error.set(null);
+
+    const weekdays = request.weekdays && request.weekdays.length > 0 ? request.weekdays : [1, 2, 3, 4, 5];
+
     try {
-      const res = await firstValueFrom(this.shiftService.assignShifts(request));
+      // Intentar asignación canónica individual por cada empleado en Spring Boot
+      let successCount = 0;
+      for (const empId of request.employeeIds) {
+        const payload: CreateShiftAssignmentRequest = {
+          employeeId: empId,
+          shiftId: request.shiftId,
+          startDate: request.startDate,
+          endDate: request.endDate,
+          weekdays
+        };
+        try {
+          const res = await firstValueFrom(this.shiftService.createAssignment(payload));
+          if (res?.data) {
+            this.assignments.update((prev) => [res.data, ...prev]);
+            successCount++;
+          }
+        } catch {
+          // Si el endpoint individual falla en modo mock, continuar al fallback
+          break;
+        }
+      }
+
+      if (successCount === request.employeeIds.length) {
+        this.toastService.success(`Turno asignado a ${successCount} colaborador(es) exitosamente`);
+        return true;
+      }
+
+      // Fallback a asignación en lote
+      const res = await firstValueFrom(this.shiftService.assignShifts({ ...request, weekdays }));
       this.toastService.success('Turno asignado exitosamente sin solapamientos');
-      // Actualizar asignaciones locales
       this.assignments.update((prev) => [...res.data, ...prev]);
       return true;
     } catch (err: unknown) {
@@ -91,6 +131,46 @@ export class ShiftAssignmentUseCase {
       return false;
     } finally {
       this.assigning.set(false);
+    }
+  }
+
+  /**
+   * Cancelar asignación de turno
+   * PATCH /api/shifts/assignments/{id}/cancel
+   */
+  async cancelAssignment(id: string): Promise<boolean> {
+    try {
+      await firstValueFrom(this.shiftService.cancelAssignment(id));
+      this.toastService.success('Asignación cancelada exitosamente');
+      this.assignments.update((list) =>
+        list.map((a) => (a.id === id ? { ...a, status: 'CANCELLED' } : a))
+      );
+      return true;
+    } catch (err: unknown) {
+      const errorResponse = err as { error?: { message?: string } };
+      const msg = errorResponse?.error?.message || 'Error al cancelar la asignación';
+      this.toastService.error(msg);
+      return false;
+    }
+  }
+
+  /**
+   * Cerrar asignación de turno
+   * PATCH /api/shifts/assignments/{id}/close
+   */
+  async closeAssignment(id: string): Promise<boolean> {
+    try {
+      await firstValueFrom(this.shiftService.closeAssignment(id));
+      this.toastService.success('Asignación cerrada exitosamente');
+      this.assignments.update((list) =>
+        list.map((a) => (a.id === id ? { ...a, status: 'INACTIVE' } : a))
+      );
+      return true;
+    } catch (err: unknown) {
+      const errorResponse = err as { error?: { message?: string } };
+      const msg = errorResponse?.error?.message || 'Error al cerrar la asignación';
+      this.toastService.error(msg);
+      return false;
     }
   }
 }

@@ -35,9 +35,11 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
             class="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
           >
             <option value="ALL">Todos los Estados</option>
+            <option value="DRAFT">Borrador</option>
             <option value="PENDING">Pendientes de Aprobación</option>
             <option value="APPROVED">Aprobadas</option>
             <option value="REJECTED">Rechazadas</option>
+            <option value="CANCELLED">Canceladas</option>
           </select>
 
           <!-- Refresh Button -->

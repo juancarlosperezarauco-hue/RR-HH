@@ -217,3 +217,18 @@ export class ShiftFormUseCase {
 * **CUANDO** se intenta asignarle el Turno B con vigencia del 15/10/2026 al 15/11/2026.
 * **ENTONCES** el caso de uso detecta la colisión temporal y notifica al usuario impidiendo la doble asignación simultánea.
 
+---
+
+### 6. Sincronización con el Backend Real Spring Boot (`hrcore-api`)
+Para la conexión definitiva con los controladores Java reales (`/api/shifts`), consultar la especificación detallada en:
+👉 [07-analisis-integracion-backend-hu15-hu16.md](../07-analisis-integracion-backend-hu15-hu16.md)
+
+**Aspectos clave de alineación:**
+* Endpoints bajo `/api/shifts` (sin prefijo `/v1`).
+* Mapeo de campos del turno: `crossesMidnight: boolean`, `lateToleranceMinutes: int`, `earlyDepartureToleranceMinutes: int`, `description`.
+* Endpoints dedicados para activación: `PATCH /api/shifts/{id}/activate` y `PATCH /api/shifts/{id}/deactivate`.
+* Sub-recurso de descansos: `/api/shifts/{id}/breaks` (CRUD para descansos como almuerzo, refrigerio, remunerados o no).
+* Asignación individual: `POST /api/shifts/assignments` con array de días de la semana `weekdays: [1, 2, 3, 4, 5]` y ciclo `/cancel`, `/close`.
+* Soporte a Excepciones de Calendario (`/api/shifts/calendar-exceptions`) y Horario Resuelto Efectivo (`/api/shifts/schedule`).
+
+

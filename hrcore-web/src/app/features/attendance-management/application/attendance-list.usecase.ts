@@ -65,9 +65,23 @@ export class AttendanceListUseCase {
   });
 
   readonly totalWorkedHours = computed(() => {
-    const total = this.records().reduce((acc, curr) => acc + (curr.workedHours || 0), 0);
+    const total = this.records().reduce((acc, curr) => {
+      if (curr.workedHours !== undefined) return acc + curr.workedHours;
+      if (curr.workedMinutes !== undefined) return acc + (curr.workedMinutes / 60);
+      return acc;
+    }, 0);
     return Math.round(total * 10) / 10;
   });
+
+  async calculateRecord(employeeId: string, workDate: string): Promise<boolean> {
+    try {
+      await firstValueFrom(this.attendanceService.calculateRecord({ employeeId, workDate }));
+      await this.loadRecords();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async loadRecords(): Promise<void> {
     this.loading.set(true);

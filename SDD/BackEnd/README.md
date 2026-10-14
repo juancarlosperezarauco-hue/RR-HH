@@ -60,16 +60,25 @@ Para listas paginadas (`PageResponse<T>`):
 
 ### 3. Matriz de Endpoints y Mapeo con Base de Datos
 
-| Historia | Dominio DB | Tabla Principal | Endpoint REST | Método | Mock Asociado |
+| Historia | Dominio DB | Entidad Principal | Endpoint REST Real (Spring Boot) | Método | Mock / Uso |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **HU15** | Dominio 6 | `document_type` | `/api/v1/document-types` | `GET` | [`hu15-dossiers.mock.json`](./mocks/hu15-dossiers.mock.json) |
-| **HU15** | Dominio 6 | `employee_document` | `/api/v1/employees/{empId}/documents` | `GET`, `POST` | [`hu15-dossiers.mock.json`](./mocks/hu15-dossiers.mock.json) |
-| **HU15** | Dominio 6 | `employee_document` | `/api/v1/documents/{docId}/preview` | `GET` | [`hu15-dossiers.mock.json`](./mocks/hu15-dossiers.mock.json) |
-| **HU15** | Dominio 6 | `employee_document` | `/api/v1/documents/{docId}` | `DELETE` | [`hu15-dossiers.mock.json`](./mocks/hu15-dossiers.mock.json) |
-| **HU15** | Dominio 6 | `employee_document_audit` | `/api/v1/documents/{docId}/audits` | `GET` | [`hu15-dossiers.mock.json`](./mocks/hu15-dossiers.mock.json) |
-| **HU16** | Dominio 7 | `shift`, `shift_day` | `/api/v1/shifts` | `GET`, `POST` | [`hu16-shifts.mock.json`](./mocks/hu16-shifts.mock.json) |
-| **HU16** | Dominio 7 | `shift` | `/api/v1/shifts/{id}` | `PUT`, `DELETE` | [`hu16-shifts.mock.json`](./mocks/hu16-shifts.mock.json) |
-| **HU16** | Dominio 7 | `employee_shift_assignment` | `/api/v1/shifts/assignments` | `GET`, `POST` | [`hu16-shifts.mock.json`](./mocks/hu16-shifts.mock.json) |
+| **HU15** | Dominio 6 | `EmployeeFile` | `/api/employee-files` | `GET`, `POST` | Listar y crear expedientes |
+| **HU15** | Dominio 6 | `EmployeeFile` | `/api/employee-files/by-employee/{empId}` | `GET` | Consultar expediente por empleado |
+| **HU15** | Dominio 6 | `EmployeeFile` | `/api/employee-files/{id}` | `GET`, `PUT` | Detalle y edición de expediente |
+| **HU15** | Dominio 6 | `EmployeeDocument` | `/api/employee-files/{id}/documents` | `GET`, `POST` | Listar docs y registrar metadatos |
+| **HU15** | Dominio 6 | `EmployeeDocument` | `/api/employee-files/{id}/documents/{docId}` | `GET`, `PUT` | Detalle y actualización de metadatos |
+| **HU15** | Dominio 6 | `EmployeeDocument` | `/api/employee-files/{id}/documents/{docId}/verify` | `PATCH` | Verificar o rechazar documento |
+| **HU15** | Dominio 6 | `EmployeeDocumentVersion` | `/api/employee-files/{id}/documents/{docId}/versions` | `GET`, `POST` | Listar versiones / Subir archivo (Multipart) |
+| **HU15** | Dominio 6 | `EmployeeDocumentVersion` | `/api/employee-files/{id}/documents/{docId}/versions/{verId}/download` | `GET` | Descargar versión binaria (Blob) |
+| **HU16** | Dominio 7 | `WorkShift` | `/api/shifts` | `GET`, `POST` | Listar y crear turnos de trabajo |
+| **HU16** | Dominio 7 | `WorkShift` | `/api/shifts/{id}` | `GET`, `PUT` | Detalle y edición de turno |
+| **HU16** | Dominio 7 | `WorkShift` | `/api/shifts/{id}/activate` / `/deactivate` | `PATCH` | Activar o desactivar turno |
+| **HU16** | Dominio 7 | `ShiftBreak` | `/api/shifts/{id}/breaks` | `GET`, `POST` | Listar y crear descansos del turno |
+| **HU16** | Dominio 7 | `ShiftBreak` | `/api/shifts/{id}/breaks/{breakId}` | `GET`, `PUT`, `DELETE` | CRUD de descansos (almuerzo, pausas) |
+| **HU16** | Dominio 7 | `EmployeeShiftAssignment` | `/api/shifts/assignments` | `GET`, `POST` | Listar y crear asignaciones individuales |
+| **HU16** | Dominio 7 | `EmployeeShiftAssignment` | `/api/shifts/assignments/{id}/cancel` / `/close` | `PATCH` | Cancelar o cerrar asignación |
+| **HU16** | Dominio 7 | `WorkCalendarException` | `/api/shifts/calendar-exceptions` | `GET`, `POST`, `PUT`, `DELETE` | Feriados y excepciones de calendario |
+| **HU16** | Dominio 7 | `EffectiveSchedule` | `/api/shifts/schedule?employeeId={uuid}&date={date}` | `GET` | Horario resuelto para asistencia |
 | **HU17** | Dominio 8 | `attendance_record` | `/api/v1/attendance/records` | `GET` | [`hu17-attendance.mock.json`](./mocks/hu17-attendance.mock.json) |
 | **HU17** | Dominio 8 | `attendance_punch` | `/api/v1/attendance/clock` | `POST` | [`hu17-attendance.mock.json`](./mocks/hu17-attendance.mock.json) |
 | **HU17** | Dominio 8 | `attendance_record` | `/api/v1/attendance/today/{empId}` | `GET` | [`hu17-attendance.mock.json`](./mocks/hu17-attendance.mock.json) |

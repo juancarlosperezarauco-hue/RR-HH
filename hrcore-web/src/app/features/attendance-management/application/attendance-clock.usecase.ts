@@ -79,7 +79,8 @@ export class AttendanceClockUseCase {
 
   async registerClock(
     employeeId: string,
-    punchType: 'IN' | 'OUT'
+    punchType: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END' | 'BREAK_OUT' | 'BREAK_IN',
+    notes?: string
   ): Promise<AttendanceRecordResponse | null> {
     if (this.isDebounced()) {
       this.toastService.warning(
@@ -98,8 +99,10 @@ export class AttendanceClockUseCase {
           employeeId,
           type: punchType,
           method: 'WEB',
+          source: 'WEB',
           latitude: coords.latitude,
-          longitude: coords.longitude
+          longitude: coords.longitude,
+          notes: notes
         })
       );
 
@@ -109,8 +112,13 @@ export class AttendanceClockUseCase {
       }
       this.checkDebounceTimer();
 
-      const label = punchType === 'IN' ? 'Entrada' : 'Salida';
-      this.toastService.success(`Marcación de ${label} registrada y sellada por el servidor.`);
+      let label = 'Marcación';
+      if (punchType === 'IN') label = 'Entrada';
+      else if (punchType === 'OUT') label = 'Salida';
+      else if (punchType === 'BREAK_START' || punchType === 'BREAK_OUT') label = 'Inicio de Pausa';
+      else if (punchType === 'BREAK_END' || punchType === 'BREAK_IN') label = 'Fin de Pausa';
+
+      this.toastService.success(`${label} registrada y sellada con timestamp inmutable.`);
       this.lastPunchResult.set(res.data);
       return res.data;
     } catch (err: any) {

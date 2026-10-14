@@ -1,3 +1,31 @@
+/**
+ * Enum oficial de backend Spring Boot:
+ * com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.model.DocumentType
+ */
+export type DocumentType =
+  | 'IDENTITY'
+  | 'CONTRACT'
+  | 'CERTIFICATE'
+  | 'EDUCATION'
+  | 'MEDICAL'
+  | 'DISCIPLINARY'
+  | 'PAYROLL'
+  | 'OTHER';
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  IDENTITY: 'Documento de Identidad',
+  CONTRACT: 'Contrato Laboral',
+  CERTIFICATE: 'Certificado Laboral / Capacitación',
+  EDUCATION: 'Título / Diploma Académico',
+  MEDICAL: 'Certificado Médico / Baja de Salud',
+  DISCIPLINARY: 'Memorando / Sanción Disciplinaria',
+  PAYROLL: 'Boleta de Pago / Liquidación',
+  OTHER: 'Otros Documentos'
+};
+
+// ========================================================
+// Tipos legados para compatibilidad transicional con UI/mocks
+// ========================================================
 export type DocumentCategory = 
   | 'IDENTIFICATION' // CI, Pasaporte, Libreta militar
   | 'CONTRACT'       // Contratos, adendas, confidencialidad

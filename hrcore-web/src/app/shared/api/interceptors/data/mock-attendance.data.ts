@@ -1,12 +1,16 @@
 import {
   AttendanceRecordResponse,
-  AttendanceCorrectionResponse
+  AttendanceCorrectionResponse,
+  AttendanceAdjustmentResponse,
+  AttendanceOvertimeResponse
 } from '../../../../entities/attendance';
 
 export const MOCK_ATTENDANCE: {
   attendanceRecords: AttendanceRecordResponse[];
   attendancePunches: any[];
   attendanceCorrections: AttendanceCorrectionResponse[];
+  attendanceAdjustments: AttendanceAdjustmentResponse[];
+  attendanceOvertime: AttendanceOvertimeResponse[];
 } = {
   attendanceRecords: [
     {
@@ -117,6 +121,38 @@ export const MOCK_ATTENDANCE: {
       status: 'APPROVED' as const,
       createdAt: '2026-10-12T09:10:00Z',
       decidedAt: '2026-10-12T09:15:00Z'
+    }
+  ],
+  attendanceAdjustments: [
+    {
+      id: 'adj-001-33333333',
+      attendanceRecordId: '33333333-3333-3333-3333-333333333302',
+      adjustmentType: 'TIME_CORRECTION',
+      reason: 'Falla técnica en torniquete biométrico de ingreso. Se verificó con cámara de seguridad llegada a las 08:30.',
+      previousValues: { checkInTime: '2026-10-12T08:48:00Z' },
+      requestedValues: { checkInTime: '2026-10-12T08:30:00Z' },
+      status: 'APPROVED',
+      requestedBy: '550e8400-e29b-41d4-a716-446655440000',
+      reviewedBy: '550e8400-e29b-41d4-a716-446655440000',
+      reviewedAt: '2026-10-12T09:15:00Z',
+      reviewComment: 'Regularización aprobada por RRHH según reporte de seguridad interna.',
+      appliedAt: '2026-10-12T09:15:00Z',
+      createdAt: '2026-10-12T09:10:00Z',
+      updatedAt: '2026-10-12T09:15:00Z'
+    }
+  ],
+  attendanceOvertime: [
+    {
+      id: 'ot-001-33333333',
+      attendanceRecordId: '33333333-3333-3333-3333-333333333301',
+      requestedMinutes: 120,
+      approvedMinutes: 120,
+      reason: 'Cierre fiscal de mes',
+      status: 'APPROVED',
+      approvedBy: '550e8400-e29b-41d4-a716-446655440000',
+      approvedAt: '2026-10-12T18:00:00Z',
+      createdAt: '2026-10-12T17:00:00Z',
+      updatedAt: '2026-10-12T18:00:00Z'
     }
   ]
 };

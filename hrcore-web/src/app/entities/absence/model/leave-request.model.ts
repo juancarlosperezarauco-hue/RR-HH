@@ -1,26 +1,43 @@
-export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type LeaveStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface LeaveRequestResponse {
-  id: string;               // UUID
-  tenantId: string;         // UUID
-  employeeId: string;       // UUID
-  employeeFullName?: string;
-  leaveTypeId: string;      // UUID
-  leaveTypeName?: string;
-  startDate: string;        // YYYY-MM-DD
-  endDate: string;          // YYYY-MM-DD
-  totalDays: number;        // Días hábiles computados
-  isHourly: boolean;
-  startTime?: string | null;
-  endTime?: string | null;
-  totalHours?: number | null;
+  id: string;                    // UUID
+  employeeId: string;            // UUID
+  leaveTypeId: string;           // UUID
+  startDate: string;             // YYYY-MM-DD
+  endDate: string;               // YYYY-MM-DD
+  startTime?: string | null;     // HH:mm:ss
+  endTime?: string | null;       // HH:mm:ss
+  requestedDays?: number;        // Días computados backend
   reason: string;
-  attachmentUrl?: string | null; // Vinculado con archivo en HU15
   status: LeaveStatus;
-  reviewedBy?: string | null;
-  reviewedAt?: string | null;
-  rejectionReason?: string | null;
+  requestedBy?: string | null;   // UUID
+  submittedAt?: string | null;   // ISO Instant
+  reviewedBy?: string | null;    // UUID
+  reviewedAt?: string | null;    // ISO Instant
+  reviewComment?: string | null; // Comentario de aprobación o rechazo
   createdAt: string;
+  updatedAt?: string;
+
+  // Backwards compatibility / UI view model aliases
+  tenantId?: string;
+  employeeFullName?: string;
+  leaveTypeName?: string;
+  totalDays: number;             // Requerido para plantillas y cálculos existentes
+  isHourly?: boolean;
+  totalHours?: number | null;
+  attachmentUrl?: string | null;
+  rejectionReason?: string | null; // Alias de reviewComment
+}
+
+export interface CreateLeaveRequestInput {
+  employeeId: string;
+  leaveTypeId: string;
+  startDate: string;             // YYYY-MM-DD
+  endDate: string;               // YYYY-MM-DD
+  startTime?: string;            // HH:mm:ss
+  endTime?: string;              // HH:mm:ss
+  reason: string;
 }
 
 export interface CreateLeaveRequestPayload {
@@ -32,8 +49,32 @@ export interface CreateLeaveRequestPayload {
   proofDocument?: File | null;
 }
 
+export interface ReviewLeaveInput {
+  comment?: string;
+}
+
 export interface ReviewLeaveRequestPayload {
   requestId: string;
   approved: boolean;
-  rejectionReason?: string; // Obligatorio si approved = false (mín 10 caracteres)
+  rejectionReason?: string;
+}
+
+export interface LeaveAttachmentResponse {
+  id: string;                    // UUID
+  leaveRequestId: string;        // UUID
+  filename: string;
+  mimeType: string;
+  fileSize: number;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
+export interface LeaveHistoryResponse {
+  id: string;                    // UUID
+  leaveRequestId: string;        // UUID
+  previousStatus?: LeaveStatus;
+  newStatus: LeaveStatus;
+  comment?: string;
+  performedBy?: string;
+  createdAt: string;
 }

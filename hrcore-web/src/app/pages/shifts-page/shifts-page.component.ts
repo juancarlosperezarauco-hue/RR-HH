@@ -227,7 +227,9 @@ import { MOCK_SHIFTS } from '../../shared/api/interceptors/data/mock-shifts.data
       <!-- Vista 2: Tabla de Asignaciones de Trabajadores -->
       <app-shift-assignments-table
         *ngIf="activeView === 'ASSIGNMENTS'"
-        [assignments]="assignments">
+        [assignments]="assignments"
+        (cancel)="onCancelAssignment($event)"
+        (close)="onCloseAssignment($event)">
       </app-shift-assignments-table>
 
       <!-- Modal de Creación / Edición de Turnos -->
@@ -259,7 +261,8 @@ export class ShiftsPageComponent implements OnInit {
   selectedShiftToAssign: ShiftResponse | null = null;
 
   get assignments() {
-    return MOCK_SHIFTS.employeeShiftAssignments;
+    const list = this.shiftAssignmentUseCase.assignments();
+    return list && list.length > 0 ? list : MOCK_SHIFTS.employeeShiftAssignments;
   }
 
   ngOnInit(): void {
@@ -293,5 +296,13 @@ export class ShiftsPageComponent implements OnInit {
 
   onShiftAssigned(): void {
     this.shiftAssignmentUseCase.loadAssignments();
+  }
+
+  async onCancelAssignment(id: string): Promise<void> {
+    await this.shiftAssignmentUseCase.cancelAssignment(id);
+  }
+
+  async onCloseAssignment(id: string): Promise<void> {
+    await this.shiftAssignmentUseCase.closeAssignment(id);
   }
 }

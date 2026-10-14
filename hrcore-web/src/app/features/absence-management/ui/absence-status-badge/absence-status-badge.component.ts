@@ -21,6 +21,8 @@ export class AbsenceStatusBadgeComponent {
 
   get label(): string {
     switch (this.status) {
+      case 'DRAFT':
+        return 'Borrador';
       case 'PENDING':
         return 'Pendiente';
       case 'APPROVED':
@@ -36,6 +38,8 @@ export class AbsenceStatusBadgeComponent {
 
   get badgeClass(): string {
     switch (this.status) {
+      case 'DRAFT':
+        return 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border-zinc-500/20';
       case 'PENDING':
         return 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border-amber-500/30';
       case 'APPROVED':
@@ -51,6 +55,8 @@ export class AbsenceStatusBadgeComponent {
 
   get dotClass(): string {
     switch (this.status) {
+      case 'DRAFT':
+        return 'bg-zinc-400';
       case 'PENDING':
         return 'bg-amber-500 animate-pulse';
       case 'APPROVED':

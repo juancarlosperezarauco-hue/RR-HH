@@ -36,6 +36,8 @@ app:
       bucket: ${DOCUMENT_S3_BUCKET:hrcore-documents-dev}
       region: ${DOCUMENT_S3_REGION:us-east-1}
       endpoint: ${DOCUMENT_S3_ENDPOINT:http://127.0.0.1:9000}
+      access-key: ${DOCUMENT_S3_ACCESS_KEY:${MINIO_APP_USER:replace-local-app-user}}
+      secret-key: ${DOCUMENT_S3_SECRET_KEY:${MINIO_APP_PASSWORD:replace-local-app-password}}
   backups:
     local-path: ${BACKUP_LOCAL_PATH:/storage/backups}
     pg-dump-path: ${PG_DUMP_PATH:pg_dump}

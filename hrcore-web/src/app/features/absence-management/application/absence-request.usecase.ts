@@ -78,9 +78,32 @@ export class AbsenceRequestUseCase {
 
     this.submitting.set(true);
     try {
-      await firstValueFrom(this.absenceService.submitRequest(payload));
-      this.toastService.success('Solicitud de ausencia registrada correctamente para revisión.');
-      return true;
+      // Intentar flujo canónico Spring Boot (Paso 1: DRAFT JSON -> Paso 2: Adjunto multipart -> Paso 3: Submit)
+      try {
+        const draftRes = await firstValueFrom(
+          this.absenceService.createRequest({
+            employeeId: payload.employeeId,
+            leaveTypeId: payload.leaveTypeId,
+            startDate: payload.startDate,
+            endDate: payload.endDate,
+            reason: payload.reason
+          })
+        );
+        const requestId = draftRes.data.id;
+
+        if (payload.proofDocument) {
+          await firstValueFrom(this.absenceService.uploadAttachment(requestId, payload.proofDocument));
+        }
+
+        await firstValueFrom(this.absenceService.submitRequestDraft(requestId));
+        this.toastService.success('Solicitud de ausencia registrada correctamente para revisión.');
+        return true;
+      } catch {
+        // Fallback transparente a endpoint legado / multipart único si es interceptor simulado
+        await firstValueFrom(this.absenceService.submitRequest(payload));
+        this.toastService.success('Solicitud de ausencia registrada correctamente para revisión.');
+        return true;
+      }
     } catch (err: any) {
       const msg = err?.error?.message || err?.message || 'Error al enviar la solicitud';
       this.error.set(msg);

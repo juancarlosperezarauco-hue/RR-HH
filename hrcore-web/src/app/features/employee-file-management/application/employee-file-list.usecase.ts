@@ -116,10 +116,36 @@ export class EmployeeFileListUseCase {
       // Actualizar estado local reactivo
       this.documents.update((docs) => docs.filter((d) => d.id !== documentId));
       return true;
-    } catch (err: any) {
-      const msg = err?.error?.message || 'No se pudo eliminar el documento';
+    } catch (err: unknown) {
+      const errorResponse = err as { error?: { message?: string } };
+      const msg = errorResponse?.error?.message || 'No se pudo eliminar el documento';
+      this.toast.error(msg);
+      return false;
+    }
+  }
+
+  /**
+   * Verifica o rechaza un documento digital
+   * PATCH /api/employee-files/{id}/documents/{documentId}/verify
+   */
+  async verifyDocument(documentId: string, status: 'VERIFIED' | 'REJECTED'): Promise<boolean> {
+    try {
+      const doc = this.documents().find((d) => d.id === documentId);
+      const fileId = doc?.employeeFileId || `ef-${this.selectedEmployeeId()}`;
+      await firstValueFrom(this.fileService.verifyDocument(fileId, documentId, status));
+      this.toast.success(
+        status === 'VERIFIED' ? 'Documento verificado y validado con éxito' : 'Documento marcado como rechazado'
+      );
+      this.documents.update((docs) =>
+        docs.map((d) => (d.id === documentId ? { ...d, verificationStatus: status } : d))
+      );
+      return true;
+    } catch (err: unknown) {
+      const errorResponse = err as { error?: { message?: string } };
+      const msg = errorResponse?.error?.message || 'Error al actualizar el estado de verificación';
       this.toast.error(msg);
       return false;
     }
   }
 }
+

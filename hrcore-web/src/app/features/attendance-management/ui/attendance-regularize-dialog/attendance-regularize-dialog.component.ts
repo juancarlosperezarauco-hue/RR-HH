@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, inject, signal } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { AttendanceRecordResponse } from '../../../../entities/attendance';
+import { AttendanceRecordResponse, AdjustmentType } from '../../../../entities/attendance';
 import { AttendanceRegularizeUseCase } from '../../application/attendance-regularize.usecase';
 
 @Component({
@@ -50,6 +50,23 @@ import { AttendanceRegularizeUseCase } from '../../application/attendance-regula
 
         <!-- Formulario -->
         <form (ngSubmit)="onSubmit()" class="mt-4 space-y-4">
+          <!-- Tipo de Regularización -->
+          <div>
+            <label class="block text-xs font-semibold text-foreground mb-1">
+              Tipo de Ajuste / Regularización <span class="text-rose-500">*</span>
+            </label>
+            <select
+              [(ngModel)]="adjustmentType"
+              name="adjustmentType"
+              class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+            >
+              <option value="TIME_CORRECTION">Corrección Horaria (Entrada / Salida)</option>
+              <option value="MISSING_PUNCH">Marcación Omitida / Olvidada</option>
+              <option value="STATUS_CORRECTION">Corrección de Estado de Jornada</option>
+              <option value="OTHER">Otro Motivo Justificado</option>
+            </select>
+          </div>
+
           <!-- Corrección Horaria -->
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -145,6 +162,7 @@ export class AttendanceRegularizeDialogComponent {
   @Output() closeDialog = new EventEmitter<void>();
   @Output() regularized = new EventEmitter<void>();
 
+  adjustmentType: AdjustmentType = 'TIME_CORRECTION';
   correctedCheckInTime = '08:30';
   correctedCheckOutTime = '16:30';
   reason = '';
@@ -166,6 +184,24 @@ export class AttendanceRegularizeDialogComponent {
     const fullCheckIn = this.correctedCheckInTime ? `${todayDate}T${this.correctedCheckInTime}:00Z` : undefined;
     const fullCheckOut = this.correctedCheckOutTime ? `${todayDate}T${this.correctedCheckOutTime}:00Z` : undefined;
 
+    // Intentar primero el flujo canónico de Spring Boot (/api/attendance/adjustments)
+    const adj = await this.useCase.createAdjustment({
+      attendanceRecordId: this.record.id,
+      adjustmentType: this.adjustmentType,
+      reason: this.reason.trim(),
+      requestedValues: {
+        checkInTime: fullCheckIn,
+        checkOutTime: fullCheckOut
+      }
+    });
+
+    if (adj) {
+      this.close();
+      this.regularized.emit();
+      return;
+    }
+
+    // Fallback a ruta de compatibilidad /corrections si el interceptor está en modo simulado
     const ok = await this.useCase.regularize({
       attendanceRecordId: this.record.id,
       correctedCheckIn: fullCheckIn,

@@ -7,10 +7,12 @@ import {
   HolidayResponse,
   LeaveStatus
 } from '../../../entities/absence';
+import { ToastService } from '../../../shared/ui/toast/toast.service';
 
 @Injectable({ providedIn: 'root' })
 export class AbsenceListUseCase {
   private readonly absenceService = inject(AbsenceService);
+  private readonly toastService = inject(ToastService);
 
   readonly requests = signal<LeaveRequestResponse[]>([]);
   readonly leaveTypes = signal<LeaveTypeResponse[]>([]);
@@ -106,5 +108,24 @@ export class AbsenceListUseCase {
   setEmployeeFilter(employeeId: string | null): void {
     this.selectedEmployeeId.set(employeeId);
     this.loadRequests(employeeId || undefined);
+  }
+
+  async downloadAttachment(requestId: string, attachmentId: string, filename: string): Promise<void> {
+    try {
+      const blob = await firstValueFrom(this.absenceService.downloadAttachment(requestId, attachmentId));
+      if (typeof window !== 'undefined') {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'comprobante.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        this.toastService.success(`Descarga iniciada: ${filename}`);
+      }
+    } catch {
+      this.toastService.error('Error al descargar el comprobante adjunto');
+    }
   }
 }

@@ -1,3 +1,5 @@
+export * from './attendance-adjustment.model';
+
 export interface AttendanceCorrectionResponse {
   id: string;
   tenantId?: string;
@@ -10,7 +12,7 @@ export interface AttendanceCorrectionResponse {
   correctedCheckOut?: string | null;
   reason: string;
   decisionNotes?: string | null;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   createdAt: string;
   decidedAt?: string | null;
 }

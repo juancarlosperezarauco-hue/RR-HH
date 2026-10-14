@@ -20,7 +20,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
               class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider">
               {{ formatType(shift.shiftType) }}
             </span>
-            <span *ngIf="shift.isOvernight" class="ml-2 inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-500/20">
+            <span *ngIf="shift.isOvernight || shift.crossesMidnight" class="ml-2 inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-bold text-indigo-600 border border-indigo-500/20">
               <lucide-icon name="clock" [size]="10"></lucide-icon>
               +1 DÍA (NOCTURNO)
             </span>
@@ -59,7 +59,10 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
         <div class="flex items-center justify-between">
           <span class="text-muted-foreground font-medium">Descanso / Tolerancia:</span>
           <span class="font-medium text-foreground">
-            {{ shift.breakMinutes }}m desc. • {{ shift.gracePeriodMinutes }}m tol.
+            {{ shift.breakMinutes }}m desc. • {{ shift.lateToleranceMinutes || shift.gracePeriodMinutes }}m tol. ent.
+            <ng-container *ngIf="shift.earlyDepartureToleranceMinutes">
+              • {{ shift.earlyDepartureToleranceMinutes }}m tol. sal.
+            </ng-container>
           </span>
         </div>
 

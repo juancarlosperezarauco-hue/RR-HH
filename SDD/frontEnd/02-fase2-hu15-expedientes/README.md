@@ -203,3 +203,16 @@ export class EmployeeDocumentPreviewUseCase {
 * **CUANDO** visualiza el expediente del empleado.
 * **ENTONCES** los documentos de categoría `HEALTH` (`MEDICO`) no muestran enlaces de previsualización ni descarga, mostrando un badge de *"Documento Confidencial - Requiere Autorización Especial"*.
 
+---
+
+### 6. Sincronización con el Backend Real Spring Boot (`hrcore-api`)
+Para la conexión definitiva con los controladores Java reales (`/api/employee-files`), consultar la especificación detallada en:
+👉 [07-analisis-integracion-backend-hu15-hu16.md](../07-analisis-integracion-backend-hu15-hu16.md)
+
+**Aspectos clave de alineación:**
+* Estructura jerárquica en 3 niveles: `EmployeeFile` -> `EmployeeDocument` -> `EmployeeDocumentVersion`.
+* Flujo de subida en 2 pasos: primero metadatos JSON (`POST /api/employee-files/{id}/documents`) y luego versión de archivo multipart (`POST .../versions`).
+* Descarga de archivos mediante `Blob` directo (`StreamingResponseBody`) en lugar de envoltura JSON.
+* Permiso de confidencialidad canónico: `employee_files.documents.confidential.read`.
+
+
