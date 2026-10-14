@@ -289,7 +289,7 @@ export class RolesPageComponent implements OnInit {
         this.roleListUseCase.reloadRoles();
         this.triggerSuccessToast();
       }
-    }, { allowSignalWrites: true });
+    });
   }
 
   ngOnInit(): void {

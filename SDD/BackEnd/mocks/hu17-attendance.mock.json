@@ -1,0 +1,113 @@
+{
+  "attendanceRecords": [
+    {
+      "id": "33333333-3333-3333-3333-333333333301",
+      "tenantId": "e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+      "employeeId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "employeeFullName": "Carlos Mamani Quispe",
+      "employeeCode": "EMP-00104",
+      "shiftId": "22222222-2222-2222-2222-222222222201",
+      "workDate": "2026-10-12",
+      "checkInTime": "2026-10-12T08:28:15Z",
+      "checkOutTime": "2026-10-12T16:32:40Z",
+      "workedHours": 8.0,
+      "overtimeHours": 0.0,
+      "lateMinutes": 0,
+      "earlyDepartureMinutes": 0,
+      "status": "PRESENT",
+      "source": "WEB",
+      "latitude": -16.5002450,
+      "longitude": -68.1325400,
+      "createdAt": "2026-10-12T08:28:15Z",
+      "updatedAt": "2026-10-12T16:32:40Z"
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333302",
+      "tenantId": "e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+      "employeeId": "8a2ceb3c-4a6c-4cbe-8acc-1a0c6a2cba5c",
+      "employeeFullName": "Valeria Rios Salazar",
+      "employeeCode": "EMP-00105",
+      "shiftId": "22222222-2222-2222-2222-222222222201",
+      "workDate": "2026-10-12",
+      "checkInTime": "2026-10-12T08:48:00Z",
+      "checkOutTime": null,
+      "workedHours": 0.0,
+      "overtimeHours": 0.0,
+      "lateMinutes": 18,
+      "earlyDepartureMinutes": 0,
+      "status": "LATE",
+      "source": "MOBILE",
+      "latitude": -16.5003100,
+      "longitude": -68.1326000,
+      "createdAt": "2026-10-12T08:48:00Z",
+      "updatedAt": "2026-10-12T08:48:00Z"
+    },
+    {
+      "id": "33333333-3333-3333-3333-333333333303",
+      "tenantId": "e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+      "employeeId": "7b3dfc4d-5c7d-5dcf-9bdd-3b1d8c4dcb7e",
+      "employeeFullName": "Rodrigo Flores Condori",
+      "employeeCode": "EMP-00106",
+      "shiftId": "22222222-2222-2222-2222-222222222201",
+      "workDate": "2026-10-12",
+      "checkInTime": null,
+      "checkOutTime": null,
+      "workedHours": 0.0,
+      "overtimeHours": 0.0,
+      "lateMinutes": 0,
+      "earlyDepartureMinutes": 0,
+      "status": "ABSENT",
+      "source": "MANUAL",
+      "latitude": null,
+      "longitude": null,
+      "createdAt": "2026-10-12T00:00:00Z",
+      "updatedAt": "2026-10-12T00:00:00Z"
+    }
+  ],
+  "attendancePunches": [
+    {
+      "id": "pnc-001-33333333",
+      "attendanceRecordId": "33333333-3333-3333-3333-333333333301",
+      "tenantId": "e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+      "employeeId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "punchTime": "2026-10-12T08:28:15Z",
+      "punchType": "IN",
+      "source": "WEB",
+      "deviceId": "BROWSER-CHROME-WIN",
+      "latitude": -16.5002450,
+      "longitude": -68.1325400,
+      "createdAt": "2026-10-12T08:28:15Z"
+    },
+    {
+      "id": "pnc-002-33333333",
+      "attendanceRecordId": "33333333-3333-3333-3333-333333333301",
+      "tenantId": "e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+      "employeeId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "punchTime": "2026-10-12T16:32:40Z",
+      "punchType": "OUT",
+      "source": "WEB",
+      "deviceId": "BROWSER-CHROME-WIN",
+      "latitude": -16.5002450,
+      "longitude": -68.1325400,
+      "createdAt": "2026-10-12T16:32:40Z"
+    }
+  ],
+  "attendanceCorrections": [
+    {
+      "id": "cor-001-33333333",
+      "tenantId": "e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c",
+      "attendanceRecordId": "33333333-3333-3333-3333-333333333302",
+      "requestedBy": "550e8400-e29b-41d4-a716-446655440000",
+      "approvedBy": "550e8400-e29b-41d4-a716-446655440000",
+      "originalCheckIn": "2026-10-12T08:48:00Z",
+      "correctedCheckIn": "2026-10-12T08:30:00Z",
+      "originalCheckOut": null,
+      "correctedCheckOut": null,
+      "reason": "Falla técnica en torniquete biométrico de ingreso. Se verificó con cámara de seguridad llegada a las 08:30.",
+      "decisionNotes": "Regularización aprobada por RRHH según reporte de seguridad interna.",
+      "status": "APPROVED",
+      "createdAt": "2026-10-12T09:10:00Z",
+      "decidedAt": "2026-10-12T09:15:00Z"
+    }
+  ]
+}

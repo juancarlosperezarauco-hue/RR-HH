@@ -281,7 +281,7 @@ export class ProfilePageComponent implements OnInit {
       }, { emitEvent: false });
 
       this.previewSrc.set(this.resolvePreview(profile));
-    }, { allowSignalWrites: true });
+    });
 
     this.destroyRef.onDestroy(() => {
       this.revokeSelectedPreview();

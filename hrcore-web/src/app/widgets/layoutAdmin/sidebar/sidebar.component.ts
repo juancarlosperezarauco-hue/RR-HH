@@ -26,8 +26,42 @@ export class SidebarComponent {
   private readonly platformFacade = inject(PlatformFacade);
   private readonly permissions = inject(PermissionService);
   isMobileOpen = false;
+<<<<<<< HEAD
   get visibleItems(): TenantNavigationItem[] { return this.scope === 'PLATFORM' ? (this.platformFacade.currentSuperadmin() ? PLATFORM_NAVIGATION : []) : this.tenantNavigation.visibleItems(); }
   get showUpgrade(): boolean { return this.scope === 'TENANT' && this.permissions.isCurrentOwner() && this.permissions.hasPermission('billing.subscription.manage'); }
+=======
+
+  readonly tenantItems: MenuItem[] = [
+    { label: 'Usuarios', route: '/dashboard/users', icon: 'users' },
+    { label: 'Contratos', route: '/dashboard/contracts', icon: 'file-signature' },
+    { label: 'Departamentos', route: '/dashboard/departments', icon: 'building-2', permission: 'departments.list' },
+    { label: 'Cargos', route: '/dashboard/positions', icon: 'briefcase', permission: 'positions.list' },
+    { label: 'Roles', route: '/dashboard/roles', icon: 'key' },
+    { label: 'Permisos', route: '/dashboard/permissions', icon: 'badge-check' },
+    { label: 'Expedientes', route: '/dashboard/dossiers', icon: 'file-text' },
+    { label: 'Turnos', route: '/dashboard/shifts', icon: 'clock' },
+    { label: 'Asistencia', route: '/dashboard/attendance', icon: 'clipboard-list' },
+    { label: 'Ausencias', route: '/dashboard/absences', icon: 'calendar' },
+    { label: 'Suscripción', route: '/dashboard/subscription', icon: 'credit-card' },
+    { label: 'Perfil', route: '/dashboard/profile', icon: 'user-circle-2' },
+    // { label: 'Notificaciones', route: '/dashboard/notifications', icon: 'bell' },
+    // { label: 'Backups', route: '/dashboard/backups', icon: 'archive' },
+    { label: 'Configuración', route: '/dashboard/settings', icon: 'settings' }
+  ];
+  readonly platformItems: MenuItem[] = [
+    { label: 'Dashboard', route: '/platform/dashboard', icon: 'layout-dashboard' },
+    { label: 'Planes', route: '/platform/plans', icon: 'credit-card' },
+    { label: 'Tenants', route: '/platform/tenants', icon: 'building-2' },
+    { label: 'Suscripciones', route: '/platform/subscriptions', icon: 'dollar-sign' },
+    { label: 'Auditoría', route: '/platform/audit', icon: 'clipboard-list' },
+    // { label: 'Respaldos', route: '/platform/backups', icon: 'archive' },
+    { label: 'Perfil', route: '/platform/profile', icon: 'user-circle-2' },
+    { label: 'Seguridad', route: '/platform/security', icon: 'lock' },
+    { label: 'Configuración', route: '/platform/settings', icon: 'settings' }
+  ];
+  get isPlatformRoute(): boolean { return this.router.url.startsWith('/platform'); }
+  get visibleItems(): MenuItem[] { return this.router.url.startsWith('/platform') ? this.platformItems : this.tenantItems.filter(item => !item.permission || this.permissions.hasPermission(item.permission)); }
+>>>>>>> main
   toggleMobileMenu(): void { this.isMobileOpen = !this.isMobileOpen; }
   closeMobileMenu(): void { this.isMobileOpen = false; }
   onLogout(): void { this.logoutAction.emit(); }
