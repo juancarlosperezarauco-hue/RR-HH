@@ -5,23 +5,83 @@ import { MOCK_DOSSIERS } from './data/mock-dossiers.data';
 import { MOCK_SHIFTS } from './data/mock-shifts.data';
 import { MOCK_ATTENDANCE } from './data/mock-attendance.data';
 import { MOCK_LEAVES } from './data/mock-leaves.data';
+import { MOCK_PERMISSIONS, MOCK_ROLES, MOCK_CONTRACTS } from './data/mock-access.data';
+
+const getMockToken = () => {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify({
+    sub: '550e8400-e29b-41d4-a716-446655440000',
+    tenant: 'demo',
+    roles: ['ADMIN', 'OWNER_ADMIN', 'ADMINISTRADOR'],
+    permissions: [
+      '*',
+      'users.list', 'users.create', 'users.update', 'users.delete',
+      'access.roles.read', 'access.roles.write', 'access.permissions.read',
+      'billing.subscription.manage', 'backups.list',
+      'contracts.list', 'contracts.create', 'contracts.read', 'contracts.write',
+      'employee_files.list', 'employee_files.create', 'employee_files.detail', 'employee_files.write',
+      'shifts.list', 'shifts.create', 'shifts.write',
+      'attendance.records.read', 'attendance.records.manage',
+      'leaves.requests.read', 'leaves.requests.review', 'leaves.requests.create'
+    ],
+    token_type: 'BEARER',
+    iat: 1700000000,
+    exp: 2500000000
+  }));
+  return `${header}.${payload}.mock_signature`;
+};
+
+const MOCK_EMPLOYEES = [
+  {
+    id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+    employeeNumber: 'EMP-00104',
+    employeeCode: 'EMP-00104',
+    firstName: 'Carlos',
+    lastName: 'Mamani Quispe',
+    fullName: 'Carlos Mamani Quispe',
+    email: 'carlos.mamani@empresa.com',
+    department: 'Tecnología',
+    departmentName: 'Tecnología',
+    position: 'Desarrollador Senior',
+    positionTitle: 'Desarrollador Senior',
+    employmentStatus: 'ACTIVE',
+    status: 'ACTIVE'
+  },
+  {
+    id: '8a2ceb3c-4a6c-4cbe-8acc-1a0c6a2cba5c',
+    employeeNumber: 'EMP-00105',
+    employeeCode: 'EMP-00105',
+    firstName: 'Valeria',
+    lastName: 'Rios Salazar',
+    fullName: 'Valeria Rios Salazar',
+    email: 'valeria.rios@empresa.com',
+    department: 'Recursos Humanos',
+    departmentName: 'Recursos Humanos',
+    position: 'Analista de Talento',
+    positionTitle: 'Analista de Talento',
+    employmentStatus: 'ACTIVE',
+    status: 'ACTIVE'
+  },
+  {
+    id: '7f3bda2b-5b5b-4dbd-9ebb-3b1d8a4dcb7e',
+    employeeNumber: 'EMP-00106',
+    employeeCode: 'EMP-00106',
+    firstName: 'Rodrigo',
+    lastName: 'Flores Condori',
+    fullName: 'Rodrigo Flores Condori',
+    email: 'rodrigo.flores@empresa.com',
+    department: 'Operaciones',
+    departmentName: 'Operaciones',
+    position: 'Supervisor de Turno',
+    positionTitle: 'Supervisor de Turno',
+    employmentStatus: 'ACTIVE',
+    status: 'ACTIVE'
+  }
+];
 
 export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
-  // Si el modo mock no está activo o la petición no pertenece a las APIs simuladas, pasar al backend real
-  if (!environment.useMocks || (
-    !req.url.includes('/api/v1') &&
-    !req.url.includes('/api/employee-files') &&
-    !req.url.includes('/api/shifts') &&
-    !req.url.includes('/api/attendance') &&
-    !req.url.includes('/api/leaves') &&
-    !req.url.includes('/attendance') &&
-    !req.url.includes('/leaves') &&
-    !req.url.includes('/holidays') &&
-    !req.url.includes('/api/auth') &&
-    !req.url.includes('/api/users') &&
-    !req.url.includes('/api/me') &&
-    !req.url.includes('/notifications')
-  )) {
+  // Si el modo mock no está activo, pasar al backend real
+  if (!environment.useMocks) {
     return next(req);
   }
 
@@ -33,7 +93,7 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
   // AUTENTICACIÓN & SESIÓN MOCK
   // ============================================================
   if (url.includes('/api/auth/login') && method === 'POST') {
-    const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJ0ZW5hbnQiOiJkZW1vIiwicm9sZXMiOlsiQURNSU4iLCJPV05FUl9BRE1JTiJdLCJwZXJtaXNzaW9ucyI6WyJ1c2Vycy5saXN0IiwiYWNjZXNzLnJvbGVzLnJlYWQiLCJhY2Nlc3MucGVybWlzc2lvbnMucmVhZCIsImJpbGxpbmcuc3Vic2NyaXB0aW9uLm1hbmFnZSIsImJhY2t1cHMubGlzdCIsImNvbnRyYWN0cy5saXN0Il0sInRva2VuX3R5cGUiOiJCRUFSRVIiLCJpYXQiOjE3MDAwMDAwMDAsImV4cCI6MjUwMDAwMDAwMH0.mock_signature';
+    const mockToken = getMockToken();
     return of(new HttpResponse({
       status: 200,
       body: {
@@ -48,6 +108,24 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
         timestamp: now
       }
     })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/auth/refresh') && method === 'POST') {
+    const mockToken = getMockToken();
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Token refrescado con éxito',
+        data: {
+          accessToken: mockToken,
+          refreshToken: 'mock-refresh-token',
+          tokenType: 'BEARER',
+          expiresIn: 86400
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
   }
 
   if (url.includes('/api/auth/me') && method === 'GET') {
@@ -220,17 +298,596 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // ============================================================
+  // CONTROL DE ACCESOS & ROLES (/api/access)
+  // ============================================================
+  if (url.includes('/api/access/permissions') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Permisos obtenidos con éxito',
+        data: {
+          content: MOCK_PERMISSIONS,
+          pageable: { pageNumber: 0, pageSize: 500 },
+          totalPages: 1,
+          totalElements: MOCK_PERMISSIONS.length,
+          last: true,
+          size: 500,
+          number: 0,
+          numberOfElements: MOCK_PERMISSIONS.length,
+          first: true,
+          empty: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/access/roles') && (url.includes('/activate') || url.includes('/deactivate')) && method === 'PATCH') {
+    const isActivate = url.includes('/activate');
+    const parts = url.split('/');
+    const roleId = parts[parts.indexOf('roles') + 1];
+    const role = MOCK_ROLES.find(r => r.id === roleId);
+    if (role) {
+      role.active = isActivate;
+      role.updatedAt = now;
+    }
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: `Rol ${isActivate ? 'activado' : 'desactivado'} con éxito`,
+        data: role || MOCK_ROLES[0],
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/access/roles') && method === 'GET') {
+    const parts = url.split('?')[0].split('/');
+    const lastPart = parts[parts.length - 1];
+    const isSingleRole = lastPart !== 'roles';
+
+    if (isSingleRole) {
+      const role = MOCK_ROLES.find(r => r.id === lastPart) || MOCK_ROLES[0];
+      return of(new HttpResponse({
+        status: 200,
+        body: {
+          success: true,
+          message: 'Rol obtenido',
+          data: role,
+          timestamp: now
+        }
+      })).pipe(delay(100));
+    }
+
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Roles obtenidos con éxito',
+        data: {
+          content: MOCK_ROLES,
+          pageable: { pageNumber: 0, pageSize: 500 },
+          totalPages: 1,
+          totalElements: MOCK_ROLES.length,
+          last: true,
+          size: 500,
+          number: 0,
+          numberOfElements: MOCK_ROLES.length,
+          first: true,
+          empty: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/access/roles') && method === 'POST') {
+    const body = req.body as any;
+    const assignedPermissions = (body.permissionCodes || []).map((code: string) => {
+      return MOCK_PERMISSIONS.find(p => p.code === code) || { id: 'p-' + code, code, name: code, module: 'GENERAL', description: '' };
+    });
+    const newRole = {
+      id: 'role-' + Date.now(),
+      name: body.name || 'NUEVO_ROL',
+      description: body.description || '',
+      active: true,
+      systemRole: false,
+      permissionCount: assignedPermissions.length,
+      permissions: assignedPermissions,
+      createdAt: now,
+      updatedAt: now
+    };
+    MOCK_ROLES.push(newRole);
+    return of(new HttpResponse({
+      status: 201,
+      body: {
+        success: true,
+        message: 'Rol creado con éxito',
+        data: newRole,
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/access/roles') && method === 'PUT') {
+    const parts = url.split('?')[0].split('/');
+    const roleId = parts[parts.length - 1];
+    const body = req.body as any;
+    const role = MOCK_ROLES.find(r => r.id === roleId);
+    if (role) {
+      if (body.name) role.name = body.name;
+      if (body.description) role.description = body.description;
+      if (body.permissionCodes) {
+        role.permissions = body.permissionCodes.map((code: string) => {
+          return MOCK_PERMISSIONS.find(p => p.code === code) || { id: 'p-' + code, code, name: code, module: 'GENERAL', description: '' };
+        });
+        role.permissionCount = role.permissions.length;
+      }
+      role.updatedAt = now;
+    }
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Rol actualizado con éxito',
+        data: role || MOCK_ROLES[0],
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/access/users') && url.includes('/roles') && method === 'GET') {
+    const parts = url.split('/');
+    const userId = parts[parts.indexOf('users') + 1];
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Roles de usuario obtenidos',
+        data: {
+          userId,
+          roles: ['ADMINISTRADOR', 'GESTOR_RRHH'],
+          permissions: MOCK_PERMISSIONS.map(p => p.code)
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/access/users') && url.includes('/roles') && method === 'PUT') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Roles asignados al usuario exitosamente',
+        data: req.body,
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  // ============================================================
+  // CONTRATOS LABORALES (/api/contracts)
+  // ============================================================
+  if (url.includes('/api/contracts') && url.includes('/document') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: new Blob(['%PDF-1.4 Mock Contract Content Document'], { type: 'application/pdf' })
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/contracts') && url.includes('/history') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Historial obtenido',
+        data: [],
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/contracts') && url.includes('/renew') && method === 'POST') {
+    const parts = url.split('/');
+    const contractId = parts[parts.indexOf('contracts') + 1];
+    const contract = MOCK_CONTRACTS.find(c => c.id === contractId);
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Contrato renovado con éxito',
+        data: contract || MOCK_CONTRACTS[0],
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/contracts') && url.includes('/status') && method === 'PATCH') {
+    const parts = url.split('/');
+    const contractId = parts[parts.indexOf('contracts') + 1];
+    const contract = MOCK_CONTRACTS.find(c => c.id === contractId);
+    const body = req.body as any;
+    if (contract && body.status) {
+      contract.status = body.status;
+    }
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Estado de contrato actualizado',
+        data: contract || MOCK_CONTRACTS[0],
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  if (url.includes('/api/contracts') && method === 'GET') {
+    const parts = url.split('?')[0].split('/');
+    const lastPart = parts[parts.length - 1];
+    const isSingle = lastPart !== 'contracts';
+
+    if (isSingle) {
+      const contract = MOCK_CONTRACTS.find(c => c.id === lastPart) || MOCK_CONTRACTS[0];
+      return of(new HttpResponse({
+        status: 200,
+        body: {
+          success: true,
+          message: 'Contrato obtenido',
+          data: contract,
+          timestamp: now
+        }
+      })).pipe(delay(100));
+    }
+
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Contratos obtenidos con éxito',
+        data: {
+          content: MOCK_CONTRACTS,
+          pageable: { pageNumber: 0, pageSize: 25 },
+          totalPages: 1,
+          totalElements: MOCK_CONTRACTS.length,
+          last: true,
+          size: 25,
+          number: 0,
+          numberOfElements: MOCK_CONTRACTS.length,
+          first: true,
+          empty: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  if (url.includes('/api/contracts') && method === 'POST') {
+    const body = req.body as any;
+    const newContract = {
+      id: 'ctr-' + Date.now(),
+      contractNumber: 'CTR-2026-' + Math.floor(100 + Math.random() * 900),
+      employeeId: body.employeeId || '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      employeeName: 'Carlos Mamani Quispe',
+      contractType: body.contractType || 'INDEFINITE',
+      status: 'ACTIVE',
+      startDate: body.startDate || '2026-03-01',
+      endDate: body.endDate || null,
+      baseSalary: body.baseSalary || 6000.0,
+      currency: body.currency || 'BOB',
+      departmentName: 'Tecnología',
+      positionTitle: 'Desarrollador',
+      createdAt: now
+    };
+    MOCK_CONTRACTS.unshift(newContract);
+    return of(new HttpResponse({
+      status: 201,
+      body: {
+        success: true,
+        message: 'Contrato creado con éxito',
+        data: newContract,
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/contracts') && method === 'PUT') {
+    const parts = url.split('?')[0].split('/');
+    const contractId = parts[parts.length - 1];
+    const contract = MOCK_CONTRACTS.find(c => c.id === contractId);
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Contrato actualizado con éxito',
+        data: contract || MOCK_CONTRACTS[0],
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  // ============================================================
+  // COLABORADORES, DEPARTAMENTOS Y CARGOS (/api/employees, ...)
+  // ============================================================
+  if (url.includes('/api/employees') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Colaboradores obtenidos',
+        data: {
+          content: MOCK_EMPLOYEES,
+          pageable: { pageNumber: 0, pageSize: 50 },
+          totalPages: 1,
+          totalElements: MOCK_EMPLOYEES.length,
+          last: true,
+          size: 50,
+          number: 0,
+          numberOfElements: MOCK_EMPLOYEES.length,
+          first: true,
+          empty: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/employees') && method === 'POST') {
+    const body = req.body as any;
+    const newEmp = {
+      id: 'emp-' + Date.now(),
+      employeeNumber: 'EMP-00' + (MOCK_EMPLOYEES.length + 101),
+      employeeCode: 'EMP-00' + (MOCK_EMPLOYEES.length + 101),
+      firstName: body.firstName || 'Nuevo',
+      lastName: body.lastName || 'Colaborador',
+      fullName: `${body.firstName || 'Nuevo'} ${body.lastName || 'Colaborador'}`,
+      email: body.email || 'nuevo@empresa.com',
+      department: 'Tecnología',
+      departmentName: 'Tecnología',
+      position: 'Especialista',
+      positionTitle: 'Especialista',
+      employmentStatus: 'ACTIVE',
+      status: 'ACTIVE'
+    };
+    MOCK_EMPLOYEES.push(newEmp);
+    return of(new HttpResponse({
+      status: 201,
+      body: {
+        success: true,
+        message: 'Colaborador creado exitosamente',
+        data: newEmp,
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/departments') && method === 'GET') {
+    const departments = [
+      { id: 'dep-1', name: 'Tecnología', code: 'TECH', active: true },
+      { id: 'dep-2', name: 'Recursos Humanos', code: 'RRHH', active: true },
+      { id: 'dep-3', name: 'Operaciones', code: 'OPS', active: true }
+    ];
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Departamentos obtenidos',
+        data: {
+          content: departments,
+          pageable: { pageNumber: 0, pageSize: 50 },
+          totalPages: 1,
+          totalElements: departments.length,
+          last: true,
+          size: 50,
+          number: 0,
+          numberOfElements: departments.length,
+          first: true,
+          empty: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/api/positions') && method === 'GET') {
+    const positions = [
+      { id: 'pos-1', name: 'Desarrollador Senior', code: 'DEV_SR', departmentId: 'dep-1', active: true },
+      { id: 'pos-2', name: 'Analista de Talento', code: 'HR_ANALYST', departmentId: 'dep-2', active: true },
+      { id: 'pos-3', name: 'Supervisor de Turno', code: 'OPS_SUP', departmentId: 'dep-3', active: true }
+    ];
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Cargos obtenidos',
+        data: {
+          content: positions,
+          pageable: { pageNumber: 0, pageSize: 50 },
+          totalPages: 1,
+          totalElements: positions.length,
+          last: true,
+          size: 50,
+          number: 0,
+          numberOfElements: positions.length,
+          first: true,
+          empty: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  if (url.includes('/assignments') && method === 'GET' && !url.includes('/shifts')) {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Asignaciones obtenidas',
+        data: {
+          content: [],
+          pageable: { pageNumber: 0, pageSize: 50 },
+          totalPages: 0,
+          totalElements: 0,
+          last: true,
+          size: 50,
+          number: 0,
+          numberOfElements: 0,
+          first: true,
+          empty: true
+        },
+        timestamp: now
+      }
+    })).pipe(delay(100));
+  }
+
+  // ============================================================
+  // SUSCRIPCIÓN Y FACTURACIÓN (/api/subscription)
+  // ============================================================
+  if (url.includes('/api/subscription/current') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Suscripción actual obtenida',
+        data: {
+          id: 'sub-demo-01',
+          tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          planId: 'plan-enterprise-01',
+          planName: 'Enterprise Pro',
+          planCode: 'ENTERPRISE',
+          status: 'ACTIVE',
+          billingCycle: 'MONTHLY',
+          currency: 'USD',
+          amount: 299.00,
+          currentPeriodStart: '2026-10-01T00:00:00Z',
+          currentPeriodEnd: '2026-11-01T00:00:00Z',
+          cancelAtPeriodEnd: false
+        },
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  if (url.includes('/api/subscription/available-plans') && method === 'GET') {
+    const plans = [
+      {
+        id: 'plan-starter',
+        name: 'Starter',
+        code: 'STARTER',
+        description: 'Ideal para pequeñas empresas y startups en crecimiento',
+        monthlyPrice: 49.00,
+        annualPrice: 470.00,
+        maxEmployees: 25,
+        currency: 'USD',
+        isPopular: false,
+        features: ['Hasta 25 colaboradores', 'Control de asistencia web', 'Expedientes digitales básicos', 'Gestión de turnos simples']
+      },
+      {
+        id: 'plan-pro',
+        name: 'Profesional',
+        code: 'PRO',
+        description: 'Potencia total para empresas medianas en expansión',
+        monthlyPrice: 129.00,
+        annualPrice: 1238.00,
+        maxEmployees: 100,
+        currency: 'USD',
+        isPopular: true,
+        features: ['Hasta 100 colaboradores', 'Biometría facial con IA', 'Cálculo de horas extra LGT', 'Reportes de auditoría laboral', 'Turnos rotativos y nocturnos']
+      },
+      {
+        id: 'plan-enterprise',
+        name: 'Enterprise Pro',
+        code: 'ENTERPRISE',
+        description: 'Solución corporativa para grandes organizaciones',
+        monthlyPrice: 299.00,
+        annualPrice: 2870.00,
+        maxEmployees: 500,
+        currency: 'USD',
+        isPopular: false,
+        features: ['Hasta 500 colaboradores', 'SLA 99.9% garantizado', 'Soporte prioritario 24/7', 'Integración API personalizada', 'Backups automáticos en la nube']
+      }
+    ];
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Planes obtenidos con éxito',
+        data: plans,
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  if (url.includes('/api/subscription/checkout') && method === 'POST') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Sesión de pago creada',
+        data: {
+          checkoutUrl: '/dashboard/subscription/success',
+          sessionId: 'cs_test_mock_12345'
+        },
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
+  if (url.includes('/api/subscription/checkout-result') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Resultado de pago verificado',
+        data: {
+          status: 'SUCCESS',
+          planName: 'Enterprise Pro',
+          message: 'Suscripción actualizada exitosamente'
+        },
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  // ============================================================
+  // COPIAS DE SEGURIDAD (/api/backups)
+  // ============================================================
+  if (url.includes('/api/backups') && method === 'GET') {
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Copias de seguridad obtenidas',
+        data: [
+          {
+            id: 'bk-01',
+            filename: 'backup_demo_20261014.dump',
+            sizeBytes: 15728640,
+            status: 'COMPLETED',
+            createdAt: '2026-10-14T00:00:00Z',
+            completedAt: '2026-10-14T00:02:15Z'
+          }
+        ],
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  // ============================================================
   // HU15: EXPEDIENTES LABORALES (Dominio 6)
   // ============================================================
   if ((url.includes('/employee-files/employee/') || url.includes('/employee-files/by-employee/')) && method === 'GET') {
     const parts = url.split('/');
     const empId = parts[parts.length - 1].split('?')[0];
+    const foundFile = MOCK_DOSSIERS.employeeFiles.find(f => f.employeeId === empId);
     return of(new HttpResponse({
       status: 200,
       body: {
         success: true,
         message: 'Expediente digital obtenido',
-        data: {
+        data: foundFile || {
           id: 'ef-' + empId,
           employeeId: empId,
           fileNumber: 'EXP-' + empId.substring(0, 8).toUpperCase(),
@@ -241,29 +898,89 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
         },
         timestamp: now
       }
-    })).pipe(delay(200));
+    })).pipe(delay(150));
   }
 
+  // GET /api/employee-files (listar o detalle por id)
+  if (url.includes('/employee-files') && !url.includes('/documents') && !url.includes('/versions') && !url.includes('/document-types') && method === 'GET') {
+    const parts = url.split('?')[0].split('/');
+    const lastPart = parts[parts.length - 1];
+    const isSingle = lastPart !== 'employee-files';
+
+    if (isSingle) {
+      const foundFile = MOCK_DOSSIERS.employeeFiles.find(f => f.id === lastPart) || MOCK_DOSSIERS.employeeFiles[0];
+      return of(new HttpResponse({
+        status: 200,
+        body: {
+          success: true,
+          message: 'Expediente digital obtenido',
+          data: foundFile,
+          timestamp: now
+        }
+      })).pipe(delay(100));
+    }
+
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Expedientes laborales obtenidos',
+        data: {
+          content: MOCK_DOSSIERS.employeeFiles,
+          page: 0,
+          size: 50,
+          totalElements: MOCK_DOSSIERS.employeeFiles.length,
+          totalPages: 1
+        },
+        timestamp: now
+      }
+    })).pipe(delay(120));
+  }
+
+  // POST /api/employee-files (crear expediente)
   if (url.includes('/employee-files') && !url.includes('/documents') && method === 'POST') {
     const body = req.body as any;
     const empId = body?.employeeId || '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+    const newFile = {
+      id: 'ef-' + Date.now(),
+      employeeId: empId,
+      fileNumber: body?.fileNumber || 'EXP-' + empId.substring(0, 8).toUpperCase(),
+      status: 'ACTIVE' as const,
+      notes: body?.notes || 'Expediente digital aperturado',
+      createdAt: now,
+      updatedAt: now
+    };
+    MOCK_DOSSIERS.employeeFiles.unshift(newFile);
     return of(new HttpResponse({
       status: 201,
       body: {
         success: true,
         message: 'Expediente digital creado',
-        data: {
-          id: 'ef-' + empId,
-          employeeId: empId,
-          fileNumber: body?.fileNumber || 'EXP-' + empId.substring(0, 8).toUpperCase(),
-          status: 'ACTIVE',
-          notes: body?.notes || 'Expediente digital aperturado',
-          createdAt: now,
-          updatedAt: now
-        },
+        data: newFile,
         timestamp: now
       }
-    })).pipe(delay(200));
+    })).pipe(delay(150));
+  }
+
+  // PUT /api/employee-files/{id} (actualizar expediente)
+  if (url.includes('/employee-files') && !url.includes('/documents') && method === 'PUT') {
+    const parts = url.split('?')[0].split('/');
+    const fileId = parts[parts.length - 1];
+    const targetFile = MOCK_DOSSIERS.employeeFiles.find(f => f.id === fileId) || MOCK_DOSSIERS.employeeFiles[0];
+    const body = req.body as any;
+    if (body.fileNumber) targetFile.fileNumber = body.fileNumber;
+    if (body.notes) targetFile.notes = body.notes;
+    if (body.status) targetFile.status = body.status;
+    targetFile.updatedAt = now;
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Expediente digital actualizado',
+        data: targetFile,
+        timestamp: now
+      }
+    })).pipe(delay(150));
   }
 
   if (url.includes('/versions') && url.includes('/download') && method === 'GET') {
@@ -443,13 +1160,45 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
     })).pipe(delay(200));
   }
 
+  if (url.includes('/documents') && method === 'PUT') {
+    const parts = url.split('?')[0].split('/');
+    const docId = parts[parts.length - 1];
+    const body = req.body as any;
+    const foundDoc = MOCK_DOSSIERS.employeeDocuments.find(d => d.id === docId);
+    if (foundDoc) {
+      if (body.title) foundDoc.title = body.title;
+      if (body.documentNumber) foundDoc.documentNumber = body.documentNumber;
+      if (body.status) foundDoc.status = body.status;
+      foundDoc.updatedAt = now;
+    }
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: body?.status === 'ARCHIVED' ? 'Documento archivado con éxito' : 'Documento actualizado con éxito',
+        data: foundDoc || { id: docId, ...body },
+        timestamp: now
+      }
+    })).pipe(delay(150));
+  }
+
   if (url.includes('/documents') && method === 'GET') {
     const urlObj = new URL(req.urlWithParams, 'http://localhost');
     const category = urlObj.searchParams.get('category');
+    const type = urlObj.searchParams.get('type');
+    const status = urlObj.searchParams.get('status');
+
     let filtered = MOCK_DOSSIERS.employeeDocuments;
+    if (status && status !== 'ALL') {
+      filtered = filtered.filter(d => d.status === status);
+    }
     if (category && category !== 'ALL') {
       filtered = filtered.filter(d => d.documentCategory === category);
     }
+    if (type && type !== 'ALL') {
+      filtered = filtered.filter(d => d.documentType === type);
+    }
+
     return of(new HttpResponse({
       status: 200,
       body: {
@@ -458,13 +1207,13 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
         data: {
           content: filtered,
           page: 0,
-          size: 20,
+          size: 50,
           totalElements: filtered.length,
           totalPages: 1
         },
         timestamp: now
       }
-    })).pipe(delay(250));
+    })).pipe(delay(150));
   }
 
   if (url.includes('/documents') && method === 'POST') {
@@ -506,11 +1255,18 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
       cat = docType === 'IDENTITY' ? 'IDENTIFICATION' : (docType === 'CONTRACT' ? 'CONTRACT' : (docType === 'MEDICAL' ? 'HEALTH' : 'OTHER'));
     }
 
+    const parts = url.split('/');
+    const fileIdIdx = parts.indexOf('employee-files');
+    const targetFileId = (fileIdIdx !== -1 && parts[fileIdIdx + 1] && parts[fileIdIdx + 1] !== 'documents')
+      ? parts[fileIdIdx + 1]
+      : (MOCK_DOSSIERS.employeeFiles[0]?.id || 'ef-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d');
+    const targetEmployeeId = MOCK_DOSSIERS.employeeFiles.find(f => f.id === targetFileId)?.employeeId || '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+
     const newDoc: any = {
       id: 'doc-' + Date.now(),
-      employeeFileId: 'ef-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      employeeFileId: targetFileId,
       tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-      employeeId: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      employeeId: targetEmployeeId,
       documentTypeId: '11111111-1111-1111-1111-111111111101',
       documentType: docType,
       documentTypeName: typeName,

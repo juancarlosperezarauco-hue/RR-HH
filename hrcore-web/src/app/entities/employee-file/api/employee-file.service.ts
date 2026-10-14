@@ -9,7 +9,8 @@ import {
   CreateFileRequest,
   UpdateFileRequest,
   EmployeeFileFilter,
-  FileStatus
+  FileStatus,
+  EmployeeSummaryResponse
 } from '../model/employee-file.model';
 import {
   EmployeeDocumentResponse,
@@ -52,13 +53,13 @@ export class EmployeeFileService {
     filter?: EmployeeFileFilter,
     page = 0,
     size = 25,
-    sort = 'createdAt'
+    sort?: string
   ): Observable<ApiResponse<PageResponse<EmployeeFileResponse>>> {
     let params = new HttpParams()
       .set('page', page.toString())
-      .set('size', Math.min(Math.max(1, size), 100).toString())
-      .set('sort', sort);
+      .set('size', Math.min(Math.max(1, size), 100).toString());
 
+    if (sort) params = params.set('sort', sort);
     if (filter?.employeeId) params = params.set('employeeId', filter.employeeId);
     if (filter?.fileNumber) params = params.set('fileNumber', filter.fileNumber);
     if (filter?.status) params = params.set('status', filter.status);
@@ -90,6 +91,23 @@ export class EmployeeFileService {
    */
   updateFile(id: string, req: UpdateFileRequest): Observable<ApiResponse<EmployeeFileResponse>> {
     return this.http.put<ApiResponse<EmployeeFileResponse>>(`${this.filesUrl}/${id}`, req);
+  }
+
+  /**
+   * Consultar lista de empleados reales registrados en el sistema
+   * GET /api/employees
+   */
+  getEmployees(page = 0, size = 50): Observable<ApiResponse<PageResponse<EmployeeSummaryResponse>>> {
+    const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+    return this.http.get<ApiResponse<PageResponse<EmployeeSummaryResponse>>>(`${environment.apiUrl}/api/employees`, { params });
+  }
+
+  /**
+   * Crear colaborador en el sistema si no existe ninguno
+   * POST /api/employees
+   */
+  createEmployee(req: any): Observable<ApiResponse<EmployeeSummaryResponse>> {
+    return this.http.post<ApiResponse<EmployeeSummaryResponse>>(`${environment.apiUrl}/api/employees`, req);
   }
 
   // =========================================================================
@@ -228,6 +246,29 @@ export class EmployeeFileService {
       `${this.filesUrl}/${fileId}/documents/${documentId}/versions/${versionId}/download`,
       { responseType: 'blob' }
     );
+  }
+
+  /**
+   * Archivar documento (cumplimiento legal: no se elimina físicamente)
+   * PUT /api/employee-files/{id}/documents/{documentId} con status: ARCHIVED
+   */
+  archiveDocument(
+    fileId: string,
+    documentId: string,
+    doc: EmployeeDocumentResponse | DocumentResponse
+  ): Observable<ApiResponse<DocumentResponse>> {
+    const payload: UpdateDocumentRequest = {
+      contractId: doc.contractId || null,
+      documentType: (doc.documentType as DocumentType) || 'OTHER',
+      title: doc.title || (doc as any).fileName || 'Documento',
+      description: doc.description || null,
+      documentNumber: doc.documentNumber || null,
+      issuedAt: doc.issuedAt || (doc as any).issueDate || null,
+      expiresAt: doc.expiresAt || (doc as any).expirationDate || null,
+      confidential: !!doc.confidential,
+      status: 'ARCHIVED'
+    };
+    return this.updateDocumentMetadata(fileId, documentId, payload);
   }
 
   // =========================================================================

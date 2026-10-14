@@ -1,10 +1,13 @@
-import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShiftResponse } from '../../../../entities/shift';
 import { ShiftAssignmentUseCase } from '../../application/shift-assignment.usecase';
 import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker.component';
+import { environment } from '../../../../../environments/environment';
 
 export interface EmployeeSelectOption {
   id: string;
@@ -47,7 +50,11 @@ export interface EmployeeSelectOption {
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
               Colaboradores a Asignar *
             </label>
-            <div class="space-y-2 max-h-40 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
+            <div *ngIf="availableEmployees.length === 0" class="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground bg-muted/20">
+              <p class="font-bold text-accent-foreground">No hay colaboradores registrados</p>
+              <p class="mt-0.5">No se encontraron empleados activos en la base de datos para asignar turnos.</p>
+            </div>
+            <div *ngIf="availableEmployees.length > 0" class="space-y-2 max-h-40 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
               <label
                 *ngFor="let emp of availableEmployees"
                 class="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/40 cursor-pointer">
@@ -62,7 +69,7 @@ export interface EmployeeSelectOption {
                 </div>
               </label>
             </div>
-            <p class="text-[11px] text-muted-foreground mt-1">
+            <p *ngIf="availableEmployees.length > 0" class="text-[11px] text-muted-foreground mt-1">
               {{ selectedEmployeeIds.length }} colaboradores seleccionados
             </p>
           </div>
@@ -148,42 +155,50 @@ export interface EmployeeSelectOption {
     </div>
   `
 })
-export class ShiftAssignModalComponent implements OnChanges {
+export class ShiftAssignModalComponent implements OnInit, OnChanges {
   @Input() isOpen = false;
   @Input() shift: ShiftResponse | null = null;
   @Output() closeModal = new EventEmitter<void>();
   @Output() assigned = new EventEmitter<void>();
 
+  private readonly http = inject(HttpClient);
   readonly assignmentUseCase = inject(ShiftAssignmentUseCase);
 
-  readonly availableEmployees: EmployeeSelectOption[] = [
-    {
-      id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
-      name: 'Carlos Mamani Quispe',
-      code: 'EMP-00104',
-      position: 'Ingeniero de Software Senior'
-    },
-    {
-      id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6e',
-      name: 'Ana Morales Condori',
-      code: 'EMP-00105',
-      position: 'Analista de Finanzas y Contabilidad'
-    },
-    {
-      id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6f',
-      name: 'Roberto Gómez Flores',
-      code: 'EMP-00106',
-      position: 'Operador de Turno Continuo'
-    }
-  ];
-
-  selectedEmployeeIds: string[] = ['9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d'];
+  availableEmployees: EmployeeSelectOption[] = [];
+  selectedEmployeeIds: string[] = [];
   startDate = '2026-11-01';
   endDate = '2026-11-30';
   isRecurring = true;
   weekdays: number[] = [1, 2, 3, 4, 5];
 
+  ngOnInit(): void {
+    this.loadEmployees();
+  }
+
+  async loadEmployees(): Promise<void> {
+    try {
+      const res = await firstValueFrom(
+        this.http.get<any>(`${environment.apiUrl}/api/employees?size=50`)
+      );
+      const list = res?.data?.content || [];
+      this.availableEmployees = list.map((e: any) => ({
+        id: e.id,
+        name: `${e.firstName} ${e.lastName}`,
+        code: e.employeeNumber,
+        position: 'Colaborador'
+      }));
+      if (this.availableEmployees.length > 0 && this.selectedEmployeeIds.length === 0) {
+        this.selectedEmployeeIds = [this.availableEmployees[0].id];
+      }
+    } catch {
+      this.availableEmployees = [];
+    }
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isOpen']?.currentValue === true) {
+      this.loadEmployees();
+    }
     if (changes['shift'] && this.shift) {
       if (this.shift.days && this.shift.days.length > 0) {
         this.weekdays = this.shift.days.filter((d) => d.isWorkDay).map((d) => d.dayOfWeek);

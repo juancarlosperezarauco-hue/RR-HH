@@ -1,5 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import {
   VacationBalanceUseCase,
@@ -10,6 +12,8 @@ import {
   AbsenceTableComponent
 } from '../../features/absence-management';
 import { LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
+import { AuthFacade } from '../../shared/lib/auth/auth.facade';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-absences-page',
@@ -163,6 +167,8 @@ import { LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
   `
 })
 export class AbsencesPageComponent implements OnInit {
+  private readonly authFacade = inject(AuthFacade);
+  private readonly http = inject(HttpClient);
   readonly balanceUseCase = inject(VacationBalanceUseCase);
   readonly listUseCase = inject(AbsenceListUseCase);
 
@@ -171,7 +177,26 @@ export class AbsencesPageComponent implements OnInit {
   isReviewModalOpen = false;
   selectedRequest: LeaveRequestResponse | null = null;
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    // 1. Extraer ID del colaborador dinámicamente del usuario en sesión
+    const user = this.authFacade.currentUser();
+    if (user?.id && user.id.length > 20) {
+      this.currentEmployeeId = user.id;
+    } else {
+      // 2. Intentar obtener el ID del primer empleado registrado en Spring Boot
+      try {
+        const empRes = await firstValueFrom(
+          this.http.get<any>(`${environment.apiUrl}/api/employees?size=1`)
+        );
+        const first = empRes?.data?.content?.[0];
+        if (first?.id) {
+          this.currentEmployeeId = first.id;
+        }
+      } catch {
+        // Fallback seguro si no hay respuesta del backend
+      }
+    }
+
     this.reloadData();
     this.listUseCase.loadLeaveTypes();
     this.listUseCase.loadHolidays();

@@ -27,3 +27,11 @@ export interface EmployeeFileFilter {
   fileNumber?: string;
   status?: FileStatus;
 }
+
+export interface EmployeeSummaryResponse {
+  id: string;
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  employmentStatus: string;
+}

@@ -45,6 +45,8 @@ import {
   FileChartColumn,
   FileSignature,
   FileText,
+  Folder,
+  FolderOpen,
   HandCoins,
   Info,
   Instagram,
@@ -107,7 +109,7 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       }),
     ),
-    provideHttpClient(withInterceptors([authTokenInterceptor, mockHttpInterceptor])),
+    provideHttpClient(withInterceptors([mockHttpInterceptor, authTokenInterceptor])),
     provideAnimationsAsync(),
     importProvidersFrom(
       LucideAngularModule.pick({
@@ -135,6 +137,8 @@ export const appConfig: ApplicationConfig = {
         Calendar,
         FileSignature,
         FileText,
+        Folder,
+        FolderOpen,
         LogOut,
         ChevronDown,
         Menu,

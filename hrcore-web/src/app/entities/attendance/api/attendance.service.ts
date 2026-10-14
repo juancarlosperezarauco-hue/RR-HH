@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../shared/api';
 import {
@@ -126,9 +126,28 @@ export class AttendanceService {
     );
   }
 
-  getTodayStatus(employeeId: string): Observable<ApiResponse<AttendanceRecordResponse | null>> {
-    return this.http.get<ApiResponse<AttendanceRecordResponse | null>>(
-      `${this.legacyBaseUrl}/today/${employeeId}`
+  getTodayStatus(employeeId?: string): Observable<ApiResponse<AttendanceRecordResponse | null>> {
+    const today = new Date().toISOString().split('T')[0];
+    let params = new HttpParams()
+      .set('from', today)
+      .set('to', today)
+      .set('page', '0')
+      .set('size', '1');
+
+    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
+      params = params.set('employeeId', employeeId);
+    }
+
+    return this.http.get<ApiResponse<PageResponse<AttendanceRecordResponse>>>(
+      `${this.baseUrl}/records`,
+      { params }
+    ).pipe(
+      map((res) => ({
+        success: res.success,
+        message: res.message,
+        data: res.data?.content?.[0] || null,
+        timestamp: res.timestamp
+      }))
     );
   }
 
@@ -257,17 +276,45 @@ export class AttendanceService {
   // MÉTODOS DE COMPATIBILIDAD HACIA ATRÁS
   // ==========================================
 
-  registerClock(request: ClockPunchRequest): Observable<ApiResponse<AttendanceRecordResponse>> {
-    return this.http.post<ApiResponse<AttendanceRecordResponse>>(
-      `${this.legacyBaseUrl}/clock`,
-      request
-    );
+  /**
+   * Registro canónico de marcación: POST /api/attendance/punches
+   */
+  registerClock(request: ClockPunchRequest): Observable<ApiResponse<any>> {
+    let canonicalType: PunchType = 'IN';
+    if (request.type === 'OUT') {
+      canonicalType = 'OUT';
+    } else if (request.type === 'BREAK_START' || request.type === 'BREAK_OUT') {
+      canonicalType = 'BREAK_START';
+    } else if (request.type === 'BREAK_END' || request.type === 'BREAK_IN') {
+      canonicalType = 'BREAK_END';
+    }
+
+    const payload: CreatePunchInput = {
+      employeeId: request.employeeId && request.employeeId.length > 20 && !request.employeeId.startsWith('mock')
+        ? request.employeeId
+        : undefined,
+      punchType: canonicalType,
+      punchedAt: new Date().toISOString(),
+      latitude: request.latitude,
+      longitude: request.longitude,
+      notes: request.notes
+    };
+
+    return this.createPunch(payload);
   }
 
-  regularizeAttendance(request: RegularizeAttendanceRequest): Observable<ApiResponse<AttendanceCorrectionResponse>> {
-    return this.http.post<ApiResponse<AttendanceCorrectionResponse>>(
-      `${this.legacyBaseUrl}/corrections`,
-      request
-    );
+  /**
+   * Regularización canónica: POST /api/attendance/adjustments
+   */
+  regularizeAttendance(request: RegularizeAttendanceRequest): Observable<ApiResponse<any>> {
+    return this.createAdjustment({
+      attendanceRecordId: request.attendanceRecordId,
+      adjustmentType: 'TIME_CORRECTION',
+      reason: request.reason,
+      requestedValues: {
+        checkInTime: request.correctedCheckIn,
+        checkOutTime: request.correctedCheckOut
+      }
+    });
   }
 }

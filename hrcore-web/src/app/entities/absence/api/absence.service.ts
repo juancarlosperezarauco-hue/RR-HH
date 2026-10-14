@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../shared/api';
 import {
@@ -61,8 +61,50 @@ export class AbsenceService {
   // HU18 - 2. LEAVE BALANCES (Saldos y Ajustes)
   // ==========================================
 
-  getEmployeeBalance(employeeId: string, _year?: number): Observable<ApiResponse<LeaveBalanceResponse>> {
-    return this.http.get<ApiResponse<LeaveBalanceResponse>>(`${this.legacyBaseUrl}/leaves/balances/${employeeId}`);
+  /**
+   * Consulta saldo canónico desde Spring Boot:
+   * GET /api/leaves/balances?employeeId={id}&year={year}
+   */
+  getEmployeeBalance(employeeId: string, year = 2026): Observable<ApiResponse<LeaveBalanceResponse>> {
+    let params = new HttpParams().set('year', year.toString()).set('size', '1');
+    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
+      params = params.set('employeeId', employeeId);
+    }
+
+    return this.http.get<ApiResponse<PageResponse<any>>>(`${this.baseUrl}/balances`, { params }).pipe(
+      map((res) => {
+        const item = res.data?.content?.[0];
+        const entitled = item?.openingDays != null ? Number(item.openingDays) : 15;
+        const used = item?.usedDays != null ? Number(item.usedDays) : 0;
+        const pending = item?.pendingDays != null ? Number(item.pendingDays) : 0;
+        const available = item?.availableDays != null ? Number(item.availableDays) : Math.max(0, entitled - used - pending);
+
+        const mapped: LeaveBalanceResponse = {
+          id: item?.id || `bal-${employeeId}`,
+          employeeId: item?.employeeId || employeeId,
+          leaveTypeId: item?.leaveTypeId || '',
+          leaveTypeName: 'Vacación Anual LGT',
+          balanceYear: item?.balanceYear || year,
+          year: item?.balanceYear || year,
+          openingDays: entitled,
+          accruedDays: item?.accruedDays != null ? Number(item.accruedDays) : 0,
+          usedDays: used,
+          adjustedDays: item?.adjustedDays != null ? Number(item.adjustedDays) : 0,
+          pendingDays: pending,
+          availableDays: available,
+          entitledDays: entitled,
+          remainingDays: available,
+          updatedAt: item?.updatedAt
+        };
+
+        return {
+          success: res.success,
+          message: res.message,
+          data: mapped,
+          timestamp: res.timestamp
+        };
+      })
+    );
   }
 
   listBalances(filters?: {

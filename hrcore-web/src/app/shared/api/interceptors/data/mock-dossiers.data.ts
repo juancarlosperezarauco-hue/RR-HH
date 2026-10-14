@@ -5,10 +5,40 @@ import {
 } from '../../../../entities/employee-file';
 
 export const MOCK_DOSSIERS: {
+  employeeFiles: any[];
   documentTypes: DocumentTypeResponse[];
   employeeDocuments: EmployeeDocumentResponse[];
   documentAudits: EmployeeDocumentAuditResponse[];
 } = {
+  employeeFiles: [
+    {
+      id: 'ef-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      employeeId: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      fileNumber: 'EXP-EMP-00104',
+      status: 'ACTIVE',
+      notes: 'Expediente digital principal de Carlos Mamani Quispe',
+      createdAt: '2026-01-15T08:00:00Z',
+      updatedAt: '2026-01-15T08:00:00Z'
+    },
+    {
+      id: 'ef-8a2ceb3c-4a6c-4cbe-8acc-1a0c6a2cba5c',
+      employeeId: '8a2ceb3c-4a6c-4cbe-8acc-1a0c6a2cba5c',
+      fileNumber: 'EXP-EMP-00105',
+      status: 'ACTIVE',
+      notes: 'Expediente digital de Valeria Rios Salazar',
+      createdAt: '2026-02-01T08:00:00Z',
+      updatedAt: '2026-02-01T08:00:00Z'
+    },
+    {
+      id: 'ef-7f3bda2b-5b5b-4dbd-9ebb-3b1d8a4dcb7e',
+      employeeId: '7f3bda2b-5b5b-4dbd-9ebb-3b1d8a4dcb7e',
+      fileNumber: 'EXP-EMP-00106',
+      status: 'ACTIVE',
+      notes: 'Expediente digital de Rodrigo Flores Condori',
+      createdAt: '2026-02-15T08:00:00Z',
+      updatedAt: '2026-02-15T08:00:00Z'
+    }
+  ],
   documentTypes: [
     {
       id: '11111111-1111-1111-1111-111111111101',

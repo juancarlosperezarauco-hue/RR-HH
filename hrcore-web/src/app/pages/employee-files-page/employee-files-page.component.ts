@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import {
@@ -8,9 +8,7 @@ import {
   DocumentCardGridComponent,
   DocumentTimelineComponent,
   DocumentUploadDialogComponent,
-  DocumentPreviewModalComponent,
-  EmployeeProfileBannerComponent,
-  EmployeeProfile
+  DocumentPreviewModalComponent
 } from '../../features/employee-file-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.data';
@@ -27,8 +25,7 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
     DocumentCardGridComponent,
     DocumentTimelineComponent,
     DocumentUploadDialogComponent,
-    DocumentPreviewModalComponent,
-    EmployeeProfileBannerComponent
+    DocumentPreviewModalComponent
   ],
   template: `
     <div class="space-y-6 relative">
@@ -45,7 +42,7 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
                 Expedientes Laborales
               </h1>
               <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Centraliza y clasifica la documentación legal, contractual y personal del trabajador con trazabilidad inmutable y control de acceso sensible.
+                Centraliza y clasifica la documentación legal, contractual y personal del trabajador con custodia inmutable, archivo legal y control RBAC.
               </p>
             </div>
           </div>
@@ -54,8 +51,9 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
             <button
               type="button"
               (click)="reload()"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
-              <lucide-icon name="refresh-ccw" [size]="16"></lucide-icon>
+              [disabled]="fileListUseCase.loading()"
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:opacity-50">
+              <lucide-icon name="refresh-ccw" [size]="16" [class.animate-spin]="fileListUseCase.loading()"></lucide-icon>
               Recargar
             </button>
 
@@ -70,130 +68,198 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
         </div>
       </section>
 
-      <!-- Ficha del Colaborador Activo y Selector de Expediente -->
-      <app-employee-profile-banner
-        [employee]="currentEmployee()"
-        [employees]="employeeProfiles"
-        (employeeChange)="onEmployeeSelected($event)">
-      </app-employee-profile-banner>
-
-      <!-- Fila de Tarjetas KPI -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <!-- KPI 1 -->
-        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-          <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total en Expediente</p>
-            <p class="text-2xl font-black text-accent-foreground">{{ fileListUseCase.kpis().total }}</p>
+      <!-- Selector y Estado del Expediente Activo -->
+      <section
+        *ngIf="fileListUseCase.activeFile()"
+        class="rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary font-black text-base border border-primary/20">
+            <lucide-icon name="folder" [size]="22"></lucide-icon>
           </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <lucide-icon name="file-text" [size]="22"></lucide-icon>
-          </div>
-        </div>
-
-        <!-- KPI 2 -->
-        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-          <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documentos Sensibles</p>
-            <p class="text-2xl font-black text-amber-600">{{ fileListUseCase.kpis().sensitive }}</p>
-          </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-            <lucide-icon name="shield-alert" [size]="22"></lucide-icon>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base font-bold text-accent-foreground">
+                Expediente N° {{ fileListUseCase.activeFile()?.fileNumber }}
+              </h2>
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 border border-emerald-500/20">
+                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                {{ fileListUseCase.activeFile()?.status }}
+              </span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-0.5">
+              {{ fileListUseCase.activeFile()?.notes || 'Expediente digital activo en el sistema' }}
+            </p>
           </div>
         </div>
 
-        <!-- KPI 3 -->
-        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
-          <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Próximos a Vencer (60d)</p>
-            <p class="text-2xl font-black text-rose-600">{{ fileListUseCase.kpis().expiringSoon }}</p>
-          </div>
-          <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600">
-            <lucide-icon name="clock" [size]="22"></lucide-icon>
-          </div>
+        <!-- Selector si hay múltiples expedientes -->
+        <div *ngIf="fileListUseCase.files().length > 1" class="min-w-[220px]">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+            Cambiar Expediente
+          </label>
+          <select
+            [ngModel]="fileListUseCase.activeFile()?.id"
+            (ngModelChange)="onFileSelected($event)"
+            class="w-full rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+            <option *ngFor="let f of fileListUseCase.files()" [value]="f.id">
+              Expediente: {{ f.fileNumber }}
+            </option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Estado: Cargando -->
+      <div *ngIf="fileListUseCase.loading()" class="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center space-y-3">
+        <lucide-icon name="loader-circle" [size]="32" class="animate-spin text-primary"></lucide-icon>
+        <p class="text-xs font-semibold text-muted-foreground">Consultando expediente laboral y documentos...</p>
+      </div>
+
+      <!-- Estado Vacío cuando no hay documentos registrados -->
+      <div
+        *ngIf="!fileListUseCase.loading() && fileListUseCase.documents().length === 0"
+        class="rounded-[24px] border-2 border-dashed border-border bg-card/60 p-12 text-center space-y-5 shadow-sm">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <lucide-icon name="folder-open" [size]="32"></lucide-icon>
+        </div>
+        <div class="max-w-md mx-auto space-y-2">
+          <h3 class="text-xl font-bold text-accent-foreground">No hay documentos en el expediente</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">
+            Actualmente no existen documentos registrados en la base de datos para este expediente laboral.
+            Adjunta el primer documento (contrato de trabajo, documento de identidad, certificados, etc.) para comenzar a gestionar el expediente digital con flujo canónico.
+          </p>
+        </div>
+        <div class="pt-2">
+          <button
+            type="button"
+            (click)="openUploadModal()"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
+            <lucide-icon name="upload" [size]="16"></lucide-icon>
+            Adjuntar Primer Documento
+          </button>
         </div>
       </div>
 
-      <!-- Barra de Filtros y Selector de Vista -->
-      <div class="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <!-- Búsqueda -->
-          <div class="relative flex-1 max-w-md">
-            <lucide-icon
-              name="search"
-              [size]="16"
-              class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"></lucide-icon>
+      <!-- Contenido Principal cuando sí hay documentos -->
+      <ng-container *ngIf="!fileListUseCase.loading() && fileListUseCase.documents().length > 0">
+        <!-- Fila de Tarjetas KPI -->
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <!-- KPI 1 -->
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total en Expediente</p>
+              <p class="text-2xl font-black text-accent-foreground">{{ fileListUseCase.kpis().total }}</p>
+            </div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <lucide-icon name="file-text" [size]="22"></lucide-icon>
+            </div>
+          </div>
+
+          <!-- KPI 2 -->
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documentos Sensibles</p>
+              <p class="text-2xl font-black text-amber-600">{{ fileListUseCase.kpis().sensitive }}</p>
+            </div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+              <lucide-icon name="shield-alert" [size]="22"></lucide-icon>
+            </div>
+          </div>
+
+          <!-- KPI 3 -->
+          <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Próximos a Vencer (60d)</p>
+              <p class="text-2xl font-black text-rose-600">{{ fileListUseCase.kpis().expiringSoon }}</p>
+            </div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600">
+              <lucide-icon name="clock" [size]="22"></lucide-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra de Filtros y Selector de Vista -->
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <!-- Búsqueda -->
+            <div class="relative flex-1 max-w-md">
+              <lucide-icon
+                name="search"
+                [size]="16"
+                class="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"></lucide-icon>
               <input
-              type="text"
-              [ngModel]="fileListUseCase.searchQuery()"
-              (ngModelChange)="fileListUseCase.setSearchQuery($event)"
-              placeholder="Buscar por nombre, tipo o nro de folio..."
-              class="w-full rounded-full border border-border bg-muted/40 pl-10 pr-4 py-2 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+                type="text"
+                [ngModel]="fileListUseCase.searchQuery()"
+                (ngModelChange)="fileListUseCase.setSearchQuery($event)"
+                placeholder="Buscar por nombre, tipo o nro de folio..."
+                class="w-full rounded-full border border-border bg-muted/40 pl-10 pr-4 py-2 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </div>
+
+            <!-- Selector de Modo de Vista (Galería vs Línea de Tiempo) -->
+            <div class="inline-flex rounded-full border border-border bg-muted/30 p-1">
+              <button
+                type="button"
+                (click)="activeView = 'GRID'"
+                [class.bg-card]="activeView === 'GRID'"
+                [class.text-primary]="activeView === 'GRID'"
+                [class.shadow-sm]="activeView === 'GRID'"
+                [class.text-muted-foreground]="activeView !== 'GRID'"
+                class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer">
+                <lucide-icon name="file-text" [size]="14"></lucide-icon>
+                Documentos
+              </button>
+              <button
+                type="button"
+                (click)="activeView = 'TIMELINE'"
+                [class.bg-card]="activeView === 'TIMELINE'"
+                [class.text-primary]="activeView === 'TIMELINE'"
+                [class.shadow-sm]="activeView === 'TIMELINE'"
+                [class.text-muted-foreground]="activeView !== 'TIMELINE'"
+                class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer">
+                <lucide-icon name="clock" [size]="14"></lucide-icon>
+                Línea de Tiempo
+              </button>
+            </div>
           </div>
 
-          <!-- Selector de Modo de Vista (Galería vs Línea de Tiempo) -->
-          <div class="inline-flex rounded-full border border-border bg-muted/30 p-1">
-            <button
-              type="button"
-              (click)="activeView = 'GRID'"
-              [class.bg-card]="activeView === 'GRID'"
-              [class.text-primary]="activeView === 'GRID'"
-              [class.shadow-sm]="activeView === 'GRID'"
-              [class.text-muted-foreground]="activeView !== 'GRID'"
-              class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer">
-              <lucide-icon name="file-text" [size]="14"></lucide-icon>
-              Documentos
-            </button>
-            <button
-              type="button"
-              (click)="activeView = 'TIMELINE'"
-              [class.bg-card]="activeView === 'TIMELINE'"
-              [class.text-primary]="activeView === 'TIMELINE'"
-              [class.shadow-sm]="activeView === 'TIMELINE'"
-              [class.text-muted-foreground]="activeView !== 'TIMELINE'"
-              class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer">
-              <lucide-icon name="clock" [size]="14"></lucide-icon>
-              Línea de Tiempo
-            </button>
+          <!-- Filtro por Categorías (solo en vista de grilla) -->
+          <app-document-category-filter
+            *ngIf="activeView === 'GRID'"
+            [activeCategory]="fileListUseCase.selectedCategory()"
+            (categoryChange)="fileListUseCase.setCategory($event)">
+          </app-document-category-filter>
+        </div>
+
+        <!-- Vista: Grilla de Tarjetas -->
+        <div *ngIf="activeView === 'GRID'" class="space-y-4">
+          <app-document-card-grid
+            [documents]="fileListUseCase.filteredDocuments()"
+            (verify)="onVerifyDocument($event)"
+            (archive)="onArchiveDocument($event)"
+            (delete)="onArchiveDocument($event)">
+          </app-document-card-grid>
+
+          <!-- Paginación -->
+          <div *ngIf="fileListUseCase.totalPages() > 1" class="flex justify-end pt-2">
+            <app-platform-pagination
+              [currentPage]="fileListUseCase.currentPage()"
+              [totalPages]="fileListUseCase.totalPages()"
+              [totalElements]="fileListUseCase.totalElements()"
+              (pageChange)="fileListUseCase.setPage($event)">
+            </app-platform-pagination>
           </div>
         </div>
 
-        <!-- Filtro por Categorías (solo en vista de grilla) -->
-        <app-document-category-filter
-          *ngIf="activeView === 'GRID'"
-          [activeCategory]="fileListUseCase.selectedCategory()"
-          (categoryChange)="fileListUseCase.setCategory($event)">
-        </app-document-category-filter>
-      </div>
+        <!-- Vista: Línea de Tiempo -->
+        <app-document-timeline
+          *ngIf="activeView === 'TIMELINE'"
+          [audits]="getAudits()">
+        </app-document-timeline>
+      </ng-container>
 
-      <!-- Vista: Grilla de Tarjetas -->
-      <div *ngIf="activeView === 'GRID'" class="space-y-4">
-        <app-document-card-grid
-          [documents]="fileListUseCase.filteredDocuments()"
-          (verify)="onVerifyDocument($event)"
-          (delete)="onDeleteDocument($event)">
-        </app-document-card-grid>
-
-        <!-- Paginación -->
-        <div *ngIf="fileListUseCase.totalPages() > 1" class="flex justify-end pt-2">
-          <app-platform-pagination
-            [currentPage]="fileListUseCase.currentPage()"
-            [totalPages]="fileListUseCase.totalPages()"
-            [totalElements]="fileListUseCase.totalElements()"
-            (pageChange)="fileListUseCase.setPage($event)">
-          </app-platform-pagination>
-        </div>
-      </div>
-
-      <!-- Vista: Línea de Tiempo -->
-      <app-document-timeline
-        *ngIf="activeView === 'TIMELINE'"
-        [audits]="getAudits()">
-      </app-document-timeline>
-
-      <!-- Modal de Carga de Documentos -->
+      <!-- Modal de Carga de Documentos (Flujo Canónico 2 Pasos Spring Boot) -->
       <app-document-upload-dialog
         [isOpen]="isUploadOpen"
-        [employeeId]="fileListUseCase.selectedEmployeeId()"
+        [employeeId]="fileListUseCase.activeFile()?.id || fileListUseCase.selectedEmployeeId()"
         [documentTypes]="fileListUseCase.documentTypes()"
         (closeDialog)="isUploadOpen = false"
         (uploaded)="onDocumentUploaded()">
@@ -210,47 +276,6 @@ export class EmployeeFilesPageComponent implements OnInit {
   activeView: 'GRID' | 'TIMELINE' = 'GRID';
   isUploadOpen = false;
 
-  readonly employeeProfiles: EmployeeProfile[] = [
-    {
-      id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
-      name: 'Carlos Mamani Quispe',
-      position: 'Ingeniero de Software Senior',
-      department: 'Tecnología & Desarrollo',
-      ci: '7483920-LP',
-      contractType: 'Indefinido',
-      branch: 'Sede Central La Paz',
-      tenure: '2 años, 4 meses',
-      status: 'ACTIVO'
-    },
-    {
-      id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6e',
-      name: 'Ana Morales Condori',
-      position: 'Analista de Finanzas y Contabilidad',
-      department: 'Administración & Finanzas',
-      ci: '6192841-SC',
-      contractType: 'Indefinido',
-      branch: 'Sucursal Santa Cruz',
-      tenure: '1 año, 8 meses',
-      status: 'ACTIVO'
-    },
-    {
-      id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6f',
-      name: 'Roberto Gómez Flores',
-      position: 'Operador de Turno Continuo',
-      department: 'Operaciones & Logística',
-      ci: '5328901-CB',
-      contractType: 'Plazo Fijo',
-      branch: 'Planta Cochabamba',
-      tenure: '7 meses',
-      status: 'ACTIVO'
-    }
-  ];
-
-  readonly currentEmployee = computed(() => {
-    const id = this.fileListUseCase.selectedEmployeeId();
-    return this.employeeProfiles.find((e) => e.id === id) || this.employeeProfiles[0];
-  });
-
   ngOnInit(): void {
     this.fileListUseCase.loadDocumentTypes();
     this.fileListUseCase.loadDocuments();
@@ -264,8 +289,11 @@ export class EmployeeFilesPageComponent implements OnInit {
     this.fileListUseCase.loadDocuments();
   }
 
-  onEmployeeSelected(empId: string): void {
-    this.fileListUseCase.setEmployeeId(empId);
+  onFileSelected(fileId: string): void {
+    const file = this.fileListUseCase.files().find((f) => f.id === fileId);
+    if (file) {
+      this.fileListUseCase.setActiveFile(file);
+    }
   }
 
   openUploadModal(): void {
@@ -280,7 +308,7 @@ export class EmployeeFilesPageComponent implements OnInit {
     this.fileListUseCase.verifyDocument(event.id, event.status);
   }
 
-  onDeleteDocument(docId: string): void {
-    this.fileListUseCase.deleteDocument(docId);
+  onArchiveDocument(docId: string): void {
+    this.fileListUseCase.archiveDocument(docId);
   }
 }

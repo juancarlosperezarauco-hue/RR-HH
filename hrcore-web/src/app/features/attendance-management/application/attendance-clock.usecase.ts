@@ -119,8 +119,9 @@ export class AttendanceClockUseCase {
       else if (punchType === 'BREAK_END' || punchType === 'BREAK_IN') label = 'Fin de Pausa';
 
       this.toastService.success(`${label} registrada y sellada con timestamp inmutable.`);
-      this.lastPunchResult.set(res.data);
-      return res.data;
+      const today = await this.fetchTodayRecord(employeeId);
+      this.lastPunchResult.set(today);
+      return today;
     } catch (err: any) {
       const msg = err?.error?.message || err?.message || 'Error al procesar marcación';
       this.error.set(msg);

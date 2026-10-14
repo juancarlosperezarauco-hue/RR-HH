@@ -127,10 +127,10 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
 
             <button
               type="button"
-              (click)="onDelete(doc.id)"
-              class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              title="Archivar documento">
-              <lucide-icon name="trash-2" [size]="14"></lucide-icon>
+              (click)="onArchive(doc.id)"
+              class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-amber-500/10 hover:text-amber-600"
+              title="Archivar documento (cumplimiento legal)">
+              <lucide-icon name="archive" [size]="14"></lucide-icon>
             </button>
           </div>
 
@@ -169,6 +169,7 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
 })
 export class DocumentCardGridComponent {
   @Input() documents: EmployeeDocumentResponse[] = [];
+  @Output() archive = new EventEmitter<string>();
   @Output() delete = new EventEmitter<string>();
   @Output() verify = new EventEmitter<{ id: string; status: 'VERIFIED' | 'REJECTED' }>();
 
@@ -198,10 +199,15 @@ export class DocumentCardGridComponent {
     this.verify.emit({ id, status });
   }
 
-  onDelete(id: string): void {
-    if (confirm('¿Está seguro de archivar este documento legal? Se conservará en el registro de auditoría.')) {
+  onArchive(id: string): void {
+    if (confirm('¿Está seguro de archivar este documento laboral? Conforme a normativas legales, se conservará en el sistema con estado ARCHIVADO.')) {
+      this.archive.emit(id);
       this.delete.emit(id);
     }
+  }
+
+  onDelete(id: string): void {
+    this.onArchive(id);
   }
 
   formatBytes(bytes: number): string {

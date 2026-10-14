@@ -12,7 +12,6 @@ import {
 } from '../../features/shift-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 import { ShiftResponse } from '../../entities/shift';
-import { MOCK_SHIFTS } from '../../shared/api/interceptors/data/mock-shifts.data';
 
 @Component({
   selector: 'app-shifts-page',
@@ -225,12 +224,22 @@ import { MOCK_SHIFTS } from '../../shared/api/interceptors/data/mock-shifts.data
       </div>
 
       <!-- Vista 2: Tabla de Asignaciones de Trabajadores -->
-      <app-shift-assignments-table
-        *ngIf="activeView === 'ASSIGNMENTS'"
-        [assignments]="assignments"
-        (cancel)="onCancelAssignment($event)"
-        (close)="onCloseAssignment($event)">
-      </app-shift-assignments-table>
+      <div *ngIf="activeView === 'ASSIGNMENTS'" class="space-y-4">
+        <div *ngIf="assignments.length === 0" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center bg-card/50">
+          <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-3">
+            <lucide-icon name="calendar" [size]="28"></lucide-icon>
+          </div>
+          <h4 class="text-base font-bold text-accent-foreground">No hay asignaciones de turnos activas</h4>
+          <p class="text-xs text-muted-foreground max-w-sm mt-1">Actualmente no existen asignaciones de turno registradas en la base de datos para los colaboradores.</p>
+        </div>
+
+        <app-shift-assignments-table
+          *ngIf="assignments.length > 0"
+          [assignments]="assignments"
+          (cancel)="onCancelAssignment($event)"
+          (close)="onCloseAssignment($event)">
+        </app-shift-assignments-table>
+      </div>
 
       <!-- Modal de Creación / Edición de Turnos -->
       <app-shift-form-modal
@@ -261,8 +270,7 @@ export class ShiftsPageComponent implements OnInit {
   selectedShiftToAssign: ShiftResponse | null = null;
 
   get assignments() {
-    const list = this.shiftAssignmentUseCase.assignments();
-    return list && list.length > 0 ? list : MOCK_SHIFTS.employeeShiftAssignments;
+    return this.shiftAssignmentUseCase.assignments();
   }
 
   ngOnInit(): void {

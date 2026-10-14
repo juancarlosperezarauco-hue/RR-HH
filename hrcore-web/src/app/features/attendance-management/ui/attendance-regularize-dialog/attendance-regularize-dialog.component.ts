@@ -184,7 +184,7 @@ export class AttendanceRegularizeDialogComponent {
     const fullCheckIn = this.correctedCheckInTime ? `${todayDate}T${this.correctedCheckInTime}:00Z` : undefined;
     const fullCheckOut = this.correctedCheckOutTime ? `${todayDate}T${this.correctedCheckOutTime}:00Z` : undefined;
 
-    // Intentar primero el flujo canónico de Spring Boot (/api/attendance/adjustments)
+    // Enviar solicitud canónica de ajuste a Spring Boot: POST /api/attendance/adjustments
     const adj = await this.useCase.createAdjustment({
       attendanceRecordId: this.record.id,
       adjustmentType: this.adjustmentType,
@@ -196,20 +196,6 @@ export class AttendanceRegularizeDialogComponent {
     });
 
     if (adj) {
-      this.close();
-      this.regularized.emit();
-      return;
-    }
-
-    // Fallback a ruta de compatibilidad /corrections si el interceptor está en modo simulado
-    const ok = await this.useCase.regularize({
-      attendanceRecordId: this.record.id,
-      correctedCheckIn: fullCheckIn,
-      correctedCheckOut: fullCheckOut,
-      reason: this.reason.trim()
-    });
-
-    if (ok) {
       this.close();
       this.regularized.emit();
     }
