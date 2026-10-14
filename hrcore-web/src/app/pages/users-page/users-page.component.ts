@@ -346,7 +346,7 @@ export class UsersPageComponent implements OnInit {
         this.reload();
         this.toastService.success('Usuario creado. Se envió un correo de activación.');
       }
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       if (this.userUpdateUseCase.status() === 'success') {
@@ -355,7 +355,7 @@ export class UsersPageComponent implements OnInit {
         this.reload();
         this.toastService.success('Usuario actualizado correctamente');
       }
-    }, { allowSignalWrites: true });
+    });
 
     effect(() => {
       if (this.userRoleUseCase.status() === 'success') {
@@ -363,7 +363,7 @@ export class UsersPageComponent implements OnInit {
         this.userRoleUseCase.resetState();
         this.toastService.success('Roles actualizados correctamente');
       }
-    }, { allowSignalWrites: true });
+    });
   }
 
   ngOnInit(): void {

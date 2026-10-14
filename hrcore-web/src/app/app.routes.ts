@@ -67,6 +67,22 @@ export const routes: Routes = [
         canActivate: [permissionGuard('access.permissions.read')],
         loadComponent: () => import('./pages/permissions-page/permissions-page.component').then(m => m.PermissionsPageComponent)
       },
+      {
+        path: 'dossiers',
+        loadComponent: () => import('./pages/employee-files-page/employee-files-page.component').then(m => m.EmployeeFilesPageComponent)
+      },
+      {
+        path: 'shifts',
+        loadComponent: () => import('./pages/shifts-page/shifts-page.component').then(m => m.ShiftsPageComponent)
+      },
+      {
+        path: 'attendance',
+        loadComponent: () => import('./pages/attendance-page/attendance-page.component').then(m => m.AttendancePageComponent)
+      },
+      {
+        path: 'absences',
+        loadComponent: () => import('./pages/absences-page/absences-page.component').then(m => m.AbsencesPageComponent)
+      },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page.component').then(m => m.SettingsPageComponent) },
       {
         path: 'subscription',

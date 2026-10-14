@@ -26,6 +26,11 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(clonedRequest).pipe(
     catchError((error: unknown) => {
+      // Si estamos en modo mock, no intentar refresco contra el backend ni forzar logout
+      if (environment.useMocks) {
+        return throwError(() => error);
+      }
+
       if (!shouldAttemptPlatformRefresh(req, error, platformStorage)) {
         if (!shouldAttemptTenantRefresh(req, error, authStorage)) {
           return throwError(() => error);
@@ -165,6 +170,10 @@ function shouldAttemptTenantRefresh(
   error: unknown,
   authStorage: AuthStorageService
 ): boolean {
+  if (environment.useMocks) {
+    return false;
+  }
+
   if (!(error instanceof HttpErrorResponse)) {
     return false;
   }

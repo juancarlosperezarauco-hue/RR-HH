@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
-import { authTokenInterceptor } from './shared/api';
+import { authTokenInterceptor, mockHttpInterceptor } from './shared/api';
 
 import {
   AlertCircle,
@@ -43,7 +43,10 @@ import {
   EyeOff,
   Facebook,
   FileChartColumn,
+  FileSignature,
   FileText,
+  Folder,
+  FolderOpen,
   HandCoins,
   Info,
   Instagram,
@@ -106,7 +109,7 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       }),
     ),
-    provideHttpClient(withInterceptors([authTokenInterceptor])),
+    provideHttpClient(withInterceptors([mockHttpInterceptor, authTokenInterceptor])),
     provideAnimationsAsync(),
     importProvidersFrom(
       LucideAngularModule.pick({
@@ -132,7 +135,10 @@ export const appConfig: ApplicationConfig = {
         ShieldAlert,
         BookOpen,
         Calendar,
+        FileSignature,
         FileText,
+        Folder,
+        FolderOpen,
         LogOut,
         ChevronDown,
         Menu,
