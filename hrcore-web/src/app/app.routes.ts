@@ -98,6 +98,16 @@ export const routes: Routes = [
         canActivate: [permissionGuard('contracts.list')],
         loadComponent: () => import('./pages/contracts-page/contracts-page.component').then(m => m.ContractsPageComponent)
       },
+      {
+        path: 'departments',
+        canActivate: [permissionGuard('departments.list')],
+        loadComponent: () => import('./pages/departments-page/departments-page.component').then(m => m.DepartmentsPageComponent)
+      },
+      {
+        path: 'positions',
+        canActivate: [permissionGuard('positions.list')],
+        loadComponent: () => import('./pages/positions-page/positions-page.component').then(m => m.PositionsPageComponent)
+      },
       { path: '', redirectTo: 'users', pathMatch: 'full' }
     ]
   },
