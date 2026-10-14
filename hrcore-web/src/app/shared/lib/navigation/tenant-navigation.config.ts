@@ -13,6 +13,7 @@ export interface TenantNavigationItem {
 export const TENANT_NAVIGATION: TenantNavigationItem[] = [
   { id: 'home', label: 'Inicio', route: '/dashboard/home', icon: 'layout-dashboard' },
   { id: 'users', label: 'Usuarios', route: '/dashboard/users', icon: 'users', permission: TENANT_ROUTE_PERMISSIONS.users },
+  { id: 'employees', label: 'Empleados', route: '/dashboard/employees', icon: 'contact-round', permission: TENANT_ROUTE_PERMISSIONS.employees },
   { id: 'contracts', label: 'Contratos', route: '/dashboard/contracts', icon: 'file-text', permission: TENANT_ROUTE_PERMISSIONS.contracts },
   { id: 'departments', label: 'Departamentos', route: '/dashboard/departments', icon: 'building-2', permission: TENANT_ROUTE_PERMISSIONS.departments },
   { id: 'positions', label: 'Cargos', route: '/dashboard/positions', icon: 'briefcase', permission: TENANT_ROUTE_PERMISSIONS.positions },

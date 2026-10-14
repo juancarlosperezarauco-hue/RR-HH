@@ -114,6 +114,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/notifications-page/notifications-page.component').then(m => m.NotificationsPageComponent)
       },
       {
+        path: 'employees',
+        canActivate: [permissionGuard(TENANT_ROUTE_PERMISSIONS.employees)],
+        loadComponent: () => import('./pages/employees-page/employees-page.component').then(m => m.EmployeesPageComponent)
+      },
+      {
         path: 'contracts',
         canActivate: [permissionGuard(TENANT_ROUTE_PERMISSIONS.contracts)],
         loadComponent: () => import('./pages/contracts-page/contracts-page.component').then(m => m.ContractsPageComponent)
