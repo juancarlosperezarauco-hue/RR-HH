@@ -2,8 +2,9 @@ import { Component, inject, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { PermissionService } from '../../../shared/lib/auth/permission.service';
 
-interface MenuItem { label: string; route: string; icon: string; }
+interface MenuItem { label: string; route: string; icon: string; permission?: string; }
 
 @Component({
   selector: 'app-sidebar',
@@ -37,11 +38,14 @@ interface MenuItem { label: string; route: string; icon: string; }
 export class SidebarComponent {
   @Output() logoutAction = new EventEmitter<void>();
   private readonly router = inject(Router);
+  private readonly permissions = inject(PermissionService);
   isMobileOpen = false;
 
   readonly tenantItems: MenuItem[] = [
     { label: 'Usuarios', route: '/dashboard/users', icon: 'users' },
     { label: 'Contratos', route: '/dashboard/contracts', icon: 'file-signature' },
+    { label: 'Departamentos', route: '/dashboard/departments', icon: 'building-2', permission: 'departments.list' },
+    { label: 'Cargos', route: '/dashboard/positions', icon: 'briefcase', permission: 'positions.list' },
     { label: 'Roles', route: '/dashboard/roles', icon: 'key' },
     { label: 'Permisos', route: '/dashboard/permissions', icon: 'badge-check' },
     { label: 'Suscripción', route: '/dashboard/subscription', icon: 'credit-card' },
@@ -62,7 +66,7 @@ export class SidebarComponent {
     { label: 'Configuración', route: '/platform/settings', icon: 'settings' }
   ];
   get isPlatformRoute(): boolean { return this.router.url.startsWith('/platform'); }
-  get visibleItems(): MenuItem[] { return this.router.url.startsWith('/platform') ? this.platformItems : this.tenantItems; }
+  get visibleItems(): MenuItem[] { return this.router.url.startsWith('/platform') ? this.platformItems : this.tenantItems.filter(item => !item.permission || this.permissions.hasPermission(item.permission)); }
   toggleMobileMenu(): void { this.isMobileOpen = !this.isMobileOpen; }
   closeMobileMenu(): void { this.isMobileOpen = false; }
   onLogout(): void { this.logoutAction.emit(); }
