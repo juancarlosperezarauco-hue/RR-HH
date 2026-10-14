@@ -71,6 +71,7 @@ public class ActivateUserAccountUseCase {
                 tenantUser.lastName(),
                 true,
                 TenantUserStatus.ACTIVE,
+                tenantUser.securityVersion() + 1,
                 tenantUser.createdAt(),
                 tenantUser.updatedAt()
         );

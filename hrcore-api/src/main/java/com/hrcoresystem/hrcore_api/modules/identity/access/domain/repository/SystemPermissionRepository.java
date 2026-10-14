@@ -10,4 +10,7 @@ public interface SystemPermissionRepository {
     List<SystemPermission> findAllActive();
 
     Set<String> findActiveCodes();
+    List<SystemPermission> findAllActiveTenant();
+    Set<String> findActiveTenantCodes();
+    Set<String> findActiveAssignableTenantCodes();
 }

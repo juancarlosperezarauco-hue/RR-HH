@@ -3,11 +3,13 @@ package com.hrcoresystem.hrcore_api.modules.identity.users.application.mapper;
 import com.hrcoresystem.hrcore_api.modules.identity.users.application.dto.TenantUserResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUser;
 import org.springframework.stereotype.Component;
+import java.util.List;
 
 @Component
 public class TenantUserMapper {
 
-    public TenantUserResponse toResponse(TenantUser tenantUser) {
+    public TenantUserResponse toResponse(TenantUser tenantUser) { return toResponse(tenantUser,List.of()); }
+    public TenantUserResponse toResponse(TenantUser tenantUser, List<com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.AssignedRoleResponse> roles) {
         return new TenantUserResponse(
                 tenantUser.id(),
                 tenantUser.email(),
@@ -16,7 +18,7 @@ public class TenantUserMapper {
                 tenantUser.active(),
                 tenantUser.status().name(),
                 tenantUser.createdAt(),
-                tenantUser.updatedAt()
+                tenantUser.updatedAt(), roles
         );
     }
 }

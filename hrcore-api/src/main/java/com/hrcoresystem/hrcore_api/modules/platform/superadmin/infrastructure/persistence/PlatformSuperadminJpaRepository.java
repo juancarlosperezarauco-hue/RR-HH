@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface PlatformSuperadminJpaRepository extends JpaRepository<PlatformSuperadminEntity, UUID> {
 
-    Optional<PlatformSuperadminEntity> findByEmail(String email);
+  Optional<PlatformSuperadminEntity> findByEmail(String email);
 
-    boolean existsByEmail(String email);
+  boolean existsByEmail(String email);
 }

@@ -5,9 +5,9 @@ import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEv
 import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.TenantRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRoleSystemNames;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
@@ -25,27 +25,32 @@ public class ActivateTenantRoleUseCase {
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
     private final TenantPlanEnforcementService tenantPlanEnforcementService;
+    private final TenantOwnershipPolicy tenantOwnershipPolicy;
 
     public ActivateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
             TenantRoleMapper tenantRoleMapper,
             AuditTrailService auditTrailService,
-            TenantPlanEnforcementService tenantPlanEnforcementService
+            TenantPlanEnforcementService tenantPlanEnforcementService, TenantOwnershipPolicy tenantOwnershipPolicy
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
         this.tenantPlanEnforcementService = tenantPlanEnforcementService;
+        this.tenantOwnershipPolicy = tenantOwnershipPolicy;
     }
 
     @Transactional
     public TenantRoleResponse execute(UUID id) {
+        tenantOwnershipPolicy.requireCurrentOwner();
         TenantRole existingRole = tenantRoleRepository.findById(id)
                 .orElseThrow(() -> new TenantRoleNotFoundException("Tenant role not found with id: " + id));
 
-        if (!existingRole.active() && !TenantRoleSystemNames.isSystemRole(existingRole.name())) {
+        tenantOwnershipPolicy.assertRoleIsCustom(existingRole);
+
+        if (!existingRole.active()) {
             tenantPlanEnforcementService.assertCanActivateRole(
                     tenantRoleRepository.countActiveCustomRoles()
             );
@@ -58,10 +63,13 @@ public class ActivateTenantRoleUseCase {
 
         TenantRole updatedRole = new TenantRole(
                 existingRole.id(),
+                existingRole.code(),
                 existingRole.name(),
                 existingRole.description(),
+                existingRole.systemRole(),
                 true,
-                existingRole.createdAt()
+                existingRole.createdAt(),
+                existingRole.updatedAt()
         );
 
         TenantRole savedRole = tenantRoleRepository.save(updatedRole);

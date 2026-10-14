@@ -27,7 +27,7 @@ public class TenantSettingsController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@tenantScopeGuard.isTenant() and hasAuthority('tenant-settings.read')")
     public ApiResponse<TenantSettingsResponse> getTenantSettings() {
         return ApiResponse.success(
                 "Tenant settings retrieved successfully",
@@ -36,7 +36,7 @@ public class TenantSettingsController {
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('tenant-settings.update') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<TenantSettingsResponse> updateTenantSettings(
             @Valid @RequestBody UpdateTenantSettingsRequest request
     ) {

@@ -1,7 +1,7 @@
 package com.hrcoresystem.hrcore_api.modules.identity.auth.application.dto;
 
-import java.util.List;
 import java.util.UUID;
+import java.util.List;
 
 public record AuthenticatedTenantUserResponse(
         UUID id,
@@ -11,6 +11,13 @@ public record AuthenticatedTenantUserResponse(
         boolean active,
         String status,
         String tenantSlug,
-        List<String> roles
+        String scope,
+        boolean owner,
+        List<String> roles,
+        List<AuthenticatedRoleResponse> roleDetails,
+        List<String> permissions,
+        long securityVersion,
+        long authorizationVersion,
+        long catalogVersion
 ) {
 }

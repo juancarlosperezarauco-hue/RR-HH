@@ -22,7 +22,7 @@ public class ListSystemPermissionsUseCase {
     }
 
     public List<SystemPermissionResponse> execute() {
-        return systemPermissionRepository.findAllActive()
+        return systemPermissionRepository.findAllActiveTenant()
                 .stream()
                 .map(systemPermissionMapper::toResponse)
                 .toList();

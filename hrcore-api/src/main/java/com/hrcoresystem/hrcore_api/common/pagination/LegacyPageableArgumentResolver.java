@@ -18,70 +18,69 @@ import java.util.Map;
 @Component
 public class LegacyPageableArgumentResolver implements HandlerMethodArgumentResolver {
 
-    private final PageableHandlerMethodArgumentResolver delegate =
-            new PageableHandlerMethodArgumentResolver(new SortHandlerMethodArgumentResolver());
+  private final PageableHandlerMethodArgumentResolver delegate = new PageableHandlerMethodArgumentResolver(
+      new SortHandlerMethodArgumentResolver());
 
-    @Override
-    public boolean supportsParameter(MethodParameter parameter) {
-        return Pageable.class.isAssignableFrom(parameter.getParameterType());
+  @Override
+  public boolean supportsParameter(MethodParameter parameter) {
+    return Pageable.class.isAssignableFrom(parameter.getParameterType());
+  }
+
+  @Override
+  public Object resolveArgument(
+      MethodParameter parameter,
+      @Nullable ModelAndViewContainer mavContainer,
+      NativeWebRequest webRequest,
+      @Nullable WebDataBinderFactory binderFactory) throws Exception {
+    Pageable pageable = delegate.resolveArgument(parameter, mavContainer, webRequest, binderFactory);
+
+    HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
+    if (request == null) {
+      return pageable;
     }
 
-    @Override
-    public Object resolveArgument(
-            MethodParameter parameter,
-            @Nullable ModelAndViewContainer mavContainer,
-            NativeWebRequest webRequest,
-            @Nullable WebDataBinderFactory binderFactory
-    ) throws Exception {
-        Pageable pageable = delegate.resolveArgument(parameter, mavContainer, webRequest, binderFactory);
-
-        HttpServletRequest request = webRequest.getNativeRequest(HttpServletRequest.class);
-        if (request == null) {
-            return pageable;
-        }
-
-        Map<String, String[]> params = request.getParameterMap();
-        if (PaginationCompatibilitySupport.hasExplicitSpringPagingParameters(request)) {
-            return pageable;
-        }
-
-        Integer limit = readPositiveInt(params.get("limit"));
-        Integer offset = readNonNegativeInt(params.get("offset"));
-
-        if (limit == null && offset == null) {
-            return pageable;
-        }
-
-        int size = limit != null ? limit : pageable.getPageSize();
-        if (size <= 0) {
-            size = pageable.getPageSize() > 0 ? pageable.getPageSize() : 50;
-        }
-
-        int safeOffset = offset != null ? offset : 0;
-        int page = size == 0 ? 0 : Math.max(safeOffset / size, 0);
-
-        return PageRequest.of(page, size, pageable.getSort());
+    Map<String, String[]> params = request.getParameterMap();
+    if (PaginationCompatibilitySupport.hasExplicitSpringPagingParameters(request)) {
+      return pageable;
     }
 
-    private Integer readPositiveInt(@Nullable String[] values) {
-        Integer value = readInt(values);
-        return value != null && value > 0 ? value : null;
+    Integer limit = readPositiveInt(params.get("limit"));
+    Integer offset = readNonNegativeInt(params.get("offset"));
+
+    if (limit == null && offset == null) {
+      return pageable;
     }
 
-    private Integer readNonNegativeInt(@Nullable String[] values) {
-        Integer value = readInt(values);
-        return value != null && value >= 0 ? value : null;
+    int size = limit != null ? limit : pageable.getPageSize();
+    if (size <= 0) {
+      size = pageable.getPageSize() > 0 ? pageable.getPageSize() : 50;
     }
 
-    private Integer readInt(@Nullable String[] values) {
-        if (values == null || values.length == 0 || values[0] == null || values[0].isBlank()) {
-            return null;
-        }
+    int safeOffset = offset != null ? offset : 0;
+    int page = size == 0 ? 0 : Math.max(safeOffset / size, 0);
 
-        try {
-            return Integer.parseInt(values[0]);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+    return PageRequest.of(page, size, pageable.getSort());
+  }
+
+  private Integer readPositiveInt(@Nullable String[] values) {
+    Integer value = readInt(values);
+    return value != null && value > 0 ? value : null;
+  }
+
+  private Integer readNonNegativeInt(@Nullable String[] values) {
+    Integer value = readInt(values);
+    return value != null && value >= 0 ? value : null;
+  }
+
+  private Integer readInt(@Nullable String[] values) {
+    if (values == null || values.length == 0 || values[0] == null || values[0].isBlank()) {
+      return null;
     }
+
+    try {
+      return Integer.parseInt(values[0]);
+    } catch (NumberFormatException ex) {
+      return null;
+    }
+  }
 }

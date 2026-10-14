@@ -48,6 +48,15 @@ public class TenantUserRoleRepositoryAdapter implements TenantUserRoleRepository
     }
 
     @Override
+    public List<String> findRoleCodesByUserId(UUID userId) {
+        return jdbcTemplate.query("""
+                SELECT DISTINCT r.code
+                FROM tenant_user_roles ur JOIN tenant_roles r ON r.id = ur.role_id
+                WHERE ur.user_id = ? AND r.active = TRUE ORDER BY r.code ASC
+                """, (rs, rowNum) -> rs.getString("code"), userId);
+    }
+
+    @Override
     public List<String> findPermissionCodesByUserId(UUID userId) {
         return jdbcTemplate.query(
                 """
@@ -59,6 +68,7 @@ public class TenantUserRoleRepositoryAdapter implements TenantUserRoleRepository
                 WHERE ur.user_id = ?
                   AND r.active = true
                   AND sp.active = true
+                  AND sp.scope = 'TENANT'
                   AND rp.permission_code IS NOT NULL
                   AND rp.permission_code <> ''
                 ORDER BY rp.permission_code ASC
@@ -69,18 +79,10 @@ public class TenantUserRoleRepositoryAdapter implements TenantUserRoleRepository
     }
 
     @Override
-    public void replaceUserRoles(UUID userId, List<UUID> roleIds) {
-        jdbcTemplate.update("DELETE FROM tenant_user_roles WHERE user_id = ?", userId);
-
-        for (UUID roleId : roleIds) {
-            jdbcTemplate.update(
-                    """
-                    INSERT INTO tenant_user_roles (user_id, role_id, assigned_at)
-                    VALUES (?, ?, NOW())
-                    """,
-                    userId,
-                    roleId
-            );
-        }
+    public boolean replaceUserRoles(UUID userId, List<UUID> roleIds) {
+        List<UUID> current=findRoleIdsByUserId(userId); java.util.Set<UUID> oldSet=new java.util.HashSet<>(current), newSet=new java.util.HashSet<>(roleIds); boolean changed=!oldSet.equals(newSet);
+        for(UUID id:oldSet) if(!newSet.contains(id)) jdbcTemplate.update("DELETE FROM tenant_user_roles WHERE user_id=? AND role_id=?",userId,id);
+        for(UUID id:newSet) if(!oldSet.contains(id)) jdbcTemplate.update("INSERT INTO tenant_user_roles(user_id,role_id,assigned_at) VALUES(?,?,NOW())",userId,id);
+        return changed;
     }
 }

@@ -10,6 +10,8 @@ public interface TenantUserRepository {
 
     TenantUser save(TenantUser tenantUser);
 
+    int incrementSecurityVersion(UUID userId);
+
     Optional<TenantUser> findById(UUID id);
 
     Optional<TenantUser> findByEmail(String email);

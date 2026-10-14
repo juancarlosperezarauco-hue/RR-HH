@@ -1,7 +1,6 @@
 package com.hrcoresystem.hrcore_api.modules.identity.access.infrastructure.persistence;
 
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRoleSystemNames;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
 import org.springframework.stereotype.Repository;
 
@@ -36,6 +35,11 @@ public class TenantRoleRepositoryAdapter implements TenantRoleRepository {
     }
 
     @Override
+    public Optional<TenantRole> findByCode(String code) {
+        return jpaRepository.findByCode(code).map(this::toDomain);
+    }
+
+    @Override
     public List<TenantRole> findAll() {
         return jpaRepository.findAll()
                 .stream()
@@ -57,15 +61,22 @@ public class TenantRoleRepositoryAdapter implements TenantRoleRepository {
     }
 
     @Override
+    public boolean existsByCode(String code) {
+        return jpaRepository.existsByCode(code);
+    }
+
+    @Override
     public long countActiveCustomRoles() {
-        return jpaRepository.countByActiveTrueAndNameNotIn(TenantRoleSystemNames.DEFAULT_SYSTEM_ROLES);
+        return jpaRepository.countByActiveTrueAndSystemRoleFalse();
     }
 
     private TenantRoleEntity toEntity(TenantRole tenantRole) {
         TenantRoleEntity entity = new TenantRoleEntity();
         entity.setId(tenantRole.id());
+        entity.setCode(tenantRole.code());
         entity.setName(tenantRole.name());
         entity.setDescription(tenantRole.description());
+        entity.setSystemRole(tenantRole.systemRole());
         entity.setActive(tenantRole.active());
         return entity;
     }
@@ -73,10 +84,13 @@ public class TenantRoleRepositoryAdapter implements TenantRoleRepository {
     private TenantRole toDomain(TenantRoleEntity entity) {
         return new TenantRole(
                 entity.getId(),
+                entity.getCode(),
                 entity.getName(),
                 entity.getDescription(),
+                entity.isSystemRole(),
                 entity.isActive(),
-                entity.getCreatedAt()
+                entity.getCreatedAt(),
+                entity.getUpdatedAt()
         );
     }
 }

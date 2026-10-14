@@ -11,6 +11,7 @@ public record TenantUser(
         String lastName,
         boolean active,
         TenantUserStatus status,
+        long securityVersion,
         Instant createdAt,
         Instant updatedAt
 ) {

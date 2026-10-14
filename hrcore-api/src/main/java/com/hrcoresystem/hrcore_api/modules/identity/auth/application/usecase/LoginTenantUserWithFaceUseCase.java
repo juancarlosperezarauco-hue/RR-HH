@@ -1,13 +1,10 @@
 package com.hrcoresystem.hrcore_api.modules.identity.auth.application.usecase;
 
-import com.hrcoresystem.hrcore_api.common.security.JwtProperties;
-import com.hrcoresystem.hrcore_api.common.security.jwt.JwtTokenService;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContext;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContextHolder;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.config.FaceRecognitionProperties;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantUserRoleRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.dto.AuthTokenResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.exception.FaceRecognitionUnavailableException;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.port.FaceRecognitionPort;
@@ -23,41 +20,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Locale;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
 
 @Service
 public class LoginTenantUserWithFaceUseCase {
 
     private final TenantUserRepository tenantUserRepository;
-    private final TenantUserRoleRepository tenantUserRoleRepository;
     private final TenantUserFaceLoginProfileRepository faceLoginProfileRepository;
     private final FaceRecognitionPort faceRecognitionPort;
     private final ProfilePhotoStoragePort profilePhotoStoragePort;
     private final FaceRecognitionProperties faceRecognitionProperties;
-    private final JwtTokenService jwtTokenService;
-    private final JwtProperties jwtProperties;
+    private final AuthSessionService authSessionService;
     private final AuditTrailService auditTrailService;
 
     public LoginTenantUserWithFaceUseCase(
             TenantUserRepository tenantUserRepository,
-            TenantUserRoleRepository tenantUserRoleRepository,
             TenantUserFaceLoginProfileRepository faceLoginProfileRepository,
             FaceRecognitionPort faceRecognitionPort,
             ProfilePhotoStoragePort profilePhotoStoragePort,
             FaceRecognitionProperties faceRecognitionProperties,
-            JwtTokenService jwtTokenService,
-            JwtProperties jwtProperties,
+            AuthSessionService authSessionService,
             AuditTrailService auditTrailService
     ) {
         this.tenantUserRepository = tenantUserRepository;
-        this.tenantUserRoleRepository = tenantUserRoleRepository;
         this.faceLoginProfileRepository = faceLoginProfileRepository;
         this.faceRecognitionPort = faceRecognitionPort;
         this.profilePhotoStoragePort = profilePhotoStoragePort;
         this.faceRecognitionProperties = faceRecognitionProperties;
-        this.jwtTokenService = jwtTokenService;
-        this.jwtProperties = jwtProperties;
+        this.authSessionService = authSessionService;
         this.auditTrailService = auditTrailService;
     }
 
@@ -103,25 +94,7 @@ public class LoginTenantUserWithFaceUseCase {
             throw new AuthenticationFailedException(formatFaceVerificationFailed(comparison.confidence()));
         }
 
-        List<String> roles = tenantUserRoleRepository.findRoleNamesByUserId(tenantUser.id()).stream()
-                .filter(this::isAuthorizableRole)
-                .toList();
-        List<String> permissions = tenantUserRoleRepository.findPermissionCodesByUserId(tenantUser.id());
-        String subject = tenantUser.id().toString();
-
-        String accessToken = jwtTokenService.generateAccessToken(
-                subject,
-                tenantUser.email(),
-                fullName(tenantUser.firstName(), tenantUser.lastName()),
-                tenantContext.tenantSlug(),
-                roles,
-                permissions
-        );
-
-        String refreshToken = jwtTokenService.generateRefreshToken(
-                subject,
-                tenantContext.tenantSlug()
-        );
+        var issued = authSessionService.createTenantSession(tenantUser, tenantContext.tenantSlug());
 
         auditTrailService.recordTenantEvent(
                 AuditEventTypes.LOGIN,
@@ -131,8 +104,6 @@ public class LoginTenantUserWithFaceUseCase {
                         "operation", "FACE_LOGIN",
                         "email", tenantUser.email(),
                         "tenantSlug", tenantContext.tenantSlug(),
-                        "roles", roles,
-                        "permissionCount", permissions.size(),
                         "confidence", comparison.confidence(),
                         "confidenceThreshold", faceRecognitionProperties.getConfidenceThreshold()
                 ),
@@ -143,26 +114,16 @@ public class LoginTenantUserWithFaceUseCase {
                 IdentityAuditPayloads.of(
                         "authenticated", true,
                         "tokenIssued", true,
-                        "roleCount", roles.size(),
-                        "permissionCount", permissions.size()
+                        "tokenIssued", true
                 )
         );
 
         return new AuthTokenResponse(
                 "Bearer",
-                accessToken,
-                refreshToken,
-                jwtProperties.getAccessExpirationMs()
+                issued.accessToken(),
+                issued.refreshToken(),
+                issued.accessExpiresInMs()
         );
-    }
-
-    private boolean isAuthorizableRole(String roleName) {
-        if (roleName == null) {
-            return false;
-        }
-
-        return "ADMIN".equalsIgnoreCase(roleName.trim())
-                || "OWNER_ADMIN".equalsIgnoreCase(roleName.trim());
     }
 
     private byte[] readBytes(MultipartFile image) {

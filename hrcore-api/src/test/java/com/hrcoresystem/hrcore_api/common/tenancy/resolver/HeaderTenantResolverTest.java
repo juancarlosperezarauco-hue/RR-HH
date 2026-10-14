@@ -1,48 +1,36 @@
 package com.hrcoresystem.hrcore_api.common.tenancy.resolver;
 
 import com.hrcoresystem.hrcore_api.common.tenancy.TenancyProperties;
+import com.hrcoresystem.hrcore_api.common.tenancy.exception.TenantResolutionException;
 import com.hrcoresystem.hrcore_api.common.tenancy.schema.TenantSchemaNamingStrategy;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import javax.sql.DataSource;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class HeaderTenantResolverTest {
-
-    @Test
-    void shouldResolveRegisteredTenant() {
-        TenancyProperties properties = new TenancyProperties();
-        properties.setHeaderName("X-Tenant-Slug");
-        properties.setTenantSchemaPrefix("tenant_");
-
-        TenantSchemaNamingStrategy namingStrategy = new TenantSchemaNamingStrategy(properties);
-        HeaderTenantResolver resolver = new HeaderTenantResolver(properties, namingStrategy);
-
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Tenant-Slug", "TalentoHumano");
-
-        var context = resolver.resolve(request);
-
-        assertEquals("talentohumano", context.tenantSlug());
-        assertEquals("tenant_talentohumano", context.schemaName());
+    private HeaderTenantResolver resolver(TenancyProperties properties) {
+        return new HeaderTenantResolver(properties, new TenantSchemaNamingStrategy(properties), mock(DataSource.class));
     }
 
     @Test
-    void shouldRejectUnknownTenantSlugBeforeTenantQueries() {
+    void shouldRejectMissingTenantHeader() {
         TenancyProperties properties = new TenancyProperties();
         properties.setHeaderName("X-Tenant-Slug");
-        properties.setTenantSchemaPrefix("tenant_");
-
-        TenantSchemaNamingStrategy namingStrategy = new TenantSchemaNamingStrategy(properties);
-        HeaderTenantResolver resolver = new HeaderTenantResolver(properties, namingStrategy);
-
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Tenant-Slug", "FinanCru"); // missing a letter
+        assertThrows(TenantResolutionException.class, () -> resolver(properties).resolve(request));
+    }
 
-        var context = resolver.resolve(request);
-
-        assertEquals("financru", context.tenantSlug());
-        assertEquals("tenant_financru", context.schemaName());
+    @Test
+    void shouldRejectNonCanonicalTenantSlugBeforeDatabaseLookup() {
+        TenancyProperties properties = new TenancyProperties();
+        properties.setHeaderName("X-Tenant-Slug");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Tenant-Slug", "TalentoHumano");
+        assertThrows(TenantResolutionException.class, () -> resolver(properties).resolve(request));
     }
 
     @Test
@@ -50,21 +38,14 @@ class HeaderTenantResolverTest {
         TenancyProperties properties = new TenancyProperties();
         properties.setHeaderName("X-Tenant-Slug");
         properties.setPublicSchema("public");
-        properties.setTenantSchemaPrefix("tenant_");
         properties.setPublicPaths(java.util.List.of("/api/public/**"));
-        properties.setGlobalPaths(java.util.List.of("/api/platform/**"));
-
-        TenantSchemaNamingStrategy namingStrategy = new TenantSchemaNamingStrategy(properties);
-        HeaderTenantResolver resolver = new HeaderTenantResolver(properties, namingStrategy);
-
+        HeaderTenantResolver resolver = resolver(properties);
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/public/checkout-sessions/cs_test/status");
-
+        request.setRequestURI("/api/public/status");
         var context = resolver.resolve(request);
-
-        assertEquals(null, context.tenantSlug());
+        assertNull(context.tenantSlug());
         assertEquals("public", context.schemaName());
-        assertEquals(true, context.publicRequest());
+        assertTrue(context.publicRequest());
     }
 
     @Test
@@ -72,20 +53,13 @@ class HeaderTenantResolverTest {
         TenancyProperties properties = new TenancyProperties();
         properties.setHeaderName("X-Tenant-Slug");
         properties.setPublicSchema("public");
-        properties.setTenantSchemaPrefix("tenant_");
-        properties.setPublicPaths(java.util.List.of("/api/public/**"));
         properties.setGlobalPaths(java.util.List.of("/api/platform/**"));
-
-        TenantSchemaNamingStrategy namingStrategy = new TenantSchemaNamingStrategy(properties);
-        HeaderTenantResolver resolver = new HeaderTenantResolver(properties, namingStrategy);
-
+        HeaderTenantResolver resolver = resolver(properties);
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/api/platform/billing/configuration-status");
-
+        request.setRequestURI("/api/platform/status");
         var context = resolver.resolve(request);
-
-        assertEquals(null, context.tenantSlug());
+        assertNull(context.tenantSlug());
         assertEquals("public", context.schemaName());
-        assertEquals(true, context.publicRequest());
+        assertTrue(context.publicRequest());
     }
 }

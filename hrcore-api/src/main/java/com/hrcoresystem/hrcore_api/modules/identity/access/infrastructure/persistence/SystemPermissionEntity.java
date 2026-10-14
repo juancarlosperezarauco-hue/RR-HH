@@ -4,9 +4,10 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.util.UUID;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.PermissionScope;
 
 @Entity
-@Table(name = "system_permissions")
+@Table(name = "system_permissions", schema = "public")
 public class SystemPermissionEntity {
 
     @Id
@@ -21,6 +22,13 @@ public class SystemPermissionEntity {
 
     @Column(length = 255)
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private PermissionScope scope;
+
+    @Column(nullable = false)
+    private boolean customRoleAssignable;
 
     @Column(nullable = false)
     private boolean active;
@@ -55,6 +63,10 @@ public class SystemPermissionEntity {
     }    public boolean isActive() {
         return active;
     }
+    public PermissionScope getScope() { return scope; }
+    public void setScope(PermissionScope scope) { this.scope = scope; }
+    public boolean isCustomRoleAssignable() { return customRoleAssignable; }
+    public void setCustomRoleAssignable(boolean value) { this.customRoleAssignable = value; }
 
     public void setActive(boolean active) {
         this.active = active;

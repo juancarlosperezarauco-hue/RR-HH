@@ -42,14 +42,14 @@ app:
 
   security:
     jwt:
-      secret: ${JWT_SECRET:4a2d6b9f8e7c1a5d3f2b4c6e8a0d9f1b3c5e7a9d2f4b6c8e0a1d3f5b7c9e2a4}
+      secret: ${JWT_SECRET}
       access-expiration-ms: ${JWT_ACCESS_EXPIRATION:900000}
       refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:604800000}
 
   bootstrap:
     superadmin:
-      email: ${PLATFORM_SUPERADMIN_EMAIL:superadmin@hrcore.local}
-      password: ${PLATFORM_SUPERADMIN_PASSWORD:SuperAdmin123!}
+      email: ${PLATFORM_SUPERADMIN_EMAIL}
+      password: ${PLATFORM_SUPERADMIN_PASSWORD}
       first-name: ${PLATFORM_SUPERADMIN_FIRST_NAME:Platform}
       last-name: ${PLATFORM_SUPERADMIN_LAST_NAME:Admin}
     sample-data:
@@ -120,7 +120,14 @@ app:
       - /api-docs/**
       - /actuator/health
       - /actuator/info
-      - /api/public/**
+      - /api/public/ping
+      - /api/public/signup
+      - /api/public/signup/checkout
+      - /api/public/signup-direct
+      - /api/public/plans
+      - /api/public/plans/**
+      - /api/public/checkout-sessions/**
+      - /api/public/stripe/webhook
       - /assets/**
       - /logo.png
     global-paths:

@@ -5,5 +5,5 @@ import jakarta.servlet.http.HttpServletRequest;
 
 public interface TenantResolver {
 
-    TenantContext resolve(HttpServletRequest request);
+  TenantContext resolve(HttpServletRequest request);
 }

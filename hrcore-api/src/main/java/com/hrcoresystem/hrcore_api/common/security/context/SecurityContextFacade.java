@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Component
 public class SecurityContextFacade {
@@ -31,6 +32,12 @@ public class SecurityContextFacade {
         AuthenticatedUserPrincipal principal = getCurrentPrincipal();
         return principal != null ? principal.subject() : null;
     }
+    public UUID getCurrentUserId(){var p=getCurrentPrincipal();return p==null?null:p.subjectId();}
+    public UUID requireCurrentUserId(){UUID id=getCurrentUserId();if(id==null)throw new IllegalStateException("No authenticated user");return id;}
+    public UUID getCurrentSessionId(){var p=getCurrentPrincipal();return p==null?null:p.sessionId();}
+    public String getCurrentScope(){var p=getCurrentPrincipal();return p==null?null:p.scope();}
+    public boolean isTenantAuthenticated(){return "TENANT".equals(getCurrentScope());}
+    public boolean isPlatformAuthenticated(){return "PLATFORM".equals(getCurrentScope());}
 
     public String getCurrentDisplayName() {
         AuthenticatedUserPrincipal principal = getCurrentPrincipal();

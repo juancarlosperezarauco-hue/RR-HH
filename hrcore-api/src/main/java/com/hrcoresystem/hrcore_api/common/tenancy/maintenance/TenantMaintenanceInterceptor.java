@@ -16,54 +16,51 @@ import java.util.List;
 @Component
 public class TenantMaintenanceInterceptor implements HandlerInterceptor {
 
-    private final TenantMaintenanceService tenantMaintenanceService;
-    private final ObjectMapper objectMapper;
+  private final TenantMaintenanceService tenantMaintenanceService;
+  private final ObjectMapper objectMapper;
 
-    public TenantMaintenanceInterceptor(
-            TenantMaintenanceService tenantMaintenanceService,
-            ObjectMapper objectMapper
-    ) {
-        this.tenantMaintenanceService = tenantMaintenanceService;
-        this.objectMapper = objectMapper;
+  public TenantMaintenanceInterceptor(
+      TenantMaintenanceService tenantMaintenanceService,
+      ObjectMapper objectMapper) {
+    this.tenantMaintenanceService = tenantMaintenanceService;
+    this.objectMapper = objectMapper;
+  }
+
+  @Override
+  public boolean preHandle(
+      @NonNull HttpServletRequest request,
+      @NonNull HttpServletResponse response,
+      @NonNull Object handler) throws Exception {
+    TenantContext context;
+    try {
+      context = TenantContextHolder.getRequired();
+    } catch (Exception exception) {
+      return true;
     }
 
-    @Override
-    public boolean preHandle(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull Object handler
-    ) throws Exception {
-        TenantContext context;
-        try {
-            context = TenantContextHolder.getRequired();
-        } catch (Exception exception) {
-            return true;
-        }
-
-        if (context.publicRequest() || context.tenantSlug() == null) {
-            return true;
-        }
-
-        if (!tenantMaintenanceService.isTenantInMaintenance(context.tenantSlug())) {
-            return true;
-        }
-
-        if (request.getRequestURI().startsWith("/api/backups")) {
-            return true;
-        }
-
-        String reason = tenantMaintenanceService.getMaintenanceReason(context.tenantSlug())
-                .orElse("Tenant is temporarily unavailable due to maintenance");
-
-        response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-        ApiErrorResponse body = ApiErrorResponse.of(
-                "Tenant is temporarily unavailable due to maintenance",
-                List.of(reason)
-        );
-
-        objectMapper.writeValue(response.getOutputStream(), body);
-        return false;
+    if (context.publicRequest() || context.tenantSlug() == null) {
+      return true;
     }
+
+    if (!tenantMaintenanceService.isTenantInMaintenance(context.tenantSlug())) {
+      return true;
+    }
+
+    if (request.getRequestURI().startsWith("/api/backups")) {
+      return true;
+    }
+
+    String reason = tenantMaintenanceService.getMaintenanceReason(context.tenantSlug())
+        .orElse("Tenant is temporarily unavailable due to maintenance");
+
+    response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+    ApiErrorResponse body = ApiErrorResponse.of(
+        "Tenant is temporarily unavailable due to maintenance",
+        List.of(reason));
+
+    objectMapper.writeValue(response.getOutputStream(), body);
+    return false;
+  }
 }

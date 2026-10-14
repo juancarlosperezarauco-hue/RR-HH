@@ -13,27 +13,25 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
 
-    @Bean
-    public OpenAPI hrcoreSystemOpenApi() {
-        String securitySchemeName = "bearerAuth";
+  @Bean
+  public OpenAPI hrcoreSystemOpenApi() {
+    String securitySchemeName = "bearerAuth";
 
-        return new OpenAPI()
-                .info(new Info()
-                        .title("HRCore API")
-                        .description("Base API for the HRCore SaaS platform")
-                        .version("v1")
-                        .contact(new Contact().name("HRCore Team"))
-                        .license(new License().name("Internal Academic Use")))
-                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
-                .components(new Components()
-                        .addSecuritySchemes(
-                                securitySchemeName,
-                                new SecurityScheme()
-                                        .name(securitySchemeName)
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")
-                        )
-                );
-    }
+    return new OpenAPI()
+        .info(new Info()
+            .title("HRCore API")
+            .description("Base API for the HRCore SaaS platform")
+            .version("v1")
+            .contact(new Contact().name("HRCore Team"))
+            .license(new License().name("Internal Academic Use")))
+        .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
+        .components(new Components()
+            .addSecuritySchemes(
+                securitySchemeName,
+                new SecurityScheme()
+                    .name(securitySchemeName)
+                    .type(SecurityScheme.Type.HTTP)
+                    .scheme("bearer")
+                    .bearerFormat("JWT")));
+  }
 }

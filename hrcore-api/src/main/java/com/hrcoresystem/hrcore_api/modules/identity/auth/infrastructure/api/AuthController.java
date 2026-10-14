@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionManagementService;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionResponse;
+import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,6 +35,8 @@ public class AuthController {
     private final GetCurrentTenantProfileUseCase getCurrentTenantProfileUseCase;
     private final UpdateCurrentTenantProfileUseCase updateCurrentTenantProfileUseCase;
     private final GetCurrentTenantProfilePhotoUseCase getCurrentTenantProfilePhotoUseCase;
+    private final AuthSessionManagementService sessionManagement;
+    private final SecurityContextFacade securityContextFacade;
 
     public AuthController(
             LoginTenantUserUseCase loginTenantUserUseCase,
@@ -44,7 +51,9 @@ public class AuthController {
             LoginTenantUserWithFaceUseCase loginTenantUserWithFaceUseCase,
             GetCurrentTenantProfileUseCase getCurrentTenantProfileUseCase,
             UpdateCurrentTenantProfileUseCase updateCurrentTenantProfileUseCase,
-            GetCurrentTenantProfilePhotoUseCase getCurrentTenantProfilePhotoUseCase
+            GetCurrentTenantProfilePhotoUseCase getCurrentTenantProfilePhotoUseCase,
+            AuthSessionManagementService sessionManagement,
+            SecurityContextFacade securityContextFacade
     ) {
         this.loginTenantUserUseCase = loginTenantUserUseCase;
         this.refreshTenantTokenUseCase = refreshTenantTokenUseCase;
@@ -59,6 +68,8 @@ public class AuthController {
         this.getCurrentTenantProfileUseCase = getCurrentTenantProfileUseCase;
         this.updateCurrentTenantProfileUseCase = updateCurrentTenantProfileUseCase;
         this.getCurrentTenantProfilePhotoUseCase = getCurrentTenantProfilePhotoUseCase;
+        this.sessionManagement = sessionManagement;
+        this.securityContextFacade = securityContextFacade;
     }
 
     @PostMapping("/login")
@@ -136,6 +147,18 @@ public class AuthController {
                 getCurrentAuthenticatedTenantUserUseCase.execute()
         );
     }
+
+    @GetMapping("/sessions")
+    @SecurityRequirement(name = "bearerAuth")
+    public ApiResponse<List<AuthSessionResponse>> sessions() { return ApiResponse.success("Sessions retrieved successfully", sessionManagement.tenantSessions(securityContextFacade.requireCurrentUserId(), securityContextFacade.getCurrentSessionId())); }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @SecurityRequirement(name = "bearerAuth")
+    public ApiResponse<Map<String,String>> revokeSession(@PathVariable UUID sessionId) { sessionManagement.revokeTenant(sessionId, securityContextFacade.requireCurrentUserId()); return ApiResponse.success("Session revoked successfully", Map.of("status","ok")); }
+
+    @PostMapping("/sessions/revoke-others")
+    @SecurityRequirement(name = "bearerAuth")
+    public ApiResponse<Map<String,String>> revokeOtherSessions() { sessionManagement.revokeOtherTenant(securityContextFacade.requireCurrentUserId(), securityContextFacade.requireCurrentUserId() == null ? null : securityContextFacade.getCurrentSessionId()); return ApiResponse.success("Other sessions revoked successfully", Map.of("status","ok")); }
 
     @GetMapping("/profile")
     @SecurityRequirement(name = "bearerAuth")

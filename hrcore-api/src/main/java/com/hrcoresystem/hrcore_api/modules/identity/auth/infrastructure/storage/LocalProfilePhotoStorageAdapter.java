@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 @Component
 public class LocalProfilePhotoStorageAdapter implements ProfilePhotoStoragePort {
 
-    private static final String PUBLIC_URL_PREFIX = "/api/public/auth/profile/photo";
+    private static final String PROFILE_URL_PREFIX = "/api/auth/profile/photo";
     private final ProfilePhotoStorageProperties properties;
 
     public LocalProfilePhotoStorageAdapter(ProfilePhotoStorageProperties properties) {
@@ -66,35 +66,6 @@ public class LocalProfilePhotoStorageAdapter implements ProfilePhotoStoragePort 
     }
 
     @Override
-    public PhotoFile readPublic(String tenantSlug, UUID userId) {
-        if (!properties.isConfigured()) {
-            throw new BusinessException("Profile photo storage is not configured");
-        }
-
-        Path userDir = resolveUserDir(tenantSlug, userId);
-        if (!Files.exists(userDir)) {
-            throw new BusinessException("Profile photo not found");
-        }
-
-        try (Stream<Path> stream = Files.list(userDir)) {
-            Path file = stream
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().startsWith("profile."))
-                    .min(Comparator.comparing(Path::toString))
-                    .orElseThrow(() -> new BusinessException("Profile photo not found"));
-
-            String filename = file.getFileName().toString();
-            return new PhotoFile(
-                    Files.readAllBytes(file),
-                    contentTypeFromFilename(filename),
-                    filename
-            );
-        } catch (IOException exception) {
-            throw new BusinessException("No se pudo leer la foto de perfil");
-        }
-    }
-
-    @Override
     public void delete(String tenantSlug, UUID userId) {
         if (!properties.isConfigured()) {
             return;
@@ -134,7 +105,7 @@ public class LocalProfilePhotoStorageAdapter implements ProfilePhotoStoragePort 
     }
 
     private String publicUrl(String tenantSlug, UUID userId, String contentType) {
-        return PUBLIC_URL_PREFIX + "/" + safeSegment(tenantSlug) + "/" + userId + extensionFor(normalizedContentType(contentType));
+        return PROFILE_URL_PREFIX;
     }
 
     private String photoFilename(String contentType) {

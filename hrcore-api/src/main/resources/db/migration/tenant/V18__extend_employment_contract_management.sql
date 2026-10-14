@@ -88,5 +88,5 @@ CROSS JOIN (VALUES
     ('positions.detail')
 ) AS p(code)
 JOIN public.system_permissions sp ON sp.code = p.code AND sp.active = TRUE
-WHERE r.name = 'OWNER_ADMIN'
+WHERE r.code = 'OWNER_ADMIN'
 ON CONFLICT (role_id, permission_code) DO NOTHING;

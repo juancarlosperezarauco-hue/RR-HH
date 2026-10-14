@@ -2,6 +2,8 @@ package com.hrcoresystem.hrcore_api.modules.identity.users.application.dto;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.AssignedRoleResponse;
 
 public record TenantUserResponse(
         UUID id,
@@ -11,6 +13,7 @@ public record TenantUserResponse(
         boolean active,
         String status,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        List<AssignedRoleResponse> roles
 ) {
 }

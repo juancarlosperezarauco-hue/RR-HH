@@ -20,7 +20,7 @@ public class DashboardController {
     }
 
     @GetMapping("/tenant/summary")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("@tenantScopeGuard.isTenant() and hasAuthority('dashboard.tenant.summary.read')")
     public ApiResponse<TenantSummaryResponse> getTenantSummary() {
         String tenantSlug = TenantContextHolder.getRequired().tenantSlug();
 

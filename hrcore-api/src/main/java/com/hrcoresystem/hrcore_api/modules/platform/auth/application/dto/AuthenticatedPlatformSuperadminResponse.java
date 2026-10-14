@@ -10,7 +10,12 @@ public record AuthenticatedPlatformSuperadminResponse(
         String firstName,
         String lastName,
         boolean active,
+        String tenantSlug,
+        String scope,
         List<String> roles,
+        List<String> permissions,
+        long securityVersion,
+        long catalogVersion,
         Instant createdAt,
         Instant updatedAt
 ) {

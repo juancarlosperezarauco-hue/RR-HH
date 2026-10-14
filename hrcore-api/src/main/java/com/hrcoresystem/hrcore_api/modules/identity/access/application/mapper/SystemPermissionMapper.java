@@ -11,7 +11,9 @@ public class SystemPermissionMapper {
         return new SystemPermissionResponse(
                 systemPermission.code(),
                 systemPermission.module(),
-                systemPermission.description()
+                systemPermission.description(),
+                systemPermission.scope(),
+                systemPermission.customRoleAssignable()
         );
     }
 }

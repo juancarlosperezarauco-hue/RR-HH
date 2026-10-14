@@ -10,34 +10,33 @@ import java.util.List;
 
 public final class PaginationSupport {
 
-    private static final int DEFAULT_PAGE_SIZE = 50;
+  private static final int DEFAULT_PAGE_SIZE = 50;
 
-    private PaginationSupport() {
+  private PaginationSupport() {
+  }
+
+  public static <T> Page<T> page(List<T> items, Pageable pageable) {
+    List<T> safeItems = items == null ? Collections.emptyList() : items;
+    Pageable safePageable = normalize(pageable);
+
+    int page = safePageable.getPageNumber();
+    int size = safePageable.getPageSize();
+    int fromIndex = Math.min(page * size, safeItems.size());
+    int toIndex = Math.min(fromIndex + size, safeItems.size());
+
+    return new PageImpl<>(
+        safeItems.subList(fromIndex, toIndex),
+        PageRequest.of(page, size, safePageable.getSort()),
+        safeItems.size());
+  }
+
+  private static Pageable normalize(Pageable pageable) {
+    if (pageable == null) {
+      return PageRequest.of(0, DEFAULT_PAGE_SIZE);
     }
 
-    public static <T> Page<T> page(List<T> items, Pageable pageable) {
-        List<T> safeItems = items == null ? Collections.emptyList() : items;
-        Pageable safePageable = normalize(pageable);
-
-        int page = safePageable.getPageNumber();
-        int size = safePageable.getPageSize();
-        int fromIndex = Math.min(page * size, safeItems.size());
-        int toIndex = Math.min(fromIndex + size, safeItems.size());
-
-        return new PageImpl<>(
-                safeItems.subList(fromIndex, toIndex),
-                PageRequest.of(page, size, safePageable.getSort()),
-                safeItems.size()
-        );
-    }
-
-    private static Pageable normalize(Pageable pageable) {
-        if (pageable == null) {
-            return PageRequest.of(0, DEFAULT_PAGE_SIZE);
-        }
-
-        int page = Math.max(pageable.getPageNumber(), 0);
-        int size = pageable.getPageSize() > 0 ? pageable.getPageSize() : DEFAULT_PAGE_SIZE;
-        return PageRequest.of(page, size, pageable.getSort());
-    }
+    int page = Math.max(pageable.getPageNumber(), 0);
+    int size = pageable.getPageSize() > 0 ? pageable.getPageSize() : DEFAULT_PAGE_SIZE;
+    return PageRequest.of(page, size, pageable.getSort());
+  }
 }

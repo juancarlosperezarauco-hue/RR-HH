@@ -72,13 +72,13 @@ public class TenantBackupController {
     }
 
     @PostMapping("/{id}/restore")
-    @PreAuthorize("hasAuthority('backups.restore')")
+    @PreAuthorize("hasAuthority('backups.restore') and @tenantOwnershipGuard.isCurrentOwner()")
     public ResponseEntity<ApiResponse<BackupJobResponse>> restoreBackup(@PathVariable UUID id, @Valid @RequestBody RestoreBackupRequest request) {
         return ResponseEntity.accepted().body(ApiResponse.success("Tenant restore job accepted", restore.execute(id, request.confirmationText(), request.reason())));
     }
 
     @PostMapping(value = "/restore/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAuthority('backups.restore')")
+    @PreAuthorize("hasAuthority('backups.restore') and @tenantOwnershipGuard.isCurrentOwner()")
     public ResponseEntity<ApiResponse<BackupJobResponse>> restoreBackupFromFile(
             @RequestPart("file") org.springframework.web.multipart.MultipartFile file,
             @RequestParam("confirmationText") String confirmationText,

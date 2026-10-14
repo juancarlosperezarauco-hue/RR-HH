@@ -9,7 +9,10 @@ import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.Te
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.InvalidSystemPermissionException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleAlreadyExistsException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.SystemPermissionRepository;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRoleSystemNames;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.PermissionAssignmentPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.validation.TenantRoleCodeValidator;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
@@ -25,30 +28,34 @@ public class CreateTenantRoleUseCase {
 
     private final TenantRoleRepository tenantRoleRepository;
     private final TenantRolePermissionRepository tenantRolePermissionRepository;
-    private final SystemPermissionRepository systemPermissionRepository;
+    private final PermissionAssignmentPolicy permissionAssignmentPolicy;
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
     private final TenantPlanEnforcementService tenantPlanEnforcementService;
+    private final TenantOwnershipPolicy tenantOwnershipPolicy;
 
     public CreateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
-            SystemPermissionRepository systemPermissionRepository,
+            PermissionAssignmentPolicy permissionAssignmentPolicy,
             TenantRoleMapper tenantRoleMapper,
             AuditTrailService auditTrailService,
-            TenantPlanEnforcementService tenantPlanEnforcementService
+            TenantPlanEnforcementService tenantPlanEnforcementService, TenantOwnershipPolicy tenantOwnershipPolicy
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
-        this.systemPermissionRepository = systemPermissionRepository;
+        this.permissionAssignmentPolicy = permissionAssignmentPolicy;
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
         this.tenantPlanEnforcementService = tenantPlanEnforcementService;
+        this.tenantOwnershipPolicy = tenantOwnershipPolicy;
     }
 
     @Transactional
     public TenantRoleResponse execute(CreateTenantRoleRequest request) {
-        String normalizedName = request.name().trim().toUpperCase();
+        tenantOwnershipPolicy.requireCurrentOwner();
+        String normalizedName = request.name().trim();
+        String normalizedCode = TenantRoleCodeValidator.normalize(request.code());
         List<String> normalizedPermissionCodes = normalizePermissionCodes(request.permissionCodes());
 
         if (tenantRoleRepository.existsByName(normalizedName)) {
@@ -57,7 +64,13 @@ public class CreateTenantRoleUseCase {
             );
         }
 
-        validatePermissions(normalizedPermissionCodes);
+        if (tenantRoleRepository.existsByCode(normalizedCode)) {
+            throw new TenantRoleAlreadyExistsException(
+                    "A tenant role with code '" + normalizedCode + "' already exists"
+            );
+        }
+
+        permissionAssignmentPolicy.validate(normalizedPermissionCodes);
 
         tenantPlanEnforcementService.assertCanCreateRole(
                 tenantRoleRepository.countActiveCustomRoles()
@@ -65,9 +78,12 @@ public class CreateTenantRoleUseCase {
 
         TenantRole roleToCreate = new TenantRole(
                 null,
+                normalizedCode,
                 normalizedName,
                 normalizeNullable(request.description()),
+                false,
                 true,
+                null,
                 null
         );
 
@@ -94,20 +110,6 @@ public class CreateTenantRoleUseCase {
         );
 
         return tenantRoleMapper.toResponse(createdRole, normalizedPermissionCodes);
-    }
-
-    private void validatePermissions(List<String> permissionCodes) {
-        Set<String> validCodes = systemPermissionRepository.findActiveCodes();
-
-        List<String> invalidCodes = permissionCodes.stream()
-                .filter(code -> !validCodes.contains(code))
-                .toList();
-
-        if (!invalidCodes.isEmpty()) {
-            throw new InvalidSystemPermissionException(
-                    "Invalid system permission codes: " + invalidCodes
-            );
-        }
     }
 
     private List<String> normalizePermissionCodes(List<String> permissionCodes) {

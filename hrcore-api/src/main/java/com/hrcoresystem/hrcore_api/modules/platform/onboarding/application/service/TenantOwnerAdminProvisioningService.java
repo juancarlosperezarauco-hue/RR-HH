@@ -8,8 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.security.SecureRandom;
@@ -26,6 +28,7 @@ public class TenantOwnerAdminProvisioningService {
     private static final Logger log = LoggerFactory.getLogger(TenantOwnerAdminProvisioningService.class);
 
     private final JdbcTemplate jdbcTemplate;
+    private final TransactionTemplate provisioningTransaction;
     private final PasswordEncoder passwordEncoder;
     private final AccountActivationNotificationProperties activationProperties;
     private final SendAccountActivationNotificationUseCase sendAccountActivationNotificationUseCase;
@@ -38,6 +41,7 @@ public class TenantOwnerAdminProvisioningService {
             SendAccountActivationNotificationUseCase sendAccountActivationNotificationUseCase
     ) {
         this.jdbcTemplate = new JdbcTemplate(targetDataSource);
+        this.provisioningTransaction = new TransactionTemplate(new DataSourceTransactionManager(targetDataSource));
         this.passwordEncoder = passwordEncoder;
         this.activationProperties = activationProperties;
         this.sendAccountActivationNotificationUseCase = sendAccountActivationNotificationUseCase;
@@ -51,7 +55,8 @@ public class TenantOwnerAdminProvisioningService {
             String firstName,
             String lastName
     ) {
-        return provisionOwnerAdminInternal(schemaName, tenantSlug, email, rawPassword, firstName, lastName, true);
+        return provisioningTransaction.execute(status -> provisionOwnerAdminInternal(
+                schemaName, tenantSlug, email, rawPassword, firstName, lastName, true));
     }
 
     public UUID provisionOwnerAdminWithoutVerification(
@@ -62,7 +67,8 @@ public class TenantOwnerAdminProvisioningService {
             String firstName,
             String lastName
     ) {
-        return provisionOwnerAdminInternal(schemaName, tenantSlug, email, rawPassword, firstName, lastName, false);
+        return provisioningTransaction.execute(status -> provisionOwnerAdminInternal(
+                schemaName, tenantSlug, email, rawPassword, firstName, lastName, false));
     }
 
     private UUID provisionOwnerAdminInternal(
@@ -75,6 +81,25 @@ public class TenantOwnerAdminProvisioningService {
             boolean issueActivationEmail
     ) {
         validateSchemaName(schemaName);
+
+        UUID ownerUserId = jdbcTemplate.queryForObject(
+                "SELECT owner_user_id FROM %s.tenant_authorization_state WHERE id = 1 FOR UPDATE".formatted(schemaName),
+                (rs, rowNum) -> rs.getObject("owner_user_id", UUID.class)
+        );
+        if (ownerUserId != null) {
+            throw new BusinessException("Tenant already has an owner");
+        }
+
+        UUID ownerAdminRoleId = jdbcTemplate.queryForObject(
+                """
+                SELECT id FROM %s.tenant_roles
+                WHERE code = 'OWNER_ADMIN' AND system_role = TRUE AND active = TRUE
+                """.formatted(schemaName),
+                (rs, rowNum) -> rs.getObject("id", UUID.class)
+        );
+        if (ownerAdminRoleId == null) {
+            throw new BusinessException("Tenant schema is missing the OWNER_ADMIN role");
+        }
 
         String normalizedEmail = email.trim().toLowerCase();
         String normalizedFirstName = firstName.trim();
@@ -90,55 +115,11 @@ public class TenantOwnerAdminProvisioningService {
                 normalizedEmail
         );
 
-        jdbcTemplate.execute("""
-                INSERT INTO %s.tenant_roles (name, description, active, created_at)
-                VALUES ('OWNER_ADMIN', 'Tenant owner administrator role', true, NOW())
-                ON CONFLICT (name) DO UPDATE SET
-                    active = true,
-                    description = EXCLUDED.description
-                """.formatted(schemaName));
-
         String passwordHash = passwordEncoder.encode(rawPassword);
         UUID userId;
 
         if (existingUsers != null && existingUsers > 0) {
-            ExistingTenantUser existingUser = jdbcTemplate.queryForObject(
-                    """
-                    SELECT id, status
-                    FROM %s.tenant_users
-                    WHERE email = ?
-                    LIMIT 1
-                    """.formatted(schemaName),
-                    (rs, rowNum) -> new ExistingTenantUser(
-                            rs.getObject("id", UUID.class),
-                            rs.getString("status")
-                    ),
-                    normalizedEmail
-            );
-
-            if (existingUser == null || existingUser.id() == null) {
-                throw new BusinessException("A tenant user with email '" + normalizedEmail + "' already exists");
-            }
-
-            userId = existingUser.id();
-
-            if (issueActivationEmail && "ACTIVE".equalsIgnoreCase(existingUser.status())) {
-                throw new BusinessException("A tenant user with email '" + normalizedEmail + "' already exists");
-            }
-
-            jdbcTemplate.update(
-                    """
-                    UPDATE %s.tenant_users
-                    SET password_hash = ?, first_name = ?, last_name = ?, active = ?, status = ?, updated_at = NOW()
-                    WHERE email = ?
-                    """.formatted(schemaName),
-                    passwordHash,
-                    normalizedFirstName,
-                    normalizedLastName,
-                    !issueActivationEmail,
-                    issueActivationEmail ? "PENDING" : "ACTIVE",
-                    normalizedEmail
-            );
+            throw new BusinessException("A tenant user with email '" + normalizedEmail + "' already exists");
         } else {
             userId = UUID.randomUUID();
 
@@ -162,15 +143,17 @@ public class TenantOwnerAdminProvisioningService {
             );
         }
 
-        UUID ownerAdminRoleId = jdbcTemplate.queryForObject(
+        int ownershipUpdated = jdbcTemplate.update(
                 """
-                SELECT id
-                FROM %s.tenant_roles
-                WHERE name = 'OWNER_ADMIN'
-                LIMIT 1
+                UPDATE %s.tenant_authorization_state
+                SET owner_user_id = ?, updated_at = NOW()
+                WHERE id = 1 AND owner_user_id IS NULL
                 """.formatted(schemaName),
-                (rs, rowNum) -> rs.getObject("id", UUID.class)
+                userId
         );
+        if (ownershipUpdated != 1) {
+            throw new BusinessException("Tenant owner could not be registered");
+        }
 
         jdbcTemplate.update(
                 """

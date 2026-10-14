@@ -1,12 +1,10 @@
 package com.hrcoresystem.hrcore_api.modules.identity.auth.application.usecase;
 
-import com.hrcoresystem.hrcore_api.common.security.JwtProperties;
-import com.hrcoresystem.hrcore_api.common.security.jwt.JwtTokenService;
-import com.hrcoresystem.hrcore_api.common.security.principal.AuthenticatedUserPrincipal;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
+import com.hrcoresystem.hrcore_api.common.security.session.IssuedTokens;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContext;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContextHolder;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantUserRoleRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.dto.AuthTokenResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.dto.LoginRequest;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.domain.exception.AuthenticationFailedException;
@@ -18,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,23 +32,14 @@ class LoginTenantUserUseCaseTest {
     @Test
     void shouldLoginSuccessfully() {
         TenantUserRepository tenantUserRepository = mock(TenantUserRepository.class);
-        TenantUserRoleRepository tenantUserRoleRepository = mock(TenantUserRoleRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         AuditTrailService auditTrailService = mock(AuditTrailService.class);
-
-        JwtProperties jwtProperties = new JwtProperties();
-        jwtProperties.setSecret("this-is-a-very-secure-jwt-secret-key-with-more-than-32-chars");
-        jwtProperties.setAccessExpirationMs(900000);
-        jwtProperties.setRefreshExpirationMs(604800000);
-
-        JwtTokenService jwtTokenService = new JwtTokenService(jwtProperties);
+        AuthSessionService sessions = mock(AuthSessionService.class);
 
         LoginTenantUserUseCase useCase = new LoginTenantUserUseCase(
                 tenantUserRepository,
-                tenantUserRoleRepository,
                 passwordEncoder,
-                jwtTokenService,
-                jwtProperties,
+                sessions,
                 auditTrailService
         );
 
@@ -65,25 +53,24 @@ class LoginTenantUserUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );
 
         when(tenantUserRepository.findByEmail("admin@talentohumano.com")).thenReturn(Optional.of(tenantUser));
         when(passwordEncoder.matches("Password123!", "encoded-password")).thenReturn(true);
-        when(tenantUserRoleRepository.findRoleNamesByUserId(tenantUser.id())).thenReturn(List.of("ADMIN"));
+        when(sessions.createTenantSession(tenantUser, "talentohumano"))
+                .thenReturn(new IssuedTokens("access", "refresh", 900000));
 
         AuthTokenResponse response = useCase.execute(
                 new LoginRequest("admin@talentohumano.com", "Password123!")
         );
 
-        assertNotNull(response.accessToken());
-        assertNotNull(response.refreshToken());
+        assertEquals("access", response.accessToken());
+        assertEquals("refresh", response.refreshToken());
         assertEquals("Bearer", response.tokenType());
-        AuthenticatedUserPrincipal principal = jwtTokenService.parseAccessToken(response.accessToken());
-        assertEquals(tenantUser.id().toString(), principal.subject());
-        assertEquals("talentohumano", principal.tenantSlug());
-        assertTrue(principal.roles().contains("ADMIN"));
+        verify(sessions).createTenantSession(tenantUser, "talentohumano");
         verify(auditTrailService).recordTenantEvent(
                 anyString(),
                 eq("USER"),
@@ -97,23 +84,14 @@ class LoginTenantUserUseCaseTest {
     @Test
     void shouldThrowWhenPasswordIsInvalid() {
         TenantUserRepository tenantUserRepository = mock(TenantUserRepository.class);
-        TenantUserRoleRepository tenantUserRoleRepository = mock(TenantUserRoleRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         AuditTrailService auditTrailService = mock(AuditTrailService.class);
-
-        JwtProperties jwtProperties = new JwtProperties();
-        jwtProperties.setSecret("this-is-a-very-secure-jwt-secret-key-with-more-than-32-chars");
-        jwtProperties.setAccessExpirationMs(900000);
-        jwtProperties.setRefreshExpirationMs(604800000);
-
-        JwtTokenService jwtTokenService = new JwtTokenService(jwtProperties);
+        AuthSessionService sessions = mock(AuthSessionService.class);
 
         LoginTenantUserUseCase useCase = new LoginTenantUserUseCase(
                 tenantUserRepository,
-                tenantUserRoleRepository,
                 passwordEncoder,
-                jwtTokenService,
-                jwtProperties,
+                sessions,
                 auditTrailService
         );
 
@@ -127,6 +105,7 @@ class LoginTenantUserUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );

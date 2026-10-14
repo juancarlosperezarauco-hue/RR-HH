@@ -7,6 +7,8 @@ import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.Assig
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.TenantRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.UserRolesResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.TenantRoleAssignmentService;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
@@ -29,6 +31,8 @@ public class AssignUserRolesUseCase {
     private final TenantUserRoleRepository tenantUserRoleRepository;
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
+    private final TenantRoleAssignmentService assignmentService;
+    private final TenantOwnershipPolicy ownershipPolicy;
 
     public AssignUserRolesUseCase(
             TenantUserRepository tenantUserRepository,
@@ -36,7 +40,7 @@ public class AssignUserRolesUseCase {
             TenantRolePermissionRepository tenantRolePermissionRepository,
             TenantUserRoleRepository tenantUserRoleRepository,
             TenantRoleMapper tenantRoleMapper,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, TenantRoleAssignmentService assignmentService, TenantOwnershipPolicy ownershipPolicy
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantRoleRepository = tenantRoleRepository;
@@ -44,22 +48,21 @@ public class AssignUserRolesUseCase {
         this.tenantUserRoleRepository = tenantUserRoleRepository;
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
+        this.assignmentService = assignmentService;
+        this.ownershipPolicy = ownershipPolicy;
     }
 
     @Transactional
     public UserRolesResponse execute(UUID userId, AssignUserRolesRequest request) {
+        ownershipPolicy.requireCurrentOwner();
         tenantUserRepository.findById(userId)
                 .orElseThrow(() -> new TenantUserNotFoundException("Tenant user not found with id: " + userId));
 
         List<UUID> roleIds = request.roleIds() == null ? List.of() : request.roleIds();
 
-        List<TenantRole> roles = tenantRoleRepository.findAllByIds(roleIds);
-        if (roles.size() != roleIds.size()) {
-            throw new TenantRoleNotFoundException("One or more tenant roles do not exist");
-        }
-
-        List<String> previousRoleNames = tenantUserRoleRepository.findRoleNamesByUserId(userId);
-        tenantUserRoleRepository.replaceUserRoles(userId, roleIds);
+        ownershipPolicy.assertNotCurrentOwner(userId);
+        List<String> previousRoleCodes = tenantUserRoleRepository.findRoleCodesByUserId(userId);
+        List<TenantRole> roles = assignmentService.replaceRoles(userId, roleIds);
 
         List<TenantRoleResponse> roleResponses = roles.stream()
                 .map(role -> tenantRoleMapper.toResponse(
@@ -78,11 +81,11 @@ public class AssignUserRolesUseCase {
                         "roleCount", roleIds.size()
                 ),
                 IdentityAuditPayloads.of(
-                        "roleNames", previousRoleNames,
-                        "roleCount", previousRoleNames.size()
+                        "roleCodes", previousRoleCodes,
+                        "roleCount", previousRoleCodes.size()
                 ),
                 IdentityAuditPayloads.of(
-                        "roleNames", roleResponses.stream().map(TenantRoleResponse::name).toList(),
+                        "roleCodes", roleResponses.stream().map(TenantRoleResponse::code).toList(),
                         "roleCount", roleResponses.size()
                 )
         );

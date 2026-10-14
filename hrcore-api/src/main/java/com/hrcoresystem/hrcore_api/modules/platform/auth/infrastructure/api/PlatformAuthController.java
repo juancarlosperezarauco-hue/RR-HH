@@ -9,6 +9,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionManagementService;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionResponse;
+import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
 
 @RestController
 @RequestMapping("/api/platform/auth")
@@ -19,19 +24,25 @@ public class PlatformAuthController {
     private final GetCurrentAuthenticatedPlatformSuperadminUseCase getCurrentAuthenticatedPlatformSuperadminUseCase;
     private final ChangePlatformPasswordUseCase changePlatformPasswordUseCase;
     private final LogoutPlatformSuperadminUseCase logoutPlatformSuperadminUseCase;
+    private final AuthSessionManagementService sessionManagement;
+    private final SecurityContextFacade securityContextFacade;
 
     public PlatformAuthController(
             LoginPlatformSuperadminUseCase loginPlatformSuperadminUseCase,
             RefreshPlatformTokenUseCase refreshPlatformTokenUseCase,
             GetCurrentAuthenticatedPlatformSuperadminUseCase getCurrentAuthenticatedPlatformSuperadminUseCase,
             ChangePlatformPasswordUseCase changePlatformPasswordUseCase,
-            LogoutPlatformSuperadminUseCase logoutPlatformSuperadminUseCase
+            LogoutPlatformSuperadminUseCase logoutPlatformSuperadminUseCase,
+            AuthSessionManagementService sessionManagement,
+            SecurityContextFacade securityContextFacade
     ) {
         this.loginPlatformSuperadminUseCase = loginPlatformSuperadminUseCase;
         this.refreshPlatformTokenUseCase = refreshPlatformTokenUseCase;
         this.getCurrentAuthenticatedPlatformSuperadminUseCase = getCurrentAuthenticatedPlatformSuperadminUseCase;
         this.changePlatformPasswordUseCase = changePlatformPasswordUseCase;
         this.logoutPlatformSuperadminUseCase = logoutPlatformSuperadminUseCase;
+        this.sessionManagement = sessionManagement;
+        this.securityContextFacade = securityContextFacade;
     }
 
     @PostMapping("/login")
@@ -59,6 +70,21 @@ public class PlatformAuthController {
                 getCurrentAuthenticatedPlatformSuperadminUseCase.execute()
         );
     }
+
+    @GetMapping("/sessions")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("@authorizationGuards.isPlatformAuthenticated()")
+    public ApiResponse<List<AuthSessionResponse>> sessions() { return ApiResponse.success("Sessions retrieved successfully", sessionManagement.platformSessions(securityContextFacade.requireCurrentUserId(), securityContextFacade.getCurrentSessionId())); }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("@authorizationGuards.isPlatformAuthenticated()")
+    public ApiResponse<Map<String,String>> revokeSession(@PathVariable UUID sessionId) { sessionManagement.revokePlatform(sessionId, securityContextFacade.requireCurrentUserId()); return ApiResponse.success("Session revoked successfully", Map.of("status","ok")); }
+
+    @PostMapping("/sessions/revoke-others")
+    @SecurityRequirement(name = "bearerAuth")
+    @PreAuthorize("@authorizationGuards.isPlatformAuthenticated()")
+    public ApiResponse<Map<String,String>> revokeOtherSessions() { sessionManagement.revokeOtherPlatform(securityContextFacade.requireCurrentUserId(), securityContextFacade.getCurrentSessionId()); return ApiResponse.success("Other sessions revoked successfully", Map.of("status","ok")); }
 
     @PostMapping("/change-password")
     @SecurityRequirement(name = "bearerAuth")
