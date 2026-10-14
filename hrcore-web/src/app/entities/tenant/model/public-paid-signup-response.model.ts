@@ -3,9 +3,10 @@ export interface PublicPaidSignupResponse {
   tenantSlug: string;
   companyName: string;
   adminEmail: string;
+  ownerRole: string;
   initialPlanCode: string;
   selectedPlanCode: string;
-  billingInterval: string;
+  billingInterval: 'MONTHLY' | 'YEARLY';
   checkoutSessionId: string;
   checkoutUrl: string;
   checkoutStatus: string;
