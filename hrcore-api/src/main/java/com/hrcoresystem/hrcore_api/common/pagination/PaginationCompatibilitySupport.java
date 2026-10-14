@@ -7,25 +7,25 @@ import java.util.Map;
 
 public final class PaginationCompatibilitySupport {
 
-    private PaginationCompatibilitySupport() {
+  private PaginationCompatibilitySupport() {
+  }
+
+  public static boolean hasExplicitSpringPagingParameters(HttpServletRequest request) {
+    if (request == null) {
+      return false;
     }
 
-    public static boolean hasExplicitSpringPagingParameters(HttpServletRequest request) {
-        if (request == null) {
-            return false;
-        }
+    Map<String, String[]> params = request.getParameterMap();
+    return params.containsKey("page")
+        || params.containsKey("size")
+        || params.containsKey("sort");
+  }
 
-        Map<String, String[]> params = request.getParameterMap();
-        return params.containsKey("page")
-                || params.containsKey("size")
-                || params.containsKey("sort");
+  public static Object adaptResponseData(Object data, HttpServletRequest request) {
+    if (data instanceof Page<?> page && !hasExplicitSpringPagingParameters(request)) {
+      return page.getContent();
     }
 
-    public static Object adaptResponseData(Object data, HttpServletRequest request) {
-        if (data instanceof Page<?> page && !hasExplicitSpringPagingParameters(request)) {
-            return page.getContent();
-        }
-
-        return data;
-    }
+    return data;
+  }
 }

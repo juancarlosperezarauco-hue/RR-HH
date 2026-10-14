@@ -55,6 +55,7 @@ public class ChangePlatformPasswordUseCase {
                 superadmin.firstName(),
                 superadmin.lastName(),
                 superadmin.active(),
+                superadmin.securityVersion() + 1,
                 superadmin.createdAt(),
                 superadmin.updatedAt()
         );

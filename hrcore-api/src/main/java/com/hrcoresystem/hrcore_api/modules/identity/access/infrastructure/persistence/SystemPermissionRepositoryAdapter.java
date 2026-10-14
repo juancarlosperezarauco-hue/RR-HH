@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.PermissionScope;
 
 @Repository
 public class SystemPermissionRepositoryAdapter implements SystemPermissionRepository {
@@ -33,12 +34,18 @@ public class SystemPermissionRepositoryAdapter implements SystemPermissionReposi
                 .collect(Collectors.toSet());
     }
 
+    @Override public List<SystemPermission> findAllActiveTenant() { return jpaRepository.findByActiveTrueAndScopeOrderByModuleAscCodeAsc(PermissionScope.TENANT).stream().map(this::toDomain).toList(); }
+    @Override public Set<String> findActiveTenantCodes() { return findAllActiveTenant().stream().map(SystemPermission::code).collect(Collectors.toSet()); }
+    @Override public Set<String> findActiveAssignableTenantCodes() { return jpaRepository.findByActiveTrueAndScopeAndCustomRoleAssignableTrueOrderByModuleAscCodeAsc(PermissionScope.TENANT).stream().map(SystemPermissionEntity::getCode).collect(Collectors.toSet()); }
+
     private SystemPermission toDomain(SystemPermissionEntity entity) {
         return new SystemPermission(
                 entity.getId(),
                 entity.getCode(),
                 entity.getModule(),
                 entity.getDescription(),
+                entity.getScope(),
+                entity.isCustomRoleAssignable(),
                 entity.isActive(),
                 entity.getCreatedAt()
         );

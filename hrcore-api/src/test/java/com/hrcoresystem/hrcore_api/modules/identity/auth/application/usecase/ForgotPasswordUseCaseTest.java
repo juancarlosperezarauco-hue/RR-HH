@@ -65,6 +65,7 @@ class ForgotPasswordUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );

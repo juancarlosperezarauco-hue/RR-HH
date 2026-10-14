@@ -3,4 +3,5 @@ export interface CreateTenantUserRequest {
   password?: string;
   firstName: string;
   lastName: string;
+  roleIds?: string[];
 }

@@ -11,19 +11,11 @@ import java.util.Map;
 @RequestMapping("/api/public")
 public class PublicTestController {
 
-    @GetMapping("/ping")
-    public ApiResponse<Map<String, String>> ping() {
-        return ApiResponse.success(
-                "HRCore API is running correctly",
-                Map.of("status", "ok")
-        );
-    }
+  @GetMapping("/ping")
+  public ApiResponse<Map<String, String>> ping() {
+    return ApiResponse.success(
+        "HRCore API is running correctly",
+        Map.of("status", "ok"));
+  }
 
-    @GetMapping("/security-status")
-    public ApiResponse<Map<String, String>> securityStatus() {
-        return ApiResponse.success(
-                "Security base is active",
-                Map.of("jwt", "enabled")
-        );
-    }
 }

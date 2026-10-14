@@ -14,20 +14,19 @@ import javax.sql.DataSource;
 @Configuration
 public class TenantDataSourceConfig {
 
-    @Bean(name = "targetDataSource")
-    @ConfigurationProperties("spring.datasource.hikari")
-    public HikariDataSource targetDataSource(DataSourceProperties dataSourceProperties) {
-        return dataSourceProperties.initializeDataSourceBuilder()
-                .type(HikariDataSource.class)
-                .build();
-    }
+  @Bean(name = "targetDataSource")
+  @ConfigurationProperties("spring.datasource.hikari")
+  public HikariDataSource targetDataSource(DataSourceProperties dataSourceProperties) {
+    return dataSourceProperties.initializeDataSourceBuilder()
+        .type(HikariDataSource.class)
+        .build();
+  }
 
-    @Primary
-    @Bean(name = "dataSource")
-    public DataSource tenantAwareDataSource(
-            @Qualifier("targetDataSource") DataSource targetDataSource,
-            TenancyProperties tenancyProperties
-    ) {
-        return new TenantAwareDataSource(targetDataSource, tenancyProperties);
-    }
+  @Primary
+  @Bean(name = "dataSource")
+  public DataSource tenantAwareDataSource(
+      @Qualifier("targetDataSource") DataSource targetDataSource,
+      TenancyProperties tenancyProperties) {
+    return new TenantAwareDataSource(targetDataSource, tenancyProperties);
+  }
 }

@@ -16,6 +16,9 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUse
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
+import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
+import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.AuthorizationCatalogStateRepository;
 
 import java.util.List;
 
@@ -28,6 +31,9 @@ public class LoginTenantUserUseCase {
     private final JwtTokenService jwtTokenService;
     private final JwtProperties jwtProperties;
     private final AuditTrailService auditTrailService;
+    private final AuthSessionService authSessionService;
+    private final TenantAuthorizationStateRepository authorizationStateRepository;
+    private final AuthorizationCatalogStateRepository catalogStateRepository;
 
     public LoginTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
@@ -35,7 +41,7 @@ public class LoginTenantUserUseCase {
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
             JwtProperties jwtProperties,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, AuthSessionService authSessionService, TenantAuthorizationStateRepository authorizationStateRepository, AuthorizationCatalogStateRepository catalogStateRepository
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserRoleRepository = tenantUserRoleRepository;
@@ -43,7 +49,9 @@ public class LoginTenantUserUseCase {
         this.jwtTokenService = jwtTokenService;
         this.jwtProperties = jwtProperties;
         this.auditTrailService = auditTrailService;
+        this.authSessionService = authSessionService; this.authorizationStateRepository=authorizationStateRepository; this.catalogStateRepository=catalogStateRepository;
     }
+    public LoginTenantUserUseCase(TenantUserRepository users,TenantUserRoleRepository roles,PasswordEncoder encoder,JwtTokenService jwt,JwtProperties props,AuditTrailService audit){this(users,roles,encoder,jwt,props,audit,null,null,null);}
 
     public AuthTokenResponse execute(LoginRequest request) {
         TenantContext tenantContext = TenantContextHolder.getRequired();
@@ -63,25 +71,12 @@ public class LoginTenantUserUseCase {
             throw new AuthenticationFailedException("Invalid credentials");
         }
 
-        List<String> roles = tenantUserRoleRepository.findRoleNamesByUserId(tenantUser.id()).stream()
-                .filter(this::isAuthorizableRole)
-                .toList();
+        List<String> roles = tenantUserRoleRepository.findRoleCodesByUserId(tenantUser.id());
         List<String> permissions = tenantUserRoleRepository.findPermissionCodesByUserId(tenantUser.id());
-        String subject = tenantUser.id().toString();
-
-        String accessToken = jwtTokenService.generateAccessToken(
-                subject,
-                tenantUser.email(),
-                fullName(tenantUser.firstName(), tenantUser.lastName()),
-                tenantContext.tenantSlug(),
-                roles,
-                permissions
-        );
-
-        String refreshToken = jwtTokenService.generateRefreshToken(
-                subject,
-                tenantContext.tenantSlug()
-        );
+        long av=authorizationStateRepository.find().map(s->s.authorizationVersion()).orElse(1L); long cv=catalogStateRepository.find().map(s->s.catalogVersion()).orElse(1L);
+        var issued=authSessionService==null?null:authSessionService.createTenantSession(tenantUser,tenantContext.tenantSlug(),roles,permissions,av,cv);
+        String accessToken=issued==null?jwtTokenService.generateAccessToken(tenantUser.id().toString(),tenantUser.email(),fullName(tenantUser.firstName(),tenantUser.lastName()),tenantContext.tenantSlug(),roles,permissions):issued.accessToken();
+        String refreshToken=issued==null?jwtTokenService.generateRefreshToken(tenantUser.id().toString(),tenantContext.tenantSlug()):issued.refreshToken();
 
         auditTrailService.recordTenantEvent(
                 AuditEventTypes.LOGIN,
@@ -112,15 +107,6 @@ public class LoginTenantUserUseCase {
                 refreshToken,
                 jwtProperties.getAccessExpirationMs()
         );
-    }
-
-    private boolean isAuthorizableRole(String roleName) {
-        if (roleName == null) {
-            return false;
-        }
-
-        return "ADMIN".equalsIgnoreCase(roleName.trim())
-                || "OWNER_ADMIN".equalsIgnoreCase(roleName.trim());
     }
 
     private String fullName(String firstName, String lastName) {

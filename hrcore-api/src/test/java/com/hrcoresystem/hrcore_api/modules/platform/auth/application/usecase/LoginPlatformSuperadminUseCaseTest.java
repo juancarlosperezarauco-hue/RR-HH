@@ -50,6 +50,7 @@ class LoginPlatformSuperadminUseCaseTest {
                 "Platform",
                 "Admin",
                 true,
+                1,
                 Instant.now(),
                 Instant.now()
         );

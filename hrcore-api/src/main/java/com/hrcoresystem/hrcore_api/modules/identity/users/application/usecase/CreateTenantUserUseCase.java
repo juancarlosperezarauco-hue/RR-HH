@@ -15,6 +15,9 @@ import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.se
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.TenantRoleAssignmentService;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
+import java.util.List;
 
 
 @Service
@@ -26,6 +29,8 @@ public class CreateTenantUserUseCase {
     private final AuditTrailService auditTrailService;
     private final TenantPlanEnforcementService tenantPlanEnforcementService;
     private final IssueAccountActivationUseCase issueAccountActivationUseCase;
+    private final TenantRoleAssignmentService roleAssignmentService;
+    private final TenantOwnershipPolicy ownershipPolicy;
 
     public CreateTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
@@ -33,7 +38,7 @@ public class CreateTenantUserUseCase {
             PasswordEncoder passwordEncoder,
             AuditTrailService auditTrailService,
             TenantPlanEnforcementService tenantPlanEnforcementService,
-            IssueAccountActivationUseCase issueAccountActivationUseCase
+            IssueAccountActivationUseCase issueAccountActivationUseCase, TenantRoleAssignmentService roleAssignmentService, TenantOwnershipPolicy ownershipPolicy
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserMapper = tenantUserMapper;
@@ -41,11 +46,15 @@ public class CreateTenantUserUseCase {
         this.auditTrailService = auditTrailService;
         this.tenantPlanEnforcementService = tenantPlanEnforcementService;
         this.issueAccountActivationUseCase = issueAccountActivationUseCase;
+        this.roleAssignmentService = roleAssignmentService;
+        this.ownershipPolicy = ownershipPolicy;
     }
 
     @Transactional
     public TenantUserResponse execute(CreateTenantUserRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
+        List<java.util.UUID> roleIds=request.roleIds()==null?List.of():request.roleIds();
+        if(!roleIds.isEmpty()) ownershipPolicy.requireCurrentOwner();
 
         if (tenantUserRepository.existsByEmail(normalizedEmail)) {
             throw new TenantUserAlreadyExistsException(
@@ -65,11 +74,13 @@ public class CreateTenantUserUseCase {
                 normalizeNullable(request.lastName()),
                 false,
                 TenantUserStatus.PENDING,
+                1,
                 null,
                 null
         );
 
         TenantUser createdTenantUser = tenantUserRepository.save(tenantUserToCreate);
+        var initialRoles=roleAssignmentService.assignInitialRoles(createdTenantUser.id(),roleIds);
 
         // Email-verification flow: the user stays PENDING/inactive until they
         // confirm ownership of the inbox through the activation link/token.
@@ -85,7 +96,9 @@ public class CreateTenantUserUseCase {
                         "firstName", createdTenantUser.firstName(),
                         "lastName", createdTenantUser.lastName(),
                         "defaultRole", "NONE",
-                        "defaultRoleAssigned", false
+                        "initialRoleIds", roleIds,
+                        "initialRoleCodes", initialRoles.stream().map(r->r.code()).toList(),
+                        "initialRoleCount", initialRoles.size()
                 ),
                 null,
                 IdentityAuditPayloads.userState(

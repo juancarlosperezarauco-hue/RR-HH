@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthenticatedSessionValidator;
 
 import java.io.IOException;
 import java.util.LinkedHashSet;
@@ -32,17 +33,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final TenancyProperties tenancyProperties;
     private final AuthenticationEntryPoint authenticationEntryPoint;
+    private final AuthenticatedSessionValidator sessionValidator;
+    private final JwtAuthorityMapper authorityMapper = new JwtAuthorityMapper();
     private final AntPathMatcher antPathMatcher = new AntPathMatcher();
 
     public JwtAuthenticationFilter(
             JwtTokenService jwtTokenService,
             TenancyProperties tenancyProperties,
-            AuthenticationEntryPoint authenticationEntryPoint
+            AuthenticationEntryPoint authenticationEntryPoint, AuthenticatedSessionValidator sessionValidator
     ) {
         this.jwtTokenService = jwtTokenService;
         this.tenancyProperties = tenancyProperties;
         this.authenticationEntryPoint = authenticationEntryPoint;
+        this.sessionValidator = sessionValidator;
     }
+    public JwtAuthenticationFilter(JwtTokenService jwtTokenService,TenancyProperties tenancyProperties,AuthenticationEntryPoint authenticationEntryPoint){this(jwtTokenService,tenancyProperties,authenticationEntryPoint,null);}
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -78,6 +83,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             String token = authorizationHeader.substring(BEARER_PREFIX.length());
             AuthenticatedUserPrincipal principal = jwtTokenService.parseAccessToken(token);
+            if(sessionValidator!=null)sessionValidator.validate(principal);
 
             String requestUri = request.getRequestURI();
             if (isPlatformToken(principal)) {
@@ -92,7 +98,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-            List<SimpleGrantedAuthority> authorities = buildAuthorities(principal);
+            List<SimpleGrantedAuthority> authorities = authorityMapper.toAuthorities(principal);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(principal, null, authorities);

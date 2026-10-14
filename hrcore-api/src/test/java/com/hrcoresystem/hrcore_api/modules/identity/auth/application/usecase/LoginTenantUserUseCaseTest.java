@@ -65,6 +65,7 @@ class LoginTenantUserUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );
@@ -127,6 +128,7 @@ class LoginTenantUserUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );

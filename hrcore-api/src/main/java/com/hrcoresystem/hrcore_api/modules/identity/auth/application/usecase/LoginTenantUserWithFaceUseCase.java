@@ -103,9 +103,7 @@ public class LoginTenantUserWithFaceUseCase {
             throw new AuthenticationFailedException(formatFaceVerificationFailed(comparison.confidence()));
         }
 
-        List<String> roles = tenantUserRoleRepository.findRoleNamesByUserId(tenantUser.id()).stream()
-                .filter(this::isAuthorizableRole)
-                .toList();
+        List<String> roles = tenantUserRoleRepository.findRoleCodesByUserId(tenantUser.id());
         List<String> permissions = tenantUserRoleRepository.findPermissionCodesByUserId(tenantUser.id());
         String subject = tenantUser.id().toString();
 
@@ -154,15 +152,6 @@ public class LoginTenantUserWithFaceUseCase {
                 refreshToken,
                 jwtProperties.getAccessExpirationMs()
         );
-    }
-
-    private boolean isAuthorizableRole(String roleName) {
-        if (roleName == null) {
-            return false;
-        }
-
-        return "ADMIN".equalsIgnoreCase(roleName.trim())
-                || "OWNER_ADMIN".equalsIgnoreCase(roleName.trim());
     }
 
     private byte[] readBytes(MultipartFile image) {

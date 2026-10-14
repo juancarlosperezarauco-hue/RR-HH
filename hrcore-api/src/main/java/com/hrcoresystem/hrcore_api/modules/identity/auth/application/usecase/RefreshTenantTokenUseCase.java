@@ -17,9 +17,11 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUse
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import io.jsonwebtoken.Claims;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 import java.util.UUID;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
 
 @Service
 public class RefreshTenantTokenUseCase {
@@ -29,23 +31,34 @@ public class RefreshTenantTokenUseCase {
     private final JwtTokenService jwtTokenService;
     private final JwtProperties jwtProperties;
     private final AuditTrailService auditTrailService;
+    private final AuthSessionService authSessionService;
 
+    @Autowired
     public RefreshTenantTokenUseCase(
             TenantUserRepository tenantUserRepository,
             TenantUserRoleRepository tenantUserRoleRepository,
             JwtTokenService jwtTokenService,
             JwtProperties jwtProperties,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService,
+            AuthSessionService authSessionService
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserRoleRepository = tenantUserRoleRepository;
         this.jwtTokenService = jwtTokenService;
         this.jwtProperties = jwtProperties;
         this.auditTrailService = auditTrailService;
+        this.authSessionService = authSessionService;
     }
+
+    public RefreshTenantTokenUseCase(TenantUserRepository users, TenantUserRoleRepository roles, JwtTokenService jwt,
+            JwtProperties props, AuditTrailService audit) { this(users, roles, jwt, props, audit, null); }
 
     public AuthTokenResponse execute(RefreshTokenRequest request) {
         TenantContext tenantContext = TenantContextHolder.getRequired();
+        if (authSessionService != null) {
+            var issued = authSessionService.refreshTenantSession(request.refreshToken(), tenantContext.tenantSlug());
+            return new AuthTokenResponse("Bearer", issued.accessToken(), issued.refreshToken(), issued.accessExpiresInMs());
+        }
 
         Claims claims = jwtTokenService.parseRefreshToken(request.refreshToken());
 
@@ -76,9 +89,7 @@ public class RefreshTenantTokenUseCase {
             throw new AuthenticationFailedException("User is inactive");
         }
 
-        List<String> roles = tenantUserRoleRepository.findRoleNamesByUserId(tenantUser.id()).stream()
-                .filter(this::isAuthorizableRole)
-                .toList();
+        List<String> roles = tenantUserRoleRepository.findRoleCodesByUserId(tenantUser.id());
         List<String> permissions = tenantUserRoleRepository.findPermissionCodesByUserId(tenantUser.id());
 
         String newAccessToken = jwtTokenService.generateAccessToken(
@@ -124,15 +135,6 @@ public class RefreshTenantTokenUseCase {
                 newRefreshToken,
                 jwtProperties.getAccessExpirationMs()
         );
-    }
-
-    private boolean isAuthorizableRole(String roleName) {
-        if (roleName == null) {
-            return false;
-        }
-
-        return "ADMIN".equalsIgnoreCase(roleName.trim())
-                || "OWNER_ADMIN".equalsIgnoreCase(roleName.trim());
     }
 
     private UUID parseSubjectAsUserId(String subject) {

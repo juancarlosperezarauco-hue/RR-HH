@@ -62,7 +62,7 @@ public class TenantBillingController {
     }
 
     @GetMapping("/current")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<PlatformSubscriptionResponse> currentSubscription() {
         return ApiResponse.success(
                 "Current tenant subscription retrieved successfully",
@@ -71,7 +71,7 @@ public class TenantBillingController {
     }
 
     @GetMapping("/status")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<BillingStatusResponse> billingStatus() {
         return ApiResponse.success(
                 "Billing status retrieved successfully",
@@ -80,7 +80,7 @@ public class TenantBillingController {
     }
 
     @GetMapping("/available-plans")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<List<BillingPlanResponse>> availablePlans() {
         return ApiResponse.success(
                 "Available billing plans retrieved successfully",
@@ -89,7 +89,7 @@ public class TenantBillingController {
     }
 
     @PostMapping("/checkout")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<CheckoutSessionResponse> createCheckout(
             @Valid @RequestBody CreateCheckoutSessionRequest request
     ) {
@@ -100,7 +100,7 @@ public class TenantBillingController {
     }
 
     @GetMapping("/checkout-result")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<BillingCheckoutResultResponse> checkoutResult(@RequestParam("session_id") String sessionId) {
         return ApiResponse.success(
                 "Checkout result retrieved successfully",
@@ -109,7 +109,7 @@ public class TenantBillingController {
     }
 
     @PostMapping("/customer-portal")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<CustomerPortalResponse> createCustomerPortal() {
         return ApiResponse.success(
                 "Stripe customer portal session created successfully",
@@ -118,7 +118,7 @@ public class TenantBillingController {
     }
 
     @GetMapping("/payments")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<List<SubscriptionPaymentResponse>> payments() {
         return ApiResponse.success(
                 "Subscription payments retrieved successfully",
@@ -127,7 +127,7 @@ public class TenantBillingController {
     }
 
     @GetMapping("/checkout-sessions/{id}")
-    @PreAuthorize("hasAuthority('billing.subscription.manage')")
+    @PreAuthorize("hasAuthority('billing.subscription.manage') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<CheckoutSessionStatusResponse> checkoutSessionStatus(@PathVariable UUID id) {
         return ApiResponse.success(
                 "Checkout session status retrieved successfully",

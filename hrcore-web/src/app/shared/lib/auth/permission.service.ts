@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { AuthStorageService } from '../storage/auth-storage.service';
+import { AuthFacade } from './auth.facade';
 
 interface JwtPayload {
   sub: string;
@@ -16,6 +17,7 @@ interface JwtPayload {
 })
 export class PermissionService {
   private readonly authStorage = inject(AuthStorageService);
+  private readonly authFacade = inject(AuthFacade);
 
   // Cache
   private cachedToken: string | null = null;
@@ -28,7 +30,7 @@ export class PermissionService {
    */
   hasPermission(permissionCode: string): boolean {
     this.refreshCacheIfNeeded();
-    return this.cachedPermissions.has(permissionCode);
+    return this.authFacade.currentUser()?.permissions?.includes(permissionCode) ?? this.cachedPermissions.has(permissionCode);
   }
 
   /**
@@ -38,6 +40,14 @@ export class PermissionService {
     this.refreshCacheIfNeeded();
     return permissionCodes.some(code => this.cachedPermissions.has(code));
   }
+
+  hasAllPermissions(permissionCodes: string[]): boolean {
+    if (permissionCodes.length === 0) return true;
+    return permissionCodes.every(code => this.hasPermission(code));
+  }
+
+  isCurrentOwner(): boolean { const user = this.authFacade.currentUser(); return user?.scope === 'TENANT' && user.owner === true; }
+  isPlatformSuperadmin(): boolean { return false; }
 
   /**
    * Verifica si el usuario tiene un rol específico (ej. "ADMIN", "OWNER_ADMIN").

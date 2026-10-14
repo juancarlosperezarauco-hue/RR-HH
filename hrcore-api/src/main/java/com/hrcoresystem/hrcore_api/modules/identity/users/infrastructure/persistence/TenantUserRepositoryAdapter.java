@@ -4,6 +4,8 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUse
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.jdbc.core.JdbcTemplate;
+import javax.sql.DataSource;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,9 +15,18 @@ import java.util.UUID;
 public class TenantUserRepositoryAdapter implements TenantUserRepository {
 
     private final TenantUserJpaRepository jpaRepository;
+    private final JdbcTemplate jdbcTemplate;
 
-    public TenantUserRepositoryAdapter(TenantUserJpaRepository jpaRepository) {
+    public TenantUserRepositoryAdapter(TenantUserJpaRepository jpaRepository, DataSource dataSource) {
         this.jpaRepository = jpaRepository;
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
+
+    @Override
+    public int incrementSecurityVersion(UUID userId) {
+        int updated = jdbcTemplate.update("UPDATE tenant_users SET security_version = security_version + 1, updated_at = NOW() WHERE id = ?", userId);
+        if (updated != 1) throw new IllegalStateException("Tenant user security version was not updated");
+        return updated;
     }
 
     @Override
@@ -67,6 +78,7 @@ public class TenantUserRepositoryAdapter implements TenantUserRepository {
         entity.setLastName(tenantUser.lastName());
         entity.setActive(tenantUser.active());
         entity.setStatus(tenantUser.status());
+        entity.setSecurityVersion(tenantUser.securityVersion());
         return entity;
     }
 
@@ -79,6 +91,7 @@ public class TenantUserRepositoryAdapter implements TenantUserRepository {
                 entity.getLastName(),
                 entity.isActive(),
                 entity.getStatus(),
+                entity.getSecurityVersion(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

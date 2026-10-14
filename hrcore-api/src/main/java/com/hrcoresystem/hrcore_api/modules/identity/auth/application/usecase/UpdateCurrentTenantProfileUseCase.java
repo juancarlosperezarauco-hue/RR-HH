@@ -62,6 +62,7 @@ public class UpdateCurrentTenantProfileUseCase {
                 normalizeOptional(request.lastName(), existingUser.lastName()),
                 existingUser.active(),
                 existingUser.status(),
+                existingUser.securityVersion(),
                 existingUser.createdAt(),
                 existingUser.updatedAt()
         );

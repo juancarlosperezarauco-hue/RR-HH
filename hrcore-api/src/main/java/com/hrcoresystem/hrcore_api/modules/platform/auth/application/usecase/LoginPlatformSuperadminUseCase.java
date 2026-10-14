@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
 
 @Service
 public class LoginPlatformSuperadminUseCase {
@@ -24,20 +25,23 @@ public class LoginPlatformSuperadminUseCase {
     private final JwtTokenService jwtTokenService;
     private final JwtProperties jwtProperties;
     private final AuditTrailService auditTrailService;
+    private final AuthSessionService authSessionService;
 
     public LoginPlatformSuperadminUseCase(
             PlatformSuperadminRepository platformSuperadminRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
             JwtProperties jwtProperties,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, AuthSessionService authSessionService
     ) {
         this.platformSuperadminRepository = platformSuperadminRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
         this.jwtProperties = jwtProperties;
         this.auditTrailService = auditTrailService;
+        this.authSessionService = authSessionService;
     }
+    public LoginPlatformSuperadminUseCase(PlatformSuperadminRepository repo,PasswordEncoder encoder,JwtTokenService jwt,JwtProperties props,AuditTrailService audit){this(repo,encoder,jwt,props,audit,null);}
 
     public PlatformAuthTokenResponse execute(PlatformLoginRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
@@ -53,9 +57,10 @@ public class LoginPlatformSuperadminUseCase {
             throw new AuthenticationFailedException("Invalid credentials");
         }
 
-        String accessToken = jwtTokenService.generateAccessToken(
-                superadmin.email(),
-                superadmin.email(),
+        var issued = authSessionService==null?null:authSessionService.createPlatformSession(superadmin);
+        /*String accessToken = jwtTokenService.generateAccessToken(
+                superadmin.id().toString(),
+                superadmin.id().toString(),
                 fullName(superadmin.firstName(), superadmin.lastName()),
                 PlatformAuthConstants.PLATFORM_TENANT_SLUG,
                 PlatformAuthConstants.PLATFORM_ROLES,
@@ -65,7 +70,7 @@ public class LoginPlatformSuperadminUseCase {
         String refreshToken = jwtTokenService.generateRefreshToken(
                 superadmin.email(),
                 PlatformAuthConstants.PLATFORM_TENANT_SLUG
-        );
+        );*/
 
         auditTrailService.recordPlatformEvent(
                 AuditEventTypes.LOGIN,
@@ -80,8 +85,8 @@ public class LoginPlatformSuperadminUseCase {
 
         return new PlatformAuthTokenResponse(
                 "Bearer",
-                accessToken,
-                refreshToken,
+                issued==null?jwtTokenService.generateAccessToken(superadmin.id().toString(),superadmin.email(),fullName(superadmin.firstName(),superadmin.lastName()),PlatformAuthConstants.PLATFORM_TENANT_SLUG,PlatformAuthConstants.PLATFORM_ROLES,List.of()):issued.accessToken(),
+                issued==null?jwtTokenService.generateRefreshToken(superadmin.id().toString(),PlatformAuthConstants.PLATFORM_TENANT_SLUG):issued.refreshToken(),
                 jwtProperties.getAccessExpirationMs()
         );
     }

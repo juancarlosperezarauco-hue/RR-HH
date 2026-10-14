@@ -5,6 +5,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -25,8 +26,9 @@ public class AuthorizationGuards {
             return false;
         }
 
-        return PLATFORM_TENANT.equalsIgnoreCase(principal.tenantSlug())
-                && hasAnyAuthority(authentication, "ROLE_ADMIN", "ROLE_SUPERADMIN");
+        return "PLATFORM".equals(principal.scope())
+                && PLATFORM_TENANT.equalsIgnoreCase(principal.tenantSlug())
+                && hasAnyAuthority(authentication, "ROLE_SUPERADMIN");
     }
 
     public boolean isPlatformAuthenticated() {
@@ -36,7 +38,19 @@ public class AuthorizationGuards {
         }
 
         AuthenticatedUserPrincipal principal = getPrincipal(authentication);
-        return principal != null && PLATFORM_TENANT.equalsIgnoreCase(principal.tenantSlug());
+        return principal != null && "PLATFORM".equals(principal.scope()) && PLATFORM_TENANT.equalsIgnoreCase(principal.tenantSlug()) && hasAnyAuthority(authentication,"ROLE_SUPERADMIN");
+    }
+
+    public boolean isTenantAuthenticated() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!isAuthenticated(authentication)) {
+            return false;
+        }
+        AuthenticatedUserPrincipal principal = getPrincipal(authentication);
+        return principal != null
+                && "TENANT".equals(principal.scope())
+                && StringUtils.hasText(principal.tenantSlug())
+                && !PLATFORM_TENANT.equalsIgnoreCase(principal.tenantSlug());
     }
 
     private boolean isAuthenticated(Authentication authentication) {

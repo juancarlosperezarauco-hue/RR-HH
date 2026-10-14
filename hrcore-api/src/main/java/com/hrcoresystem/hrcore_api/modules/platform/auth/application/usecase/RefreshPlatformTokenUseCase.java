@@ -16,6 +16,8 @@ import io.jsonwebtoken.Claims;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class RefreshPlatformTokenUseCase {
@@ -24,20 +26,32 @@ public class RefreshPlatformTokenUseCase {
     private final JwtTokenService jwtTokenService;
     private final JwtProperties jwtProperties;
     private final AuditTrailService auditTrailService;
+    private final AuthSessionService authSessionService;
 
+    @Autowired
     public RefreshPlatformTokenUseCase(
             PlatformSuperadminRepository platformSuperadminRepository,
             JwtTokenService jwtTokenService,
             JwtProperties jwtProperties,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService,
+            AuthSessionService authSessionService
     ) {
         this.platformSuperadminRepository = platformSuperadminRepository;
         this.jwtTokenService = jwtTokenService;
         this.jwtProperties = jwtProperties;
         this.auditTrailService = auditTrailService;
+        this.authSessionService = authSessionService;
+    }
+
+    public RefreshPlatformTokenUseCase(PlatformSuperadminRepository repo, JwtTokenService jwt, JwtProperties props, AuditTrailService audit) {
+        this(repo, jwt, props, audit, null);
     }
 
     public PlatformAuthTokenResponse execute(PlatformRefreshTokenRequest request) {
+        if (authSessionService != null) {
+            var issued = authSessionService.refreshPlatformSession(request.refreshToken());
+            return new PlatformAuthTokenResponse("Bearer", issued.accessToken(), issued.refreshToken(), issued.accessExpiresInMs());
+        }
         Claims claims = jwtTokenService.parseRefreshToken(request.refreshToken());
 
         String subject = claims.getSubject();

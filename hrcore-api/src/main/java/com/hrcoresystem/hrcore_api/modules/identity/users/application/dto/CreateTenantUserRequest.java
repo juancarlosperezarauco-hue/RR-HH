@@ -3,6 +3,8 @@ package com.hrcoresystem.hrcore_api.modules.identity.users.application.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
+import java.util.UUID;
 
 public record CreateTenantUserRequest(
         @NotBlank
@@ -18,6 +20,7 @@ public record CreateTenantUserRequest(
         String firstName,
 
         @Size(max = 100)
-        String lastName
+        String lastName,
+        List<UUID> roleIds
 ) {
 }

@@ -13,11 +13,17 @@ public class TenantRoleEntity {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true, length = 100, updatable = false)
+    private String code;
+
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(length = 255)
     private String description;
+
+    @Column(nullable = false)
+    private boolean systemRole;
 
     @Column(nullable = false)
     private boolean active;
@@ -25,10 +31,19 @@ public class TenantRoleEntity {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant updatedAt;
+
     @PrePersist
     public void prePersist() {
         Instant now = Instant.now();
         this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = Instant.now();
     }
 
     public UUID getId() {
@@ -37,25 +52,53 @@ public class TenantRoleEntity {
 
     public void setId(UUID id) {
         this.id = id;
-    }    public String getName() {
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
-    }    public String getDescription() {
+    }
+
+    public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
-    }    public boolean isActive() {
+    }
+
+    public boolean isSystemRole() {
+        return systemRole;
+    }
+
+    public void setSystemRole(boolean systemRole) {
+        this.systemRole = systemRole;
+    }
+
+    public boolean isActive() {
         return active;
     }
 
     public void setActive(boolean active) {
         this.active = active;
-    }    public Instant getCreatedAt() {
+    }
+
+    public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
     }
 }
