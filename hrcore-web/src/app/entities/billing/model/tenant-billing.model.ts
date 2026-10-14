@@ -31,9 +31,16 @@ export interface TenantCurrentSubscription {
   status: string;
   trial: boolean;
   currentSubscription: boolean;
+  stripeSubscriptionId: string | null;
+  stripePriceId: string | null;
+  billingInterval: BillingInterval | null;
   startedAt: string;
-  expiresAt: string;
-  remainingDays: number;
+  expiresAt: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  cancelledAt: string | null;
+  remainingDays: number | null;
   createdAt: string;
   updatedAt: string;
 }
