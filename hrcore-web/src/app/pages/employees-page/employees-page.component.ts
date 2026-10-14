@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Observable } from 'rxjs';
 import { HasPermissionPipe } from '../../shared/api';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { ContractsService, DepartmentOption, PositionOption } from '../../entities/contracts';
@@ -79,7 +79,8 @@ export class EmployeesPageComponent implements OnInit {
   activeCount(): number { return this.employees().filter(item => item.employmentStatus === 'ACTIVE').length; }
 
   openCreate(): void {
-    this.formMode.set('create'); this.selected.set(null); this.form = this.emptyEmployee(); this.showForm.set(true);
+    this.formMode.set('create'); this.selected.set(null); this.form = this.emptyEmployee();
+    this.assignmentForm = this.emptyAssignment(); this.showForm.set(true);
   }
   openEdit(id: string): void {
     this.service.get(id).subscribe({
@@ -92,13 +93,24 @@ export class EmployeesPageComponent implements OnInit {
     if (!this.form.employeeNumber.trim() || !this.form.firstName.trim() || !this.form.lastName.trim() || !this.form.documentType.trim() || !this.form.documentNumber.trim() || !this.form.hireDate) {
       this.toast.warning('Complete el código, nombre, apellido, documento y fecha de ingreso.'); return;
     }
+    const creating = this.formMode() === 'create';
+    if (creating && (!this.assignmentForm.departmentId || !this.assignmentForm.positionId || !this.assignmentForm.startDate)) {
+      this.toast.warning('Seleccione el departamento, cargo y fecha de inicio de la asignación laboral.'); return;
+    }
     this.saving.set(true);
     const selected = this.selected();
     const request = this.cleanEmployee(this.form);
-    const operation = this.formMode() === 'edit' && selected ? this.service.update(selected.id, request) : this.service.create(request);
+    const assignment = this.cleanAssignment(this.assignmentForm);
+    const operation: Observable<unknown> = !creating && selected
+      ? this.service.update(selected.id, request)
+      : this.service.createWithAssignment({ employee: request, assignment });
     operation.subscribe({
-      next: () => { this.saving.set(false); this.showForm.set(false); this.toast.success('Empleado guardado correctamente.'); this.load(this.currentPage()); },
-      error: error => { this.saving.set(false); this.handleError(error, 'No se pudo guardar el empleado'); }
+      next: () => {
+        this.saving.set(false); this.showForm.set(false);
+        this.toast.success(creating ? 'Empleado y asignación laboral guardados correctamente.' : 'Empleado actualizado correctamente.');
+        this.load(this.currentPage());
+      },
+      error: (error: unknown) => { this.saving.set(false); this.handleError(error, 'No se pudo guardar el empleado'); }
     });
   }
 
@@ -173,6 +185,7 @@ export class EmployeesPageComponent implements OnInit {
   private emptyContact(): EmergencyContactRequest { return { fullName: '', relationship: null, phone: '', alternativePhone: null, address: null, primary: true }; }
   private toRequest(e: Employee): EmployeeRequest { const { id: _id, terminationDate: _terminationDate, employmentStatus: _status, createdAt: _createdAt, updatedAt: _updatedAt, ...request } = e; return request; }
   private cleanEmployee(e: EmployeeRequest): EmployeeRequest { return { ...e, tenantUserId: this.nullable(e.tenantUserId), middleName: this.nullable(e.middleName), secondLastName: this.nullable(e.secondLastName), birthDate: this.nullable(e.birthDate), gender: this.nullable(e.gender), nationality: this.nullable(e.nationality), personalEmail: this.nullable(e.personalEmail), workEmail: this.nullable(e.workEmail), phone: this.nullable(e.phone), mobilePhone: this.nullable(e.mobilePhone), address: this.nullable(e.address) }; }
+  private cleanAssignment(a: EmployeeAssignmentRequest): EmployeeAssignmentRequest { return { ...a, supervisorEmployeeId: this.nullable(a.supervisorEmployeeId), endDate: this.nullable(a.endDate), reason: this.nullable(a.reason) }; }
   private nullable(value: string | null): string | null { return value?.trim() || null; }
   private today(): string { return new Date().toISOString().slice(0, 10); }
   private handleError(error: unknown, fallback: string): void { const message = error instanceof HttpErrorResponse ? (error.error?.message || error.error?.error || fallback) : fallback; this.toast.error(String(message)); }

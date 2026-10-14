@@ -320,7 +320,7 @@ export class ShiftService {
    */
   assignShifts(request: AssignShiftRequest): Observable<ApiResponse<EmployeeShiftAssignmentResponse[]>> {
     return this.http.post<ApiResponse<EmployeeShiftAssignmentResponse[]>>(
-      `${this.baseUrl}/assignments`,
+      `${this.baseUrl}/assignments/batch`,
       request
     );
   }
@@ -442,9 +442,12 @@ export class ShiftService {
 
   private toShiftResponse(shift: WorkShiftResponse): ShiftResponse {
     const isOvernight = !!shift.crossesMidnight;
+    const startHour = Number(shift.startTime?.substring(0, 2));
+    const endHour = Number(shift.endTime?.substring(0, 2));
+    const shiftType = isOvernight || startHour >= 18 || endHour <= 6 ? 'NIGHT' : 'CONTINUOUS';
     return {
       ...shift,
-      shiftType: isOvernight ? 'NIGHT' : 'CONTINUOUS',
+      shiftType,
       breakMinutes: 0,
       gracePeriodMinutes: shift.lateToleranceMinutes,
       isOvernight

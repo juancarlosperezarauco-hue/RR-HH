@@ -24,15 +24,24 @@ public class EmployeeController {
     private final CreateEmployeeUseCase create; private final ListEmployeesUseCase list;
     private final GetEmployeeUseCase get; private final UpdateEmployeeUseCase update;
     private final ChangeEmployeeStatusUseCase status;
+    private final CreateEmployeeWithAssignmentUseCase onboard;
     public EmployeeController(CreateEmployeeUseCase create, ListEmployeesUseCase list, GetEmployeeUseCase get,
-                              UpdateEmployeeUseCase update, ChangeEmployeeStatusUseCase status) {
+                              UpdateEmployeeUseCase update, ChangeEmployeeStatusUseCase status,
+                              CreateEmployeeWithAssignmentUseCase onboard) {
         this.create = create; this.list = list; this.get = get; this.update = update; this.status = status;
+        this.onboard = onboard;
     }
 
     @PostMapping
     @PreAuthorize("hasAuthority('employees.create')")
     public ApiResponse<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
         return ApiResponse.success("Employee created successfully", create.execute(request));
+    }
+    @PostMapping("/with-assignment")
+    @PreAuthorize("hasAuthority('employees.create') and hasAuthority('employees.assignments.create')")
+    public ApiResponse<EmployeeOnboardingResponse> createWithAssignment(
+            @Valid @RequestBody EmployeeOnboardingRequest request) {
+        return ApiResponse.success("Employee and assignment created successfully", onboard.execute(request));
     }
     @GetMapping
     @PreAuthorize("hasAuthority('employees.list')")

@@ -2,6 +2,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.shifts.infrastructure.api;
 
 import com.hrcoresystem.hrcore_api.common.response.ApiResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentRequest;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentsRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ShiftAssignmentResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.UpdateShiftAssignmentRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.EmployeeShiftAssignmentService;
@@ -9,6 +10,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.ShiftAssig
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -32,6 +34,13 @@ public class ShiftAssignmentController {
     @PreAuthorize("hasAuthority('shifts.assignments.create')")
     public ApiResponse<ShiftAssignmentResponse> create(@Valid @RequestBody CreateShiftAssignmentRequest request) {
         return ApiResponse.success("Shift assignment created", assignments.create(request));
+    }
+
+    @PostMapping("/batch")
+    @PreAuthorize("hasAuthority('shifts.assignments.create')")
+    public ApiResponse<List<ShiftAssignmentResponse>> createBatch(
+            @Valid @RequestBody CreateShiftAssignmentsRequest request) {
+        return ApiResponse.success("Shift assignments created", assignments.createBatch(request));
     }
 
     @GetMapping

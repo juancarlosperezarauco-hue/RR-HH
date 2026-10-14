@@ -85,5 +85,5 @@ export interface CreateShiftRequest {
   breakMinutes: number;
   gracePeriodMinutes: number;
   isOvernight: boolean;
-  workDays: number[]; // [1, 2, 3, 4, 5]
+  workDays?: number[]; // Se define al asignar el turno a un empleado.
 }

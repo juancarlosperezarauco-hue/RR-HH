@@ -202,6 +202,7 @@ export class AbsenceRequestModalComponent {
 
   get isSubmitDisabled(): boolean {
     if (this.useCase.submitting()) return true;
+    if (!this.employeeId) return true;
     if (!this.selectedTypeId || !this.startDate || !this.endDate || !this.reason.trim()) return true;
     if (this.computedDays <= 0) return true;
     if (this.isVacation && this.balance && this.computedDays > this.balance.remainingDays) return true;

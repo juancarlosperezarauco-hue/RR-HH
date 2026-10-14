@@ -11,8 +11,9 @@ import {
   AbsenceReviewModalComponent,
   AbsenceTableComponent
 } from '../../features/absence-management';
-import { LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
+import { AbsenceService, LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
 import { EmployeesService, EmployeeSummary } from '../../entities/employees';
+import { ToastService } from '../../shared/ui/toast/toast.service';
 
 @Component({
   selector: 'app-absences-page',
@@ -55,7 +56,7 @@ import { EmployeesService, EmployeeSummary } from '../../entities/employees';
           </button>
           <button
             type="button"
-            (click)="isRequestModalOpen = true"
+            (click)="openRequestModal()"
             [disabled]="!currentEmployeeId"
             class="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"
           >
@@ -83,7 +84,8 @@ import { EmployeesService, EmployeeSummary } from '../../entities/employees';
       <!-- Vacation Balance Widget (LGT Bolivia) -->
       <app-vacation-balance-card
         [balance]="balanceUseCase.balance()"
-        (requestLeave)="isRequestModalOpen = true"
+        (requestLeave)="openRequestModal()"
+        (configureBalance)="configureVacationBalance()"
       ></app-vacation-balance-card>
 
       <!-- KPI Summary Cards -->
@@ -184,6 +186,8 @@ import { EmployeesService, EmployeeSummary } from '../../entities/employees';
 })
 export class AbsencesPageComponent implements OnInit {
   private readonly employeesService = inject(EmployeesService);
+  private readonly absenceService = inject(AbsenceService);
+  private readonly toast = inject(ToastService);
   readonly balanceUseCase = inject(VacationBalanceUseCase);
   readonly listUseCase = inject(AbsenceListUseCase);
 
@@ -216,6 +220,45 @@ export class AbsencesPageComponent implements OnInit {
 
   onEmployeeChanged(): void {
     this.reloadData();
+  }
+
+  openRequestModal(): void {
+    if (!this.currentEmployeeId) {
+      this.toast.warning('Seleccione un empleado antes de registrar una ausencia.');
+      return;
+    }
+    this.isRequestModalOpen = true;
+  }
+
+  async configureVacationBalance(): Promise<void> {
+    if (!this.currentEmployeeId) {
+      this.toast.warning('Seleccione un empleado antes de configurar su saldo.');
+      return;
+    }
+    const vacationType = this.listUseCase.leaveTypes().find(item => item.code === 'LEAVE_VACATION');
+    if (!vacationType) {
+      this.toast.error('No se encontró el tipo de ausencia Vacación anual.');
+      return;
+    }
+    const entered = window.prompt('Saldo inicial de vacaciones para el año actual:', '15');
+    if (entered === null) return;
+    const openingDays = Number(entered);
+    if (!Number.isFinite(openingDays) || openingDays < 0) {
+      this.toast.warning('Ingrese una cantidad válida de días.');
+      return;
+    }
+    try {
+      await firstValueFrom(this.absenceService.createBalance({
+        employeeId: this.currentEmployeeId,
+        leaveTypeId: vacationType.id,
+        balanceYear: new Date().getFullYear(),
+        openingDays
+      }));
+      this.toast.success('Saldo de vacaciones registrado correctamente.');
+      this.balanceUseCase.loadBalance(this.currentEmployeeId);
+    } catch (error: any) {
+      this.toast.error(error?.error?.message || 'No se pudo registrar el saldo de vacaciones.');
+    }
   }
 
   onStatusFilterChanged(status: LeaveStatus | 'ALL'): void {

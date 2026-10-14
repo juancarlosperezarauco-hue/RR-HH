@@ -28,6 +28,7 @@ export class AbsenceService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/api/leaves`;
   private readonly legacyBaseUrl = `${environment.apiUrl}/api/v1`;
+  private readonly calendarUrl = `${environment.apiUrl}/api/shifts/calendar-exceptions`;
 
   // ==========================================
   // HU18 - 1. LEAVE TYPES (Catálogo de Tipos)
@@ -70,9 +71,9 @@ export class AbsenceService {
    * Consulta saldo canónico desde Spring Boot:
    * GET /api/leaves/balances?employeeId={id}&year={year}
    */
-  getEmployeeBalance(employeeId: string, year = 2026): Observable<ApiResponse<LeaveBalanceResponse>> {
+  getEmployeeBalance(employeeId: string, year = new Date().getFullYear()): Observable<ApiResponse<LeaveBalanceResponse>> {
     let params = new HttpParams().set('year', year.toString()).set('size', '1');
-    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
+    if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
 
@@ -99,6 +100,7 @@ export class AbsenceService {
           availableDays: available,
           entitledDays: entitled,
           remainingDays: available,
+          persisted: !!item,
           updatedAt: item?.updatedAt
         };
 
@@ -303,6 +305,27 @@ export class AbsenceService {
   }
 
   getHolidays(): Observable<ApiResponse<HolidayResponse[]>> {
-    return this.http.get<ApiResponse<HolidayResponse[]>>(`${this.legacyBaseUrl}/holidays`);
+    const params = new HttpParams()
+      .set('exceptionType', 'HOLIDAY')
+      .set('workRequired', 'false')
+      .set('organizationOnly', 'true')
+      .set('page', '0')
+      .set('size', '100')
+      .set('sort', 'exceptionDate,asc');
+    return this.http.get<ApiResponse<PageResponse<{
+      id: string;
+      exceptionDate: string;
+      description?: string | null;
+    }>>>(this.calendarUrl, { params }).pipe(map((res) => ({
+      ...res,
+      data: (res.data?.content || []).map((item) => ({
+        id: item.id,
+        tenantId: '',
+        name: item.description || 'Feriado',
+        holidayDate: item.exceptionDate,
+        isRecurring: false,
+        scope: 'NATIONAL' as const
+      }))
+    })));
   }
 }

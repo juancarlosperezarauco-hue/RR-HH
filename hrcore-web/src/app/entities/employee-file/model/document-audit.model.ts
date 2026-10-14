@@ -9,3 +9,14 @@ export interface EmployeeDocumentAuditResponse {
   performedAt: string; // ISO Timestamp
   ipAddress?: string;
 }
+
+export interface TenantAuditEventResponse {
+  id: string;
+  actorId?: string | null;
+  actorEmail?: string | null;
+  eventType: string;
+  resourceType: string;
+  resourceId: string;
+  ipAddress?: string | null;
+  createdAt: string;
+}

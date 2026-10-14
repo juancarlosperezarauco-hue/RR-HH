@@ -10,10 +10,11 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmployeeControllerPermissionsTest {
-    @Test void allFifteenEndpointsHaveDistinctAuthorities() {
+    @Test void allEmployeeEndpointsHaveRequiredAuthorities() {
         verify(EmployeeController.class, Map.of(
                 "create", "employees.create", "list", "employees.list", "get", "employees.detail",
-                "update", "employees.update", "status", "employees.status.update"));
+                "update", "employees.update", "status", "employees.status.update",
+                "createWithAssignment", "hasAuthority('employees.create') and hasAuthority('employees.assignments.create')"));
         verify(EmployeeAssignmentController.class, Map.of(
                 "create", "employees.assignments.create", "list", "employees.assignments.list",
                 "get", "employees.assignments.detail", "update", "employees.assignments.update",
@@ -29,12 +30,15 @@ class EmployeeControllerPermissionsTest {
         for (Method method : controller.getDeclaredMethods()) {
             if (!expected.containsKey(method.getName())) continue;
             count++;
-            assertEquals("hasAuthority('" + expected.get(method.getName()) + "')",
-                    method.getAnnotation(PreAuthorize.class).value());
+            String expectedAuthorization = expected.get(method.getName());
+            if (!expectedAuthorization.startsWith("hasAuthority(")) {
+                expectedAuthorization = "hasAuthority('" + expectedAuthorization + "')";
+            }
+            assertEquals(expectedAuthorization, method.getAnnotation(PreAuthorize.class).value());
             assertTrue(method.isAnnotationPresent(GetMapping.class) || method.isAnnotationPresent(PostMapping.class)
                     || method.isAnnotationPresent(PutMapping.class) || method.isAnnotationPresent(PatchMapping.class)
                     || method.isAnnotationPresent(DeleteMapping.class));
         }
-        assertEquals(5, count);
+        assertEquals(expected.size(), count);
     }
 }

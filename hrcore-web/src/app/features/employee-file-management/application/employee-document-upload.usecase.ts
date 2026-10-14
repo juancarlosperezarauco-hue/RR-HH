@@ -56,28 +56,26 @@ export class EmployeeDocumentUploadUseCase {
       throw new Error('Seleccione un empleado antes de adjuntar documentos.');
     }
     // 1. Si el parámetro recibido es directamente un UUID de EmployeeFile existente
-    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
-      try {
-        const fileRes = await firstValueFrom(this.fileService.getFileById(employeeId));
-        if (fileRes?.data?.id) return fileRes.data.id;
-      } catch {}
+    try {
+      const fileRes = await firstValueFrom(this.fileService.getFileById(employeeId));
+      if (fileRes?.data?.id) return fileRes.data.id;
+    } catch {}
 
-      try {
-        const res = await firstValueFrom(this.fileService.getFileByEmployee(employeeId));
-        if (res?.data?.id) return res.data.id;
-      } catch {}
+    try {
+      const res = await firstValueFrom(this.fileService.getFileByEmployee(employeeId));
+      if (res?.data?.id) return res.data.id;
+    } catch {}
 
-      try {
-        const created = await firstValueFrom(
-          this.fileService.createFile({
-            employeeId,
-            fileNumber: `EXP-${employeeId.substring(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
-            notes: 'Expediente digital aperturado automáticamente'
-          })
-        );
-        if (created?.data?.id) return created.data.id;
-      } catch {}
-    }
+    try {
+      const created = await firstValueFrom(
+        this.fileService.createFile({
+          employeeId,
+          fileNumber: `EXP-${employeeId.substring(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+          notes: 'Expediente digital aperturado automáticamente'
+        })
+      );
+      if (created?.data?.id) return created.data.id;
+    } catch {}
 
     throw new Error('El empleado seleccionado todavía no tiene un expediente activo. Créelo antes de adjuntar documentos.');
   }

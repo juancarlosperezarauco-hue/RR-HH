@@ -11,7 +11,6 @@ import {
   DocumentPreviewModalComponent
 } from '../../features/employee-file-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
-import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.data';
 import { EmployeesService, EmployeeSummary } from '../../entities/employees';
 import { firstValueFrom } from 'rxjs';
 
@@ -341,7 +340,7 @@ export class EmployeeFilesPageComponent implements OnInit {
   }
 
   getAudits() {
-    return MOCK_DOSSIERS.documentAudits;
+    return this.fileListUseCase.audits();
   }
 
   reload(): void {

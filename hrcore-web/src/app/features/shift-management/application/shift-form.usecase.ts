@@ -99,14 +99,6 @@ export class ShiftFormUseCase {
       };
     }
 
-    // Validación de al menos un día laboral
-    if (!request.workDays || request.workDays.length === 0) {
-      return {
-        isValid: false,
-        message: 'Debe seleccionar al menos un día hábil de trabajo para el turno.'
-      };
-    }
-
     return { isValid: true };
   }
 

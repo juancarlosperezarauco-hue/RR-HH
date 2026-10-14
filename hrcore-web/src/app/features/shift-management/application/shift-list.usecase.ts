@@ -55,7 +55,18 @@ export class ShiftListUseCase {
       const res = await firstValueFrom(
         this.shiftService.listShifts(this.statusFilter(), this.currentPage(), this.pageSize())
       );
-      this.shifts.set(res.data.content);
+      const shifts = await Promise.all(res.data.content.map(async (shift) => {
+        try {
+          const breaks = await firstValueFrom(this.shiftService.listBreaks(shift.id, 0, 100));
+          const unpaidMinutes = breaks.data.content
+            .filter((item) => !item.paid)
+            .reduce((total, item) => total + item.durationMinutes, 0);
+          return { ...shift, breakMinutes: unpaidMinutes };
+        } catch {
+          return shift;
+        }
+      }));
+      this.shifts.set(shifts);
       this.totalElements.set(res.data.totalElements);
       this.totalPages.set(res.data.totalPages);
     } catch (err: unknown) {

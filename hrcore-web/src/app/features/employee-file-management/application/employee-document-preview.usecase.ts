@@ -25,37 +25,38 @@ export class EmployeeDocumentPreviewUseCase {
     this.error.set(null);
 
     try {
-      // 1. Intentar descarga binaria nativa (StreamingResponseBody Blob) si tenemos IDs
+      // Resolver la versión física más reciente y descargarla desde el endpoint canónico.
       if (doc.employeeFileId && doc.id) {
-        try {
-          const blob = await firstValueFrom(
-            this.fileService.downloadVersion(doc.employeeFileId, doc.id, 'latest')
+        let versionId = doc.latestVersionId;
+        if (!versionId) {
+          const versions = await firstValueFrom(
+            this.fileService.listVersions(doc.employeeFileId, doc.id, 0, 1)
           );
-          if (blob && blob.size > 0) {
-            this.createdBlobUrl = URL.createObjectURL(blob);
-            this.rawUrl.set(this.createdBlobUrl);
-            this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.createdBlobUrl));
-            return;
-          }
-        } catch {
-          // Si el endpoint binario no está disponible, intentar con URL firmada/legada
+          const latest = versions.data?.content?.[0];
+          if (!latest) throw new Error('El documento no tiene una versión física disponible.');
+          versionId = latest.id;
+          this.selectedDoc.set({
+            ...doc,
+            latestVersionId: latest.id,
+            versionNumber: latest.versionNumber,
+            fileName: latest.originalFilename,
+            mimeType: latest.mimeType,
+            fileSizeBytes: latest.fileSize
+          });
         }
-      }
-
-      // 2. Fallback a URL firmada o URL simulada en mocks
-      if (doc.downloadUrl) {
-        this.rawUrl.set(doc.downloadUrl);
-        this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(doc.downloadUrl));
+        const blob = await firstValueFrom(
+          this.fileService.downloadVersion(doc.employeeFileId, doc.id, versionId)
+        );
+        if (!blob || blob.size === 0) throw new Error('El archivo descargado está vacío.');
+        this.createdBlobUrl = URL.createObjectURL(blob);
+        this.rawUrl.set(this.createdBlobUrl);
+        this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.createdBlobUrl));
         return;
       }
-
-      const res = await firstValueFrom(this.fileService.getPreviewUrl(doc.id));
-      const url = res.data.downloadUrl;
-      this.rawUrl.set(url);
-      this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+      throw new Error('No se pudo identificar el expediente del documento.');
     } catch (err: unknown) {
       const errorResponse = err as { error?: { message?: string } };
-      const msg = errorResponse?.error?.message || 'No se pudo generar la vista previa del documento';
+      const msg = errorResponse?.error?.message || (err as Error)?.message || 'No se pudo generar la vista previa del documento';
       this.error.set(msg);
       this.toast.error(msg);
     } finally {

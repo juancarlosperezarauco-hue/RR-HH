@@ -27,21 +27,13 @@ export class AbsenceReviewUseCase {
 
     try {
       if (payload.approved) {
-        try {
-          await firstValueFrom(
-            this.absenceService.approveRequest(payload.requestId, payload.rejectionReason)
-          );
-        } catch {
-          await firstValueFrom(this.absenceService.reviewRequest(payload));
-        }
+        await firstValueFrom(
+          this.absenceService.approveRequest(payload.requestId, payload.rejectionReason)
+        );
       } else {
-        try {
-          await firstValueFrom(
-            this.absenceService.rejectRequest(payload.requestId, payload.rejectionReason)
-          );
-        } catch {
-          await firstValueFrom(this.absenceService.reviewRequest(payload));
-        }
+        await firstValueFrom(
+          this.absenceService.rejectRequest(payload.requestId, payload.rejectionReason)
+        );
       }
 
       const msg = payload.approved

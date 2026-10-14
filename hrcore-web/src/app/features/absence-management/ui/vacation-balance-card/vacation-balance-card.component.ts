@@ -81,6 +81,14 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
         <!-- Right: Botón de Nueva Solicitud -->
         <div class="flex flex-col items-stretch md:items-end justify-center min-w-[180px]">
           <button
+            *ngIf="balance && balance.persisted === false"
+            type="button"
+            (click)="configureBalance.emit()"
+            class="mb-2 inline-flex items-center justify-center gap-2 rounded-xl border border-primary px-5 py-2.5 text-sm font-bold text-primary hover:bg-primary/10">
+            <lucide-icon name="settings" class="h-4 w-4"></lucide-icon>
+            Configurar saldo
+          </button>
+          <button
             type="button"
             (click)="requestLeave.emit()"
             class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all transform active:scale-95"
@@ -100,6 +108,7 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
 export class VacationBalanceCardComponent {
   @Input() balance: LeaveBalanceResponse | null = null;
   @Output() requestLeave = new EventEmitter<void>();
+  @Output() configureBalance = new EventEmitter<void>();
 
   get usagePercentage(): number {
     if (!this.balance || this.balance.entitledDays === 0) return 0;

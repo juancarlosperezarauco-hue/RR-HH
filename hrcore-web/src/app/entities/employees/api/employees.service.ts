@@ -5,7 +5,8 @@ import { ApiResponse } from '../../../shared/api';
 import { PageResponse } from '../../access';
 import {
   EmergencyContact, EmergencyContactRequest, Employee, EmployeeAssignment,
-  EmployeeAssignmentRequest, EmployeeRequest, EmployeeSummary, EmploymentStatus
+  EmployeeAssignmentRequest, EmployeeOnboardingRequest, EmployeeOnboardingResponse,
+  EmployeeRequest, EmployeeSummary, EmploymentStatus
 } from '../model/employees.model';
 
 @Injectable({ providedIn: 'root' })
@@ -22,6 +23,9 @@ export class EmployeesService {
   }
   get(id: string) { return this.http.get<ApiResponse<Employee>>(`${this.api}/${id}`); }
   create(request: EmployeeRequest) { return this.http.post<ApiResponse<Employee>>(this.api, request); }
+  createWithAssignment(request: EmployeeOnboardingRequest) {
+    return this.http.post<ApiResponse<EmployeeOnboardingResponse>>(`${this.api}/with-assignment`, request);
+  }
   update(id: string, request: EmployeeRequest) { return this.http.put<ApiResponse<Employee>>(`${this.api}/${id}`, request); }
   changeStatus(id: string, status: EmploymentStatus) {
     return this.http.patch<ApiResponse<Employee>>(`${this.api}/${id}/status`, { status });

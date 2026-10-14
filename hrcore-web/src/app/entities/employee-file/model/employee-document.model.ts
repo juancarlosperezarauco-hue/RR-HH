@@ -61,6 +61,7 @@ export interface EmployeeDocumentResponse {
   fileSizeBytes: number;
   mimeType: string;
   versionNumber: number;
+  latestVersionId?: string;
   issueDate?: string | null;
   expirationDate?: string | null;
   downloadUrl?: string;

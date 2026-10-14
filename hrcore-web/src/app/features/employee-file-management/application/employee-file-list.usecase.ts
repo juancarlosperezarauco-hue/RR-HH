@@ -4,6 +4,9 @@ import {
   EmployeeFileService,
   EmployeeDocumentResponse,
   DocumentResponse,
+  DocumentVersionResponse,
+  EmployeeDocumentAuditResponse,
+  TenantAuditEventResponse,
   EmployeeFileResponse,
   DocumentTypeResponse,
   DocumentCategory,
@@ -11,7 +14,6 @@ import {
   DOCUMENT_TYPE_LABELS
 } from '../../../entities/employee-file';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
-import { environment } from '../../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class EmployeeFileListUseCase {
@@ -22,6 +24,7 @@ export class EmployeeFileListUseCase {
   readonly activeFile = signal<EmployeeFileResponse | null>(null);
   readonly documents = signal<EmployeeDocumentResponse[]>([]);
   readonly documentTypes = signal<DocumentTypeResponse[]>([]);
+  readonly audits = signal<EmployeeDocumentAuditResponse[]>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -65,12 +68,8 @@ export class EmployeeFileListUseCase {
   });
 
   async loadDocumentTypes(): Promise<void> {
-    try {
-      const res = await firstValueFrom(this.fileService.getDocumentTypes());
-      this.documentTypes.set(res?.data || []);
-    } catch {
-      // Se usarán los tipos canónicos de DOCUMENT_TYPE_LABELS
-    }
+    // El backend usa el enum canónico DocumentType; la UI muestra ese catálogo local.
+    this.documentTypes.set([]);
   }
 
   /**
@@ -96,6 +95,7 @@ export class EmployeeFileListUseCase {
         // No hay expedientes registrados aún
         this.activeFile.set(null);
         this.documents.set([]);
+        this.audits.set([]);
         this.totalElements.set(0);
         this.totalPages.set(1);
         return;
@@ -127,14 +127,25 @@ export class EmployeeFileListUseCase {
       );
 
       const rawDocs = docsRes?.data?.content || [];
-      const mapped = rawDocs.map((d) => this.mapDocumentResponse(d));
+      const mapped = await Promise.all(rawDocs.map(async (document) => {
+        try {
+          const versions = await firstValueFrom(
+            this.fileService.listVersions(document.employeeFileId, document.id, 0, 1)
+          );
+          return this.mapDocumentResponse(document, versions.data?.content?.[0]);
+        } catch {
+          return this.mapDocumentResponse(document);
+        }
+      }));
 
       this.documents.set(mapped);
       this.totalElements.set(docsRes?.data?.totalElements ?? mapped.length);
       this.totalPages.set(docsRes?.data?.totalPages ?? 1);
+      await this.loadAudits();
     } catch (err: any) {
       console.warn('No se encontraron documentos o error de carga:', err);
       this.documents.set([]);
+      this.audits.set([]);
       this.totalElements.set(0);
       this.totalPages.set(1);
     } finally {
@@ -255,6 +266,42 @@ export class EmployeeFileListUseCase {
     }
   }
 
+  private async loadAudits(): Promise<void> {
+    const activeFile = this.activeFile();
+    if (!activeFile) {
+      this.audits.set([]);
+      return;
+    }
+    try {
+      const response = await firstValueFrom(this.fileService.listAuditEvents());
+      const resourceIds = new Set([activeFile.id, ...this.documents().map((document) => document.id)]);
+      const events = (response.data?.content || [])
+        .filter((event) => resourceIds.has(event.resourceId))
+        .map((event) => this.mapAuditEvent(event));
+      this.audits.set(events);
+    } catch {
+      this.audits.set([]);
+    }
+  }
+
+  private mapAuditEvent(event: TenantAuditEventResponse): EmployeeDocumentAuditResponse {
+    const type = event.eventType.toUpperCase();
+    const action = type.includes('DOWNLOAD') ? 'DOWNLOAD'
+      : type.includes('CREATED') || type.includes('UPLOAD') ? 'UPLOAD'
+      : type.includes('READ') || type.includes('LISTED') ? 'VIEW'
+      : type.includes('ARCHIV') ? 'ARCHIVE'
+      : 'UPDATE';
+    return {
+      id: event.id,
+      documentId: event.resourceId,
+      userId: event.actorId || '',
+      userEmail: event.actorEmail || undefined,
+      action,
+      performedAt: event.createdAt,
+      ipAddress: event.ipAddress || undefined
+    };
+  }
+
   private mapCategoryToDocumentType(category: string): DocumentType | undefined {
     switch (category) {
       case 'IDENTIFICATION': return 'IDENTITY';
@@ -267,7 +314,7 @@ export class EmployeeFileListUseCase {
     }
   }
 
-  private mapDocumentResponse(doc: DocumentResponse): EmployeeDocumentResponse {
+  private mapDocumentResponse(doc: DocumentResponse, version?: DocumentVersionResponse): EmployeeDocumentResponse {
     const categoryMap: Record<DocumentType, DocumentCategory> = {
       IDENTITY: 'IDENTIFICATION',
       CONTRACT: 'CONTRACT',
@@ -298,14 +345,14 @@ export class EmployeeFileListUseCase {
       documentTypeId: doc.documentType,
       documentTypeName: DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType,
       documentCategory: categoryMap[doc.documentType] || 'CONTRACT',
-      fileName: doc.title,
+      fileName: version?.originalFilename || doc.title,
       filePath: '',
-      fileSizeBytes: 0,
-      mimeType: 'application/pdf',
-      versionNumber: 1,
+      fileSizeBytes: version?.fileSize || 0,
+      mimeType: version?.mimeType || 'application/octet-stream',
+      versionNumber: version?.versionNumber || 0,
+      latestVersionId: version?.id,
       issueDate: doc.issuedAt,
-      expirationDate: doc.expiresAt,
-      downloadUrl: `${environment.apiUrl}/api/employee-files/${doc.employeeFileId}/documents/${doc.id}`
+      expirationDate: doc.expiresAt
     };
   }
 }

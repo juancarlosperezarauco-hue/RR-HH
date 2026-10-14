@@ -21,6 +21,9 @@ import { EmployeeDocumentAuditResponse } from '../../../../entities/employee-fil
       </div>
 
       <!-- Timeline vertical -->
+      <p *ngIf="audits.length === 0" class="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
+        Todavía no existen eventos de auditoría para este expediente.
+      </p>
       <div class="relative pl-6 space-y-8 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border">
         <div *ngFor="let audit of audits" class="relative group">
           <!-- Icono de Nodo -->

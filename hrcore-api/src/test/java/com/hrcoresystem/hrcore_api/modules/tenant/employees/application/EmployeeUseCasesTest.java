@@ -74,6 +74,32 @@ class EmployeeUseCasesTest {
         verify(audit).record("EMPLOYEE_CONTACT", "DELETED", contactId, List.of());
     }
 
+    @Test void onboardingCreatesEmployeeAndItsInitialAssignmentAsOneUseCase() {
+        CreateEmployeeUseCase createEmployee = mock(CreateEmployeeUseCase.class);
+        CreateEmployeeAssignmentUseCase createAssignment = mock(CreateEmployeeAssignmentUseCase.class);
+        EmployeeRequest employeeRequest = request();
+        EmployeeAssignmentRequest assignmentRequest = new EmployeeAssignmentRequest(
+                UUID.randomUUID(), UUID.randomUUID(), null, employeeRequest.hireDate(), null,
+                AssignmentType.PRIMARY, "Initial assignment");
+        UUID employeeId = UUID.randomUUID();
+        EmployeeResponse employeeResponse = new EmployeeResponse(employeeId, null, "E-1", "Ana", null,
+                "Rojas", null, "CI", "123", null, null, null, null, null, null, null,
+                null, employeeRequest.hireDate(), null, EmploymentStatus.ACTIVE, null, null);
+        EmployeeAssignmentResponse assignmentResponse = new EmployeeAssignmentResponse(UUID.randomUUID(),
+                employeeId, assignmentRequest.departmentId(), assignmentRequest.positionId(), null,
+                assignmentRequest.startDate(), null, AssignmentType.PRIMARY, "Initial assignment", null, null);
+        when(createEmployee.execute(employeeRequest)).thenReturn(employeeResponse);
+        when(createAssignment.execute(employeeId, assignmentRequest)).thenReturn(assignmentResponse);
+
+        var result = new CreateEmployeeWithAssignmentUseCase(createEmployee, createAssignment)
+                .execute(new EmployeeOnboardingRequest(employeeRequest, assignmentRequest));
+
+        assertEquals(employeeId, result.employee().id());
+        assertEquals(employeeId, result.assignment().employeeId());
+        verify(createEmployee).execute(employeeRequest);
+        verify(createAssignment).execute(employeeId, assignmentRequest);
+    }
+
     private EmployeeRequest request() {
         return new EmployeeRequest(null, "E-1", "Ana", null, "Rojas", null, "CI", "123",
                 null, null, null, null, null, null, null, null, LocalDate.of(2020, 1, 1));

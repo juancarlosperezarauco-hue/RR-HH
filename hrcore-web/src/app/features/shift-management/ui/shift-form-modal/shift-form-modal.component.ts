@@ -4,12 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShiftResponse, ShiftType } from '../../../../entities/shift';
 import { ShiftFormUseCase } from '../../application/shift-form.usecase';
-import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker.component';
 
 @Component({
   selector: 'app-shift-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, ShiftDaysPickerComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
   template: `
     <div
       *ngIf="isOpen"
@@ -52,21 +51,14 @@ import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </div>
 
-            <!-- Tipo de Turno -->
+            <!-- Tipo de Turno derivado del horario -->
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Régimen / Tipo *
+                Régimen calculado
               </label>
-              <select
-                [(ngModel)]="shiftType"
-                name="shiftType"
-                required
-                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-                <option value="CONTINUOUS">Continuo (Máx 8h)</option>
-                <option value="NIGHT">Nocturno (Máx 7h)</option>
-                <option value="ROTATING">Rotativo</option>
-                <option value="SPLIT">Discontinuo</option>
-              </select>
+              <div class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-semibold text-foreground">
+                {{ shiftType === 'NIGHT' ? 'Nocturno (máx. 7 h)' : 'Continuo (máx. 8 h)' }}
+              </div>
             </div>
           </div>
 
@@ -84,8 +76,8 @@ import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker
               class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
           </div>
 
-          <!-- Horarios: Inicio, Fin y Descanso -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Horarios: Inicio y Fin -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
                 Hora Inicio *
@@ -110,19 +102,11 @@ import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </div>
 
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Descanso (min)
-              </label>
-              <input
-                type="number"
-                [(ngModel)]="breakMinutes"
-                name="breakMinutes"
-                min="0"
-                step="5"
-                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-            </div>
           </div>
+
+          <p class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs font-medium text-blue-800">
+            Los descansos se registran después de crear el turno y los días laborales se definen al asignarlo a cada empleado.
+          </p>
 
           <!-- Tolerancias de Puntualidad (HU16: Entrada y Salida) -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -209,12 +193,6 @@ import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker
             </div>
           </div>
 
-          <!-- Selector de Días de la Semana -->
-          <app-shift-days-picker
-            [selectedDays]="workDays"
-            (daysChange)="workDays = $event">
-          </app-shift-days-picker>
-
           <!-- Botones de Acción -->
           <div class="flex items-center justify-end gap-3 pt-3 border-t border-border">
             <button
@@ -250,36 +228,34 @@ export class ShiftFormModalComponent implements OnChanges {
 
   code = '';
   name = '';
-  shiftType: ShiftType = 'CONTINUOUS';
   startTime = '08:30';
   endTime = '16:30';
-  breakMinutes = 45;
   lateToleranceMinutes = 10;
   earlyDepartureToleranceMinutes = 5;
   crossesMidnight = false;
-  workDays: number[] = [1, 2, 3, 4, 5];
+
+  get shiftType(): ShiftType {
+    const startHour = Number(this.startTime.substring(0, 2));
+    const endHour = Number(this.endTime.substring(0, 2));
+    return this.crossesMidnight || startHour >= 18 || endHour <= 6 ? 'NIGHT' : 'CONTINUOUS';
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['shiftToEdit'] && this.shiftToEdit) {
       this.code = this.shiftToEdit.code;
       this.name = this.shiftToEdit.name;
-      this.shiftType = this.shiftToEdit.shiftType;
       this.startTime = this.shiftToEdit.startTime.substring(0, 5);
       this.endTime = this.shiftToEdit.endTime.substring(0, 5);
-      this.breakMinutes = this.shiftToEdit.breakMinutes;
       this.lateToleranceMinutes = this.shiftToEdit.lateToleranceMinutes ?? this.shiftToEdit.gracePeriodMinutes ?? 10;
       this.earlyDepartureToleranceMinutes = this.shiftToEdit.earlyDepartureToleranceMinutes ?? 5;
       this.crossesMidnight = this.shiftToEdit.crossesMidnight ?? this.shiftToEdit.isOvernight ?? false;
-      this.workDays = this.shiftToEdit.days
-        ? this.shiftToEdit.days.filter((d) => d.isWorkDay).map((d) => d.dayOfWeek)
-        : [1, 2, 3, 4, 5];
     } else if (changes['isOpen'] && this.isOpen && !this.shiftToEdit) {
       this.resetForm();
     }
   }
 
   get effectiveCalculation() {
-    const calc = this.formUseCase.calculateEffectiveHours(this.startTime, this.endTime, this.breakMinutes);
+    const calc = this.formUseCase.calculateEffectiveHours(this.startTime, this.endTime, 0);
     return calc;
   }
 
@@ -290,13 +266,12 @@ export class ShiftFormModalComponent implements OnChanges {
       shiftType: this.shiftType,
       startTime: this.startTime,
       endTime: this.endTime,
-      breakMinutes: this.breakMinutes,
+      breakMinutes: 0,
       lateToleranceMinutes: this.lateToleranceMinutes,
       earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes,
       gracePeriodMinutes: this.lateToleranceMinutes,
       crossesMidnight: this.crossesMidnight,
-      isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight,
-      workDays: this.workDays
+      isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight
     });
   }
 
@@ -314,13 +289,12 @@ export class ShiftFormModalComponent implements OnChanges {
         shiftType: this.shiftType,
         startTime: this.startTime.length === 5 ? `${this.startTime}:00` : this.startTime,
         endTime: this.endTime.length === 5 ? `${this.endTime}:00` : this.endTime,
-        breakMinutes: this.breakMinutes,
+        breakMinutes: 0,
         lateToleranceMinutes: this.lateToleranceMinutes,
         earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes,
         gracePeriodMinutes: this.lateToleranceMinutes,
         crossesMidnight: this.crossesMidnight,
-        isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight,
-        workDays: this.workDays
+        isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight
       },
       this.shiftToEdit?.id
     );
@@ -338,13 +312,10 @@ export class ShiftFormModalComponent implements OnChanges {
   private resetForm(): void {
     this.code = '';
     this.name = '';
-    this.shiftType = 'CONTINUOUS';
     this.startTime = '08:30';
     this.endTime = '16:30';
-    this.breakMinutes = 45;
     this.lateToleranceMinutes = 10;
     this.earlyDepartureToleranceMinutes = 5;
     this.crossesMidnight = false;
-    this.workDays = [1, 2, 3, 4, 5];
   }
 }

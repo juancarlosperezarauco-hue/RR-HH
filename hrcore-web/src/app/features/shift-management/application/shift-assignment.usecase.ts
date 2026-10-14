@@ -1,11 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import {
-  ShiftService,
-  EmployeeShiftAssignmentResponse,
-  AssignShiftRequest,
-  CreateShiftAssignmentRequest
-} from '../../../entities/shift';
+import { ShiftService, EmployeeShiftAssignmentResponse, AssignShiftRequest } from '../../../entities/shift';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 import { EmployeesService, EmployeeSummary } from '../../../entities/employees';
 import { ShiftResponse } from '../../../entities/shift';
@@ -24,7 +19,6 @@ export class ShiftAssignmentUseCase {
   async loadAssignments(): Promise<void> {
     this.loading.set(true);
     try {
-      // 1. Intentar listado canónico de Spring Boot: /api/shifts/assignments
       const [res, employeesRes, shiftsRes] = await Promise.all([
         firstValueFrom(this.shiftService.listAssignments()),
         firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
@@ -50,13 +44,6 @@ export class ShiftAssignmentUseCase {
         }));
         return;
       }
-    } catch {
-      // Fallback a ruta legada
-    }
-
-    try {
-      const res = await firstValueFrom(this.shiftService.getEmployeeAssignments('all'));
-      this.assignments.set(res.data);
     } catch {
       this.assignments.set([]);
     } finally {
@@ -114,36 +101,8 @@ export class ShiftAssignmentUseCase {
     const weekdays = request.weekdays && request.weekdays.length > 0 ? request.weekdays : [1, 2, 3, 4, 5];
 
     try {
-      // Intentar asignación canónica individual por cada empleado en Spring Boot
-      let successCount = 0;
-      for (const empId of request.employeeIds) {
-        const payload: CreateShiftAssignmentRequest = {
-          employeeId: empId,
-          shiftId: request.shiftId,
-          startDate: request.startDate,
-          endDate: request.endDate,
-          weekdays
-        };
-        try {
-          const res = await firstValueFrom(this.shiftService.createAssignment(payload));
-          if (res?.data) {
-            this.assignments.update((prev) => [res.data, ...prev]);
-            successCount++;
-          }
-        } catch {
-          // Si el endpoint individual falla en modo mock, continuar al fallback
-          break;
-        }
-      }
-
-      if (successCount === request.employeeIds.length) {
-        this.toastService.success(`Turno asignado a ${successCount} colaborador(es) exitosamente`);
-        return true;
-      }
-
-      // Fallback a asignación en lote
       const res = await firstValueFrom(this.shiftService.assignShifts({ ...request, weekdays }));
-      this.toastService.success('Turno asignado exitosamente sin solapamientos');
+      this.toastService.success(`Turno asignado a ${res.data.length} colaborador(es) exitosamente`);
       this.assignments.update((prev) => [...res.data, ...prev]);
       return true;
     } catch (err: unknown) {

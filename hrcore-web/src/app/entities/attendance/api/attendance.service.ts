@@ -142,7 +142,7 @@ export class AttendanceService {
       .set('page', '0')
       .set('size', '1');
 
-    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
+    if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
 
@@ -298,9 +298,7 @@ export class AttendanceService {
     }
 
     const payload: CreatePunchInput = {
-      employeeId: request.employeeId && request.employeeId.length > 20 && !request.employeeId.startsWith('mock')
-        ? request.employeeId
-        : undefined,
+      employeeId: request.employeeId || undefined,
       punchType: canonicalType,
       punchedAt: new Date().toISOString(),
       latitude: request.latitude,

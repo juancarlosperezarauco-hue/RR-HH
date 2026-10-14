@@ -8,6 +8,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.Employe
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.EmploymentStatus;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentRequest;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentsRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.UpdateShiftAssignmentRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.EmployeeShiftAssignment;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.ShiftAssignmentStatus;
@@ -67,6 +68,36 @@ class EmployeeShiftAssignmentServiceTest {
         verify(assignments).save(any());
         verify(audit).recordTenantEvent(eq("SHIFT_ASSIGNMENT_CREATED"), eq("EMPLOYEE_SHIFT_ASSIGNMENT"),
                 any(), any());
+    }
+
+    @Test
+    void batchCreatesEveryAssignmentThroughOneTransactionalOperation() {
+        UUID secondEmployeeId = UUID.randomUUID();
+        Employee secondEmployee = new Employee(secondEmployeeId, null, "E-2", "Luis", null, "Paz", null,
+                "CI", "456", null, null, null, null, null, null, null, null,
+                LocalDate.of(2021, 1, 1), null, EmploymentStatus.ACTIVE, null, null, null, null);
+        when(employees.findByIdForUpdate(secondEmployeeId)).thenReturn(Optional.of(secondEmployee));
+        when(assignments.save(any())).thenAnswer(invocation -> {
+            EmployeeShiftAssignment draft = invocation.getArgument(0);
+            return new EmployeeShiftAssignment(UUID.randomUUID(), draft.employeeId(), draft.shiftId(),
+                    draft.startDate(), draft.endDate(), draft.weekdays(), draft.status(),
+                    draft.createdBy(), null, null);
+        });
+
+        var response = service.createBatch(new CreateShiftAssignmentsRequest(
+                List.of(secondEmployeeId, employeeId), shiftId, today, null, List.of((short) 1, (short) 2)));
+
+        assertEquals(2, response.size());
+        verify(assignments, times(2)).save(any());
+        verify(audit, times(2)).recordTenantEvent(eq("SHIFT_ASSIGNMENT_CREATED"),
+                eq("EMPLOYEE_SHIFT_ASSIGNMENT"), any(), any());
+    }
+
+    @Test
+    void batchRejectsDuplicateEmployeesBeforeWriting() {
+        assertThrows(BusinessException.class, () -> service.createBatch(new CreateShiftAssignmentsRequest(
+                List.of(employeeId, employeeId), shiftId, today, null, List.of((short) 1))));
+        verify(assignments, never()).save(any());
     }
 
     @Test

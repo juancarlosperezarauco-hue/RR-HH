@@ -9,6 +9,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.Employe
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.EmploymentStatus;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentRequest;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentsRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ShiftAssignmentResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.UpdateShiftAssignmentRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.EmployeeShiftAssignment;
@@ -74,6 +75,19 @@ public class EmployeeShiftAssignmentService {
         EmployeeShiftAssignment saved = assignments.save(draft);
         audit("CREATED", saved.id(), List.of("employeeId", "shiftId", "startDate", "endDate", "weekdays"));
         return response(saved);
+    }
+
+    @Transactional
+    public List<ShiftAssignmentResponse> createBatch(CreateShiftAssignmentsRequest request) {
+        if (request == null || request.employeeIds() == null || request.employeeIds().isEmpty())
+            throw new BusinessException("employeeIds are required");
+        List<UUID> employeeIds = request.employeeIds().stream().sorted().toList();
+        if (new HashSet<>(employeeIds).size() != employeeIds.size())
+            throw new BusinessException("employeeIds cannot contain duplicates");
+        return employeeIds.stream()
+                .map(employeeId -> create(new CreateShiftAssignmentRequest(employeeId, request.shiftId(),
+                        request.startDate(), request.endDate(), request.weekdays())))
+                .toList();
     }
 
     @Transactional(readOnly = true)

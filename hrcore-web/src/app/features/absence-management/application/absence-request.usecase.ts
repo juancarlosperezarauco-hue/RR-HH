@@ -45,6 +45,13 @@ export class AbsenceRequestUseCase {
   ): Promise<boolean> {
     this.error.set(null);
 
+    if (!payload.employeeId) {
+      const msg = 'Debe seleccionar un empleado antes de enviar la solicitud.';
+      this.error.set(msg);
+      this.toastService.warning(msg);
+      return false;
+    }
+
     if (payload.endDate < payload.startDate) {
       const msg = 'La fecha de fin no puede ser anterior a la fecha de inicio';
       this.error.set(msg);

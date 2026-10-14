@@ -54,6 +54,16 @@ export interface EmployeeAssignment extends EmployeeAssignmentRequest {
   updatedAt: string;
 }
 
+export interface EmployeeOnboardingRequest {
+  employee: EmployeeRequest;
+  assignment: EmployeeAssignmentRequest;
+}
+
+export interface EmployeeOnboardingResponse {
+  employee: Employee;
+  assignment: EmployeeAssignment;
+}
+
 export interface EmergencyContactRequest {
   fullName: string;
   relationship: string | null;

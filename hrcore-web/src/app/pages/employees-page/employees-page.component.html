@@ -77,6 +77,18 @@
       <label class="space-y-2"><span class="text-sm font-bold">Teléfono</span><input name="phone" [(ngModel)]="form.phone" maxlength="40" class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
       <label class="space-y-2"><span class="text-sm font-bold">Celular</span><input name="mobilePhone" [(ngModel)]="form.mobilePhone" maxlength="40" class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
       <label class="space-y-2 md:col-span-2 lg:col-span-3"><span class="text-sm font-bold">Dirección</span><textarea name="address" [(ngModel)]="form.address" rows="3" class="w-full rounded-2xl border border-border bg-background p-4"></textarea></label>
+      <div *ngIf="formMode() === 'create'" class="rounded-2xl border border-primary/20 bg-primary/5 p-5 md:col-span-2 lg:col-span-3">
+        <div class="mb-4">
+          <h3 class="font-black text-accent-foreground">Asignación laboral inicial</h3>
+          <p class="text-sm text-muted-foreground">Es obligatoria para compartir el empleado con contratos, turnos, asistencia y ausencias.</p>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="space-y-2"><span class="text-sm font-bold">Departamento *</span><select name="initialDepartmentId" [(ngModel)]="assignmentForm.departmentId" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="">Seleccione</option><option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option></select></label>
+          <label class="space-y-2"><span class="text-sm font-bold">Cargo *</span><select name="initialPositionId" [(ngModel)]="assignmentForm.positionId" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="">Seleccione</option><option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option></select></label>
+          <label class="space-y-2"><span class="text-sm font-bold">Inicio de asignación *</span><input name="initialAssignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
+        </div>
+        <p *ngIf="!departments().length || !positions().length" class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-800">Antes de registrar empleados debe existir al menos un departamento y un cargo activos.</p>
+      </div>
       <div class="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2 lg:col-span-3"><button type="button" (click)="closeForm()" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold">Cancelar</button><button type="submit" [disabled]="saving()" class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground disabled:opacity-50"><lucide-icon *ngIf="saving()" name="loader-circle" class="animate-spin" [size]="17"></lucide-icon>Guardar empleado</button></div>
     </form>
   </div>
