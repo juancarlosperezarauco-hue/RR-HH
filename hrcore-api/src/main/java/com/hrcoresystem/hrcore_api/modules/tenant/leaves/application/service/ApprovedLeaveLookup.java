@@ -6,7 +6,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
-/** Internal HU18 query contract for a future HU17 attendance integration. */
+/** Contrato interno que integra ausencias aprobadas (HU18) con asistencia (HU17). */
 public interface ApprovedLeaveLookup {
     List<ApprovedPeriod> onDate(UUID employeeId, LocalDate date);
 

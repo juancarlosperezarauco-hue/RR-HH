@@ -2,8 +2,10 @@ export interface PublicSignupResponse {
   tenantId: string;
   tenantSlug: string;
   companyName: string;
-  adminUserId: string;
   adminEmail: string;
-  planCode: string;
-  message?: string;
+  initialRole: string;
+  currentPlanCode: string;
+  subscriptionStatus: string;
+  trialExpiresAt: string | null;
+  loginHint: string;
 }

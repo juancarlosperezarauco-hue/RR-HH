@@ -38,10 +38,10 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
             <option value="PRESENT">Puntual / Presente</option>
             <option value="LATE">Con Retraso</option>
             <option value="ABSENT">Inasistencia / Falta</option>
-            <option value="EARLY_DEPARTURE">Salida Anticipada</option>
-            <option value="EXCUSED">Justificado</option>
+            <option value="JUSTIFIED">Ausencia Justificada</option>
             <option value="INCOMPLETE">Jornada Incompleta</option>
             <option value="DAY_OFF">Día de Descanso</option>
+            <option value="PENDING">Pendiente de cálculo</option>
           </select>
 
           <!-- Refresh Button -->

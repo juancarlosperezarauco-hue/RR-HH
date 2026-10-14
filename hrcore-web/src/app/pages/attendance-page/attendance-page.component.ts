@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import {
   AttendanceListUseCase,
@@ -8,12 +9,15 @@ import {
   AttendanceRegularizeDialogComponent
 } from '../../features/attendance-management';
 import { AttendanceRecordResponse, AttendanceStatus } from '../../entities/attendance';
+import { EmployeesService, EmployeeSummary } from '../../entities/employees';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-attendance-page',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     LucideAngularModule,
     ClockInWidgetComponent,
     AttendanceTableComponent,
@@ -46,6 +50,37 @@ import { AttendanceRecordResponse, AttendanceStatus } from '../../entities/atten
             <lucide-icon name="refresh-ccw" class="h-4 w-4" [ngClass]="{ 'animate-spin': listUseCase.loading() }"></lucide-icon>
             <span>Actualizar</span>
           </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 rounded-2xl border border-border bg-card p-4 shadow-xs md:grid-cols-3">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Empleado</label>
+          <select
+            [(ngModel)]="selectedEmployeeId"
+            (ngModelChange)="listUseCase.setEmployeeFilter($event)"
+            class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground">
+            <option value="">Todos los empleados</option>
+            <option *ngFor="let employee of employees" [value]="employee.id">
+              {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Desde</label>
+          <input
+            type="date"
+            [ngModel]="listUseCase.startDate()"
+            (ngModelChange)="updateDateRange($event, listUseCase.endDate())"
+            class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Hasta</label>
+          <input
+            type="date"
+            [ngModel]="listUseCase.endDate()"
+            (ngModelChange)="updateDateRange(listUseCase.startDate(), $event)"
+            class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
         </div>
       </div>
 
@@ -141,12 +176,27 @@ import { AttendanceRecordResponse, AttendanceStatus } from '../../entities/atten
 })
 export class AttendancePageComponent implements OnInit {
   readonly listUseCase = inject(AttendanceListUseCase);
+  private readonly employeesService = inject(EmployeesService);
+
+  employees: EmployeeSummary[] = [];
+  selectedEmployeeId = '';
 
   isRegularizeModalOpen = false;
   selectedRecord: AttendanceRecordResponse | null = null;
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.employeesService.list(0, 100));
+      this.employees = response.data?.content || [];
+    } catch {
+      this.employees = [];
+    }
     this.listUseCase.loadRecords();
+  }
+
+  updateDateRange(start: string, end: string): void {
+    if (!start || !end || start > end) return;
+    this.listUseCase.setDateRange(start, end);
   }
 
   onClockRegistered(_record: AttendanceRecordResponse): void {

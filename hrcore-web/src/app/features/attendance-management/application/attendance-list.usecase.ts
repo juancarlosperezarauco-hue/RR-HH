@@ -5,10 +5,12 @@ import {
   AttendanceRecordResponse,
   AttendanceStatus
 } from '../../../entities/attendance';
+import { EmployeesService, EmployeeSummary } from '../../../entities/employees';
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceListUseCase {
   private readonly attendanceService = inject(AttendanceService);
+  private readonly employeesService = inject(EmployeesService);
 
   readonly records = signal<AttendanceRecordResponse[]>([]);
   readonly loading = signal<boolean>(false);
@@ -19,6 +21,7 @@ export class AttendanceListUseCase {
   readonly searchTerm = signal<string>('');
   readonly startDate = signal<string>(new Date().toISOString().substring(0, 10));
   readonly endDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly employeeFilter = signal<string>('');
 
   // Registros filtrados localmente por buscador de texto (nombre / código)
   readonly filteredRecords = computed(() => {
@@ -87,15 +90,25 @@ export class AttendanceListUseCase {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const res = await firstValueFrom(
-        this.attendanceService.listRecords(
+      const [res, employeesRes] = await Promise.all([
+        firstValueFrom(this.attendanceService.listRecords(
           this.startDate(),
           this.endDate(),
-          undefined,
+          this.employeeFilter() || undefined,
           this.statusFilter()
-        )
-      );
-      this.records.set(res.data.content);
+        )),
+        firstValueFrom(this.employeesService.list(0, 100)).catch(() => null)
+      ]);
+      const employees = employeesRes?.data?.content || [];
+      const directory = new Map<string, EmployeeSummary>(employees.map((employee) => [employee.id, employee]));
+      this.records.set((res.data.content || []).map((record) => {
+        const employee = directory.get(record.employeeId);
+        return {
+          ...record,
+          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : record.employeeFullName,
+          employeeCode: employee?.employeeNumber || record.employeeCode
+        };
+      }));
     } catch (err: any) {
       this.error.set(err?.error?.message || err?.message || 'Error al cargar registros');
     } finally {
@@ -110,6 +123,11 @@ export class AttendanceListUseCase {
   setDateRange(start: string, end: string): void {
     this.startDate.set(start);
     this.endDate.set(end);
+    this.loadRecords();
+  }
+
+  setEmployeeFilter(employeeId: string): void {
+    this.employeeFilter.set(employeeId);
     this.loadRecords();
   }
 

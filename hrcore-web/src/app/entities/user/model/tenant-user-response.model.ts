@@ -1,29 +1,13 @@
 export interface TenantUserResponse {
-  id: number;
+  id: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  firstName: string | null;
+  lastName: string | null;
   active: boolean;
-  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING' | string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  roles: AssignedRoleResponse[];
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  pageable: {
-    pageNumber: number;
-    pageSize: number;
-    sort?: unknown;
-    offset?: number;
-    unpaged?: boolean;
-    paged?: boolean;
-  };
-  totalPages: number;
-  totalElements: number;
-  last: boolean;
-  size: number;
-  number: number;
-  sort?: unknown;
-  numberOfElements: number;
-  first: boolean;
-  empty: boolean;
-}
+export interface AssignedRoleResponse { id: string; code: string; name: string; active: boolean; }

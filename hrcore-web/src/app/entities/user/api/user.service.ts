@@ -3,8 +3,10 @@ import { inject, Injectable } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ApiResponse } from '../../../shared/api';
-import { PageResponse, TenantUserResponse } from '../model/tenant-user-response.model';
+import { PageResponse } from '../../access/model/page-response.model';
+import { TenantUserResponse } from '../model/tenant-user-response.model';
 import { CreateTenantUserRequest } from '../model/create-tenant-user-request.model';
+import { UpdateTenantUserRequest } from '../model/update-tenant-user-request.model';
 import { environment } from '../../../../environments/environment';
 
 @Injectable({
@@ -35,7 +37,7 @@ export class UserService {
     return this.http.post<ApiResponse<TenantUserResponse>>(this.API_URL, request);
   }
 
-  updateUser(id: string, request: any): Observable<ApiResponse<TenantUserResponse>> {
+  updateUser(id: string, request: UpdateTenantUserRequest): Observable<ApiResponse<TenantUserResponse>> {
     return this.http.put<ApiResponse<TenantUserResponse>>(`${this.API_URL}/${id}`, request);
   }
 

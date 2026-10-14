@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import {
@@ -12,14 +12,14 @@ import {
   AbsenceTableComponent
 } from '../../features/absence-management';
 import { LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
-import { AuthFacade } from '../../shared/lib/auth/auth.facade';
-import { environment } from '../../../environments/environment';
+import { EmployeesService, EmployeeSummary } from '../../entities/employees';
 
 @Component({
   selector: 'app-absences-page',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     LucideAngularModule,
     VacationBalanceCardComponent,
     AbsenceRequestModalComponent,
@@ -56,12 +56,28 @@ import { environment } from '../../../environments/environment';
           <button
             type="button"
             (click)="isRequestModalOpen = true"
+            [disabled]="!currentEmployeeId"
             class="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"
           >
             <lucide-icon name="plus" class="h-4 w-4"></lucide-icon>
             <span>Nueva Solicitud</span>
           </button>
         </div>
+      </div>
+
+      <div class="rounded-2xl border border-border bg-card p-4 shadow-xs">
+        <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+          Empleado
+        </label>
+        <select
+          [(ngModel)]="currentEmployeeId"
+          (ngModelChange)="onEmployeeChanged()"
+          class="w-full max-w-xl rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground">
+          <option value="" disabled>Seleccione un empleado</option>
+          <option *ngFor="let employee of employees" [value]="employee.id">
+            {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+          </option>
+        </select>
       </div>
 
       <!-- Vacation Balance Widget (LGT Bolivia) -->
@@ -167,34 +183,23 @@ import { environment } from '../../../environments/environment';
   `
 })
 export class AbsencesPageComponent implements OnInit {
-  private readonly authFacade = inject(AuthFacade);
-  private readonly http = inject(HttpClient);
+  private readonly employeesService = inject(EmployeesService);
   readonly balanceUseCase = inject(VacationBalanceUseCase);
   readonly listUseCase = inject(AbsenceListUseCase);
 
-  currentEmployeeId = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+  employees: EmployeeSummary[] = [];
+  currentEmployeeId = '';
   isRequestModalOpen = false;
   isReviewModalOpen = false;
   selectedRequest: LeaveRequestResponse | null = null;
 
   async ngOnInit(): Promise<void> {
-    // 1. Extraer ID del colaborador dinámicamente del usuario en sesión
-    const user = this.authFacade.currentUser();
-    if (user?.id && user.id.length > 20) {
-      this.currentEmployeeId = user.id;
-    } else {
-      // 2. Intentar obtener el ID del primer empleado registrado en Spring Boot
-      try {
-        const empRes = await firstValueFrom(
-          this.http.get<any>(`${environment.apiUrl}/api/employees?size=1`)
-        );
-        const first = empRes?.data?.content?.[0];
-        if (first?.id) {
-          this.currentEmployeeId = first.id;
-        }
-      } catch {
-        // Fallback seguro si no hay respuesta del backend
-      }
+    try {
+      const employeeResponse = await firstValueFrom(this.employeesService.list(0, 100));
+      this.employees = employeeResponse.data?.content || [];
+      this.currentEmployeeId = this.employees[0]?.id || '';
+    } catch {
+      this.employees = [];
     }
 
     this.reloadData();
@@ -203,8 +208,14 @@ export class AbsencesPageComponent implements OnInit {
   }
 
   reloadData(): void {
-    this.balanceUseCase.loadBalance(this.currentEmployeeId);
-    this.listUseCase.loadRequests();
+    if (this.currentEmployeeId) {
+      this.balanceUseCase.loadBalance(this.currentEmployeeId);
+      this.listUseCase.loadRequests(this.currentEmployeeId);
+    }
+  }
+
+  onEmployeeChanged(): void {
+    this.reloadData();
   }
 
   onStatusFilterChanged(status: LeaveStatus | 'ALL'): void {

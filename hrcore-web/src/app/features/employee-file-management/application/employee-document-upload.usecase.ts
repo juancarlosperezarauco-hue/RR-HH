@@ -52,6 +52,9 @@ export class EmployeeDocumentUploadUseCase {
    * Resuelve o crea el expediente (EmployeeFile) del colaborador si no existe
    */
   private async ensureEmployeeFileId(employeeId?: string): Promise<string> {
+    if (!employeeId) {
+      throw new Error('Seleccione un empleado antes de adjuntar documentos.');
+    }
     // 1. Si el parámetro recibido es directamente un UUID de EmployeeFile existente
     if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
       try {
@@ -76,49 +79,7 @@ export class EmployeeDocumentUploadUseCase {
       } catch {}
     }
 
-    // 2. Buscar cualquier expediente existente en el tenant
-    try {
-      const filesRes = await firstValueFrom(this.fileService.listFiles(undefined, 0, 5));
-      const firstFile = filesRes?.data?.content?.[0];
-      if (firstFile?.id) return firstFile.id;
-    } catch {}
-
-    // 3. Si no hay expedientes creados, buscar colaboradores reales y crear el primer expediente
-    try {
-      const empRes = await firstValueFrom(this.fileService.getEmployees(0, 1));
-      let targetEmp = empRes?.data?.content?.[0];
-
-      // Si no existe ningún colaborador registrado en el tenant, registrar uno inicial para vincular el expediente
-      if (!targetEmp?.id) {
-        try {
-          const empPayload = {
-            employeeNumber: `EMP-${Date.now().toString().slice(-4)}`,
-            firstName: 'Colaborador',
-            lastName: 'General',
-            documentType: 'CI',
-            documentNumber: `${Math.floor(1000000 + Math.random() * 9000000)}`,
-            hireDate: new Date().toISOString().split('T')[0]
-          };
-          const createdEmpRes = await firstValueFrom(this.fileService.createEmployee(empPayload));
-          targetEmp = createdEmpRes?.data as any;
-        } catch (empErr) {
-          console.warn('No se pudo registrar colaborador inicial automático:', empErr);
-        }
-      }
-
-      if (targetEmp?.id) {
-        const created = await firstValueFrom(
-          this.fileService.createFile({
-            employeeId: targetEmp.id,
-            fileNumber: `EXP-${targetEmp.employeeNumber || Date.now().toString().slice(-4)}`,
-            notes: 'Expediente digital aperturado para el colaborador'
-          })
-        );
-        if (created?.data?.id) return created.data.id;
-      }
-    } catch {}
-
-    throw new Error('No se encontró un expediente activo en el sistema. Asegúrate de tener al menos un colaborador registrado.');
+    throw new Error('El empleado seleccionado todavía no tiene un expediente activo. Créelo antes de adjuntar documentos.');
   }
 
   /**

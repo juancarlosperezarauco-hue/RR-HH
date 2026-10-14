@@ -59,6 +59,10 @@ export class AuthService {
     return this.http.get<ApiResponse<TenantProfileResponse>>(`${this.API_URL}/profile`);
   }
 
+  logout(): Observable<ApiResponse<{ status: string }>> {
+    return this.http.post<ApiResponse<{ status: string }>>(`${this.API_URL}/logout`, {});
+  }
+
   updateProfile(request: UpdateTenantProfileRequest): Observable<ApiResponse<TenantProfileResponse>> {
     const formData = new FormData();
 

@@ -41,7 +41,7 @@ type RoleStatusFilter = 'all' | 'active' | 'inactive';
             </button>
 
             <button
-              *ngIf="canManageRoles"
+              *ngIf="canCreateRole"
               type="button"
               (click)="openRoleModal()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 shadow-sm">
@@ -151,7 +151,7 @@ type RoleStatusFilter = 'all' | 'active' | 'inactive';
         @if (roleListUseCase.status() === 'success' || (roleListUseCase.status() === 'loading' && roleListUseCase.data().length > 0)) {
           <app-role-table
             [roles]="filteredRoles()"
-            [showActions]="canManageRoles"
+            [actions]="roleActions"
             (edit)="openRoleModal($event)"
             (toggleStatus)="handleToggleStatus($event.id, $event.currentStatus)">
           </app-role-table>
@@ -236,17 +236,14 @@ export class RolesPageComponent implements OnInit {
   public readonly showSuccessToast = signal(false);
 
   get canReadPermissionCatalog(): boolean {
-    return this.permissionService.hasPermission('access.permissions.read');
+    return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.permissions.read');
   }
 
-  get canManageRoles(): boolean {
-    return this.canReadPermissionCatalog && this.permissionService.hasAnyPermission(
-      'access.roles.create',
-      'access.roles.update',
-      'access.roles.activate',
-      'access.roles.deactivate'
-    );
-  }
+  get canCreateRole(): boolean { return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.roles.create'); }
+  get canEditRole(): boolean { return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.roles.update'); }
+  get canActivateRole(): boolean { return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.roles.activate'); }
+  get canDeactivateRole(): boolean { return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.roles.deactivate'); }
+  get roleActions() { return { canCreate: this.canCreateRole, canEdit: this.canEditRole, canActivate: this.canActivateRole, canDeactivate: this.canDeactivateRole }; }
 
   readonly filteredRoles = computed(() => {
     const query = this.searchQuery().trim().toLowerCase();
@@ -307,7 +304,8 @@ export class RolesPageComponent implements OnInit {
   }
 
   openRoleModal(role: TenantRoleResponse | null = null): void {
-    if (!this.canManageRoles) {
+    if (role && (role.systemRole || role.code === 'OWNER_ADMIN' || !this.canEditRole)) return;
+    if (!role && !this.canCreateRole) {
       return;
     }
 

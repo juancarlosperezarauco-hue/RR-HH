@@ -12,6 +12,8 @@ import {
 } from '../../features/employee-file-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.data';
+import { EmployeesService, EmployeeSummary } from '../../entities/employees';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-employee-files-page',
@@ -60,11 +62,39 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
             <button
               type="button"
               (click)="openUploadModal()"
+              [disabled]="!fileListUseCase.activeFile()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
               <lucide-icon name="upload" [size]="16"></lucide-icon>
               Adjuntar Documento
             </button>
           </div>
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div class="flex-1 max-w-xl">
+            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Empleado del expediente
+            </label>
+            <select
+              [(ngModel)]="selectedEmployeeId"
+              (ngModelChange)="onEmployeeSelected($event)"
+              class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground">
+              <option value="" disabled>Seleccione un empleado</option>
+              <option *ngFor="let employee of employees" [value]="employee.id">
+                {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+              </option>
+            </select>
+          </div>
+          <button
+            *ngIf="selectedEmployeeId && !fileListUseCase.activeFile()"
+            type="button"
+            (click)="createEmployeeFile()"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">
+            <lucide-icon name="folder-plus" [size]="16"></lucide-icon>
+            Crear expediente
+          </button>
         </div>
       </section>
 
@@ -122,19 +152,22 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
           <lucide-icon name="folder-open" [size]="32"></lucide-icon>
         </div>
         <div class="max-w-md mx-auto space-y-2">
-          <h3 class="text-xl font-bold text-accent-foreground">No hay documentos en el expediente</h3>
+          <h3 class="text-xl font-bold text-accent-foreground">
+            {{ fileListUseCase.activeFile() ? 'No hay documentos en el expediente' : 'El empleado no tiene expediente' }}
+          </h3>
           <p class="text-xs text-muted-foreground leading-relaxed">
-            Actualmente no existen documentos registrados en la base de datos para este expediente laboral.
-            Adjunta el primer documento (contrato de trabajo, documento de identidad, certificados, etc.) para comenzar a gestionar el expediente digital con flujo canónico.
+            {{ fileListUseCase.activeFile()
+              ? 'Adjunta el primer documento para comenzar a gestionar el expediente digital.'
+              : 'Crea el expediente laboral del empleado seleccionado antes de adjuntar documentación.' }}
           </p>
         </div>
         <div class="pt-2">
           <button
             type="button"
-            (click)="openUploadModal()"
+            (click)="fileListUseCase.activeFile() ? openUploadModal() : createEmployeeFile()"
             class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
             <lucide-icon name="upload" [size]="16"></lucide-icon>
-            Adjuntar Primer Documento
+            {{ fileListUseCase.activeFile() ? 'Adjuntar Primer Documento' : 'Crear Expediente' }}
           </button>
         </div>
       </div>
@@ -259,7 +292,7 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
       <!-- Modal de Carga de Documentos (Flujo Canónico 2 Pasos Spring Boot) -->
       <app-document-upload-dialog
         [isOpen]="isUploadOpen"
-        [employeeId]="fileListUseCase.activeFile()?.id || fileListUseCase.selectedEmployeeId()"
+        [employeeId]="fileListUseCase.selectedEmployeeId()"
         [documentTypes]="fileListUseCase.documentTypes()"
         (closeDialog)="isUploadOpen = false"
         (uploaded)="onDocumentUploaded()">
@@ -272,13 +305,39 @@ import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.
 })
 export class EmployeeFilesPageComponent implements OnInit {
   readonly fileListUseCase = inject(EmployeeFileListUseCase);
+  private readonly employeesService = inject(EmployeesService);
+
+  employees: EmployeeSummary[] = [];
+  selectedEmployeeId = '';
 
   activeView: 'GRID' | 'TIMELINE' = 'GRID';
   isUploadOpen = false;
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.fileListUseCase.loadDocumentTypes();
-    this.fileListUseCase.loadDocuments();
+    try {
+      const response = await firstValueFrom(this.employeesService.list(0, 100));
+      this.employees = response.data?.content || [];
+      this.selectedEmployeeId = this.employees[0]?.id || '';
+      if (this.selectedEmployeeId) {
+        this.fileListUseCase.setEmployeeId(this.selectedEmployeeId);
+      } else {
+        await this.fileListUseCase.loadDocuments();
+      }
+    } catch {
+      this.employees = [];
+      await this.fileListUseCase.loadDocuments();
+    }
+  }
+
+  onEmployeeSelected(employeeId: string): void {
+    this.fileListUseCase.setEmployeeId(employeeId);
+  }
+
+  async createEmployeeFile(): Promise<void> {
+    const employee = this.employees.find((item) => item.id === this.selectedEmployeeId);
+    if (!employee) return;
+    await this.fileListUseCase.createFileForEmployee(employee.id, employee.employeeNumber);
   }
 
   getAudits() {

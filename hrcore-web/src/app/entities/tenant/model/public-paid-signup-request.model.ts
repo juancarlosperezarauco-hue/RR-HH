@@ -1,10 +1,6 @@
-export interface PublicPaidSignupRequest {
-  companyName: string;
-  tenantSlug: string;
-  adminEmail: string;
-  password?: string;
-  firstName: string;
-  lastName: string;
+import { PublicSignupRequest } from './public-signup-request.model';
+
+export interface PublicPaidSignupRequest extends PublicSignupRequest {
   planCode: string;
   billingInterval: 'MONTHLY' | 'YEARLY';
 }

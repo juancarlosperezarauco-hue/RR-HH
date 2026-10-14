@@ -6,8 +6,6 @@ export interface TenantBillingPlan {
   name: string;
   description: string | null;
   planType: string;
-  maxUsers: number;
-  maxRoles: number;
   trialDays: number | null;
   monthlyAmount: number | null;
   yearlyAmount: number | null;
@@ -17,7 +15,34 @@ export interface TenantBillingPlan {
   active: boolean;
   currentPlan: boolean;
   availableForCheckout: boolean;
-  contactSales: boolean;
+}
+
+export interface TenantCurrentSubscription {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  planId: string;
+  planCode: string;
+  planName: string;
+  planType: string;
+  maxUsers: number;
+  maxRoles: number;
+  status: string;
+  trial: boolean;
+  currentSubscription: boolean;
+  stripeSubscriptionId: string | null;
+  stripePriceId: string | null;
+  billingInterval: BillingInterval | null;
+  startedAt: string;
+  expiresAt: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  cancelledAt: string | null;
+  remainingDays: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TenantCheckoutSessionRequest {
@@ -30,7 +55,7 @@ export interface TenantCheckoutSessionResponse {
   stripeSessionId: string;
   checkoutUrl: string;
   status: string;
-  selectedPlanCode: string;
+  planCode: string;
   billingInterval: BillingInterval;
   expiresAt: string | null;
 }
@@ -63,8 +88,9 @@ export interface TenantCheckoutActivationStatusResponse {
 }
 
 export interface TenantUpgradeCheckoutPending {
+  tenantSlug: string;
   stripeSessionId: string;
-  selectedPlanCode: string;
+  planCode: string;
   billingInterval: BillingInterval;
   checkoutUrl: string;
   createdAt: string;

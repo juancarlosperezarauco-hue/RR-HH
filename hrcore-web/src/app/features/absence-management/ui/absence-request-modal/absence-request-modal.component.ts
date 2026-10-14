@@ -177,7 +177,7 @@ export class AbsenceRequestModalComponent {
   readonly useCase = inject(AbsenceRequestUseCase);
 
   @Input() isOpen = false;
-  @Input() employeeId = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+  @Input() employeeId = '';
   @Input() leaveTypes: LeaveTypeResponse[] = [];
   @Input() balance: LeaveBalanceResponse | null = null;
   @Input() holidays: HolidayResponse[] = [];

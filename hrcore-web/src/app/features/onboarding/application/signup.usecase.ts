@@ -65,6 +65,10 @@ export class SignupUseCase {
       const response = await firstValueFrom(this.tenantService.publicPaidSignup(request));
 
       if (response.success && response.data?.checkoutUrl) {
+        if (!this.isTrustedCheckoutUrl(response.data.checkoutUrl)) {
+          this.state.set({ loading: false, error: 'La URL de checkout no es válida.', success: false, redirectingToPayment: false });
+          return;
+        }
         this.pendingCheckoutStorage.save({
           tenantSlug: response.data.tenantSlug,
           companyName: response.data.companyName,
@@ -105,5 +109,14 @@ export class SignupUseCase {
 
   resetState(): void {
     this.state.set({ loading: false, error: null, success: false, redirectingToPayment: false });
+  }
+
+  private isTrustedCheckoutUrl(value: string): boolean {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && !url.username && !url.password && !['localhost', '127.0.0.1'].includes(url.hostname);
+    } catch {
+      return false;
+    }
   }
 }

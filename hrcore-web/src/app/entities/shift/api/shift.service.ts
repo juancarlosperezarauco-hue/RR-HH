@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../shared/api';
 import {
@@ -66,7 +66,15 @@ export class ShiftService {
     if (code) params = params.set('code', code);
     if (name) params = params.set('name', name);
 
-    return this.http.get<ApiResponse<PageResponse<ShiftResponse>>>(this.baseUrl, { params });
+    return this.http.get<ApiResponse<PageResponse<WorkShiftResponse>>>(this.baseUrl, { params }).pipe(
+      map((res) => ({
+        ...res,
+        data: {
+          ...res.data,
+          content: (res.data?.content || []).map((shift) => this.toShiftResponse(shift))
+        }
+      }))
+    );
   }
 
   /**
@@ -93,7 +101,9 @@ export class ShiftService {
       lateToleranceMinutes: request.lateToleranceMinutes ?? (request as CreateShiftRequest).gracePeriodMinutes ?? 10,
       earlyDepartureToleranceMinutes: request.earlyDepartureToleranceMinutes ?? 5
     };
-    return this.http.post<ApiResponse<ShiftResponse>>(this.baseUrl, { ...request, ...payload });
+    return this.http.post<ApiResponse<WorkShiftResponse>>(this.baseUrl, payload).pipe(
+      map((res) => ({ ...res, data: this.toShiftResponse(res.data) }))
+    );
   }
 
   /**
@@ -111,7 +121,9 @@ export class ShiftService {
       lateToleranceMinutes: request.lateToleranceMinutes ?? (request as CreateShiftRequest).gracePeriodMinutes ?? 10,
       earlyDepartureToleranceMinutes: request.earlyDepartureToleranceMinutes ?? 5
     };
-    return this.http.put<ApiResponse<ShiftResponse>>(`${this.baseUrl}/${id}`, { ...request, ...payload });
+    return this.http.put<ApiResponse<WorkShiftResponse>>(`${this.baseUrl}/${id}`, payload).pipe(
+      map((res) => ({ ...res, data: this.toShiftResponse(res.data) }))
+    );
   }
 
   /**
@@ -426,5 +438,16 @@ export class ShiftService {
       `${this.baseUrl}/schedule`,
       { params }
     );
+  }
+
+  private toShiftResponse(shift: WorkShiftResponse): ShiftResponse {
+    const isOvernight = !!shift.crossesMidnight;
+    return {
+      ...shift,
+      shiftType: isOvernight ? 'NIGHT' : 'CONTINUOUS',
+      breakMinutes: 0,
+      gracePeriodMinutes: shift.lateToleranceMinutes,
+      isOvernight
+    };
   }
 }

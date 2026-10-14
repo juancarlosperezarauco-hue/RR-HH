@@ -12,10 +12,10 @@ import { PlatformLogoutUseCase } from '../../../features/platform/application/pl
   imports: [CommonModule, RouterOutlet, SidebarComponent, HeaderComponent],
   template: `
     <div class="hrcore-brand-theme flex h-screen overflow-hidden bg-accent">
-      <app-sidebar (logoutAction)="onLogout()"></app-sidebar>
+      <app-sidebar [scope]="'PLATFORM'" (logoutAction)="onLogout()"></app-sidebar>
       
       <div class="flex-1 flex flex-col overflow-hidden">
-        <app-header (logoutAction)="onLogout()"></app-header>
+        <app-header [scope]="'PLATFORM'" (logoutAction)="onLogout()"></app-header>
         
         <main class="flex-1 overflow-y-auto p-6">
           <router-outlet></router-outlet>

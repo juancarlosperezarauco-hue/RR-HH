@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { CreateTenantUserRequest } from '../../../../entities/user';
+import { TenantRoleResponse } from '../../../../entities/access';
 
 @Component({
   selector: 'app-user-create-form',
@@ -12,6 +13,8 @@ import { CreateTenantUserRequest } from '../../../../entities/user';
 })
 export class UserCreateFormComponent {
   @Input() status: 'idle' | 'loading' | 'success' | 'error' = 'idle';
+  @Input() canAssignRoles = false;
+  @Input() availableRoles: TenantRoleResponse[] = [];
   
   @Output() formSubmit = new EventEmitter<CreateTenantUserRequest>();
   @Output() cancel = new EventEmitter<void>();
@@ -48,5 +51,11 @@ export class UserCreateFormComponent {
 
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
+  }
+
+  toggleRole(roleId: string, event: Event): void {
+    const selected = new Set<string>(this.userForm.get('roleIds')?.value ?? []);
+    (event.target as HTMLInputElement).checked ? selected.add(roleId) : selected.delete(roleId);
+    this.userForm.get('roleIds')?.setValue([...selected]);
   }
 }

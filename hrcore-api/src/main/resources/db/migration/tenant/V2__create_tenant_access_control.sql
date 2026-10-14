@@ -1,3 +1,6 @@
+
+-- ARCHIVO: src/main/resources/db/migration/tenant/V2__create_tenant_access_control.sql
+
 CREATE TABLE tenant_roles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code VARCHAR(100) NOT NULL,
@@ -89,22 +92,34 @@ BEFORE UPDATE OR DELETE ON tenant_roles
 FOR EACH ROW EXECUTE FUNCTION protect_system_role();
 
 CREATE FUNCTION protect_owner_role_permissions()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE v_owner_role_id UUID;
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+DECLARE
+    v_owner_role_id UUID;
 BEGIN
-    SELECT id INTO v_owner_role_id FROM tenant_roles WHERE code = 'OWNER_ADMIN';
+    EXECUTE format(
+        'SELECT id FROM %I.tenant_roles WHERE code = ''OWNER_ADMIN''',
+        TG_TABLE_SCHEMA
+    ) INTO v_owner_role_id;
+
     IF TG_OP = 'DELETE' THEN
         IF OLD.role_id = v_owner_role_id THEN
-            RAISE EXCEPTION 'OWNER_ADMIN permissions cannot be removed manually' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'OWNER_ADMIN permissions cannot be removed manually'
+                USING ERRCODE = '23514';
         END IF;
         RETURN OLD;
     END IF;
+
     IF TG_OP = 'UPDATE' THEN
         IF OLD.role_id = v_owner_role_id OR NEW.role_id = v_owner_role_id THEN
-            RAISE EXCEPTION 'OWNER_ADMIN permissions cannot be modified manually' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'OWNER_ADMIN permissions cannot be modified manually'
+                USING ERRCODE = '23514';
         END IF;
         RETURN NEW;
     END IF;
+
     RETURN NULL;
 END;
 $$;
@@ -114,15 +129,31 @@ BEFORE UPDATE OR DELETE ON tenant_role_permissions
 FOR EACH ROW EXECUTE FUNCTION protect_owner_role_permissions();
 
 CREATE FUNCTION protect_owner_state()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+DECLARE
+    v_owner_exists BOOLEAN;
 BEGIN
-    IF OLD.owner_user_id IS NOT NULL AND NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id THEN
-        RAISE EXCEPTION 'Tenant ownership cannot be modified by a generic operation' USING ERRCODE = '23514';
+    IF OLD.owner_user_id IS NOT NULL
+       AND NEW.owner_user_id IS DISTINCT FROM OLD.owner_user_id THEN
+        RAISE EXCEPTION 'Tenant ownership cannot be modified by a generic operation'
+            USING ERRCODE = '23514';
     END IF;
-    IF OLD.owner_user_id IS NULL AND NEW.owner_user_id IS NOT NULL
-       AND NOT EXISTS (SELECT 1 FROM tenant_users WHERE id = NEW.owner_user_id) THEN
-        RAISE EXCEPTION 'Owner user does not exist' USING ERRCODE = '23503';
+
+    IF OLD.owner_user_id IS NULL AND NEW.owner_user_id IS NOT NULL THEN
+        EXECUTE format(
+            'SELECT EXISTS (SELECT 1 FROM %I.tenant_users WHERE id = $1)',
+            TG_TABLE_SCHEMA
+        ) INTO v_owner_exists USING NEW.owner_user_id;
+
+        IF v_owner_exists IS NOT TRUE THEN
+            RAISE EXCEPTION 'Owner user does not exist'
+                USING ERRCODE = '23503';
+        END IF;
     END IF;
+
     RETURN NEW;
 END;
 $$;
@@ -132,31 +163,50 @@ BEFORE UPDATE OF owner_user_id ON tenant_authorization_state
 FOR EACH ROW EXECUTE FUNCTION protect_owner_state();
 
 CREATE FUNCTION protect_owner_user_role()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE v_owner_role_id UUID; v_owner_user_id UUID;
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+DECLARE
+    v_owner_role_id UUID;
+    v_owner_user_id UUID;
 BEGIN
-    SELECT id INTO v_owner_role_id FROM tenant_roles WHERE code = 'OWNER_ADMIN';
+    EXECUTE format(
+        'SELECT id FROM %I.tenant_roles WHERE code = ''OWNER_ADMIN''',
+        TG_TABLE_SCHEMA
+    ) INTO v_owner_role_id;
+
     IF TG_OP = 'INSERT' THEN
         IF NEW.role_id = v_owner_role_id THEN
-            SELECT owner_user_id INTO v_owner_user_id FROM tenant_authorization_state WHERE id = 1 FOR UPDATE;
+            EXECUTE format(
+                'SELECT owner_user_id FROM %I.tenant_authorization_state WHERE id = 1 FOR UPDATE',
+                TG_TABLE_SCHEMA
+            ) INTO v_owner_user_id;
+
             IF v_owner_user_id IS NULL OR v_owner_user_id <> NEW.user_id THEN
-                RAISE EXCEPTION 'OWNER_ADMIN can only be assigned to the registered owner' USING ERRCODE = '23514';
+                RAISE EXCEPTION 'OWNER_ADMIN can only be assigned to the registered owner'
+                    USING ERRCODE = '23514';
             END IF;
         END IF;
         RETURN NEW;
     END IF;
+
     IF TG_OP = 'UPDATE' THEN
         IF OLD.role_id = v_owner_role_id OR NEW.role_id = v_owner_role_id THEN
-            RAISE EXCEPTION 'OWNER_ADMIN assignments cannot be modified' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'OWNER_ADMIN assignments cannot be modified'
+                USING ERRCODE = '23514';
         END IF;
         RETURN NEW;
     END IF;
+
     IF TG_OP = 'DELETE' THEN
         IF OLD.role_id = v_owner_role_id THEN
-            RAISE EXCEPTION 'OWNER_ADMIN assignment cannot be removed' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'OWNER_ADMIN assignment cannot be removed'
+                USING ERRCODE = '23514';
         END IF;
         RETURN OLD;
     END IF;
+
     RETURN NULL;
 END;
 $$;
@@ -166,18 +216,39 @@ BEFORE INSERT OR UPDATE OR DELETE ON tenant_user_roles
 FOR EACH ROW EXECUTE FUNCTION protect_owner_user_role();
 
 CREATE FUNCTION assert_owner_assignment_consistency()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE v_owner_user_id UUID;
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog
+AS $$
+DECLARE
+    v_owner_user_id UUID;
+    v_has_assignment BOOLEAN;
 BEGIN
-    SELECT owner_user_id INTO v_owner_user_id FROM tenant_authorization_state WHERE id = 1;
-    IF v_owner_user_id IS NULL THEN RETURN NULL; END IF;
-    IF NOT EXISTS (
-        SELECT 1 FROM tenant_user_roles tur
-        JOIN tenant_roles r ON r.id = tur.role_id
-        WHERE r.code = 'OWNER_ADMIN' AND tur.user_id = v_owner_user_id
-    ) THEN
-        RAISE EXCEPTION 'Tenant owner has no OWNER_ADMIN assignment' USING ERRCODE = '23514';
+    EXECUTE format(
+        'SELECT owner_user_id FROM %I.tenant_authorization_state WHERE id = 1',
+        TG_TABLE_SCHEMA
+    ) INTO v_owner_user_id;
+
+    IF v_owner_user_id IS NULL THEN
+        RETURN NULL;
     END IF;
+
+    EXECUTE format(
+        'SELECT EXISTS (
+            SELECT 1
+            FROM %I.tenant_user_roles tur
+            JOIN %I.tenant_roles r ON r.id = tur.role_id
+            WHERE r.code = ''OWNER_ADMIN'' AND tur.user_id = $1
+        )',
+        TG_TABLE_SCHEMA,
+        TG_TABLE_SCHEMA
+    ) INTO v_has_assignment USING v_owner_user_id;
+
+    IF v_has_assignment IS NOT TRUE THEN
+        RAISE EXCEPTION 'Tenant owner has no OWNER_ADMIN assignment'
+            USING ERRCODE = '23514';
+    END IF;
+
     RETURN NULL;
 END;
 $$;
@@ -186,3 +257,4 @@ CREATE CONSTRAINT TRIGGER trg_assert_owner_assignment
 AFTER INSERT OR UPDATE ON tenant_authorization_state
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW
 EXECUTE FUNCTION assert_owner_assignment_consistency();
+

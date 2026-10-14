@@ -36,15 +36,15 @@ export class UserRoleUseCase {
       // Cargamos en paralelo los roles del usuario y todos los roles del tenant para mostrar opciones
       const [userRolesRes, allRolesRes] = await Promise.all([
         firstValueFrom(this.accessService.getUserRoles(userId)),
-        firstValueFrom(this.accessService.getRoles(0, 500))
+        this.loadAllRoles()
       ]);
 
-      if (userRolesRes.success && allRolesRes.success) {
+      if (userRolesRes.success && userRolesRes.data && userRolesRes.data.userId === userId && allRolesRes.length >= 0) {
         this.state.set({ 
           status: 'idle', // Lo dejamos ready pero idle para asignación
           userId,
           userRoles: userRolesRes.data.roles,
-          availableRoles: allRolesRes.data.content.filter(r => r.active), // solo asignamos roles activos
+          availableRoles: allRolesRes.filter(r => r.active && !r.systemRole && r.code !== 'OWNER_ADMIN'),
           error: null 
         });
       } else {
@@ -67,10 +67,10 @@ export class UserRoleUseCase {
     this.state.set({ ...currentState, status: 'loading', error: null });
 
     try {
-      const request: AssignUserRolesRequest = { roleIds };
+      const request: AssignUserRolesRequest = { roleIds: [...new Set(roleIds)] };
       const response = await firstValueFrom(this.accessService.assignUserRoles(userId, request));
 
-      if (response.success && response.data) {
+      if (response.success && response.data && response.data.userId === userId) {
         this.state.set({ 
           ...currentState,
           status: 'success', 
@@ -90,7 +90,27 @@ export class UserRoleUseCase {
     }
   }
 
+  async loadAvailableRoles(): Promise<void> {
+    try {
+      const roles = await this.loadAllRoles();
+      this.state.update(state => ({ ...state, availableRoles: roles.filter(role => role.active && !role.systemRole && role.code !== 'OWNER_ADMIN') }));
+    } catch {
+      this.state.update(state => ({ ...state, availableRoles: [], error: 'No se pudieron cargar los roles disponibles' }));
+    }
+  }
+
   resetState(): void {
     this.state.set({ status: 'idle', userId: null, userRoles: [], availableRoles: [], error: null });
+  }
+
+  private async loadAllRoles(): Promise<TenantRoleResponse[]> {
+    const roles: TenantRoleResponse[] = [];
+    let page = 0; let last = false;
+    while (!last) {
+      const response = await firstValueFrom(this.accessService.getRoles(page, 200));
+      if (!response.success || !response.data) throw new Error(response.message || 'No se pudieron cargar los roles');
+      roles.push(...response.data.content); last = response.data.last || response.data.content.length === 0; page += 1;
+    }
+    return roles;
   }
 }

@@ -7,6 +7,8 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
 import { AuthStorageService } from '../../shared/lib/storage/auth-storage.service';
 import { PlatformSuperadminMeUseCase } from '../../features/platform/application/platform-superadmin-me.usecase';
 import { PermissionService } from '../../shared/lib/auth/permission.service';
+import { TenantNavigationService } from '../../shared/lib/navigation/tenant-navigation.service';
+import { TENANT_NAVIGATION } from '../../shared/lib/navigation/tenant-navigation.config';
 
 interface QuickAction {
   label: string;
@@ -184,6 +186,7 @@ export class SettingsPageComponent implements OnInit {
   private readonly authStorage = inject(AuthStorageService);
   private readonly platformSuperadminMeUseCase = inject(PlatformSuperadminMeUseCase);
   private readonly permissionService = inject(PermissionService);
+  private readonly tenantNavigation = inject(TenantNavigationService);
 
   readonly isPlatformRoute = this.router.url.startsWith('/platform');
 
@@ -245,16 +248,9 @@ export class SettingsPageComponent implements OnInit {
       { label: 'Roles y permisos', route: '/dashboard/roles', icon: 'key', description: 'Control de acceso del tenant' }
     ];
 
-    if (this.canAccessSubscription()) {
-      quickActions.push({
-        label: 'Suscripción',
-        route: '/dashboard/subscription',
-        icon: 'credit-card',
-        description: 'Plan y facturación'
-      });
-    }
-
-    return quickActions;
+    const users = TENANT_NAVIGATION.find(item => item.id === 'users');
+    const roles = TENANT_NAVIGATION.find(item => item.id === 'roles');
+    return quickActions.filter(action => action.route === users?.route ? !!users && this.tenantNavigation.canAccess(users) : action.route === roles?.route ? !!roles && this.tenantNavigation.canAccess(roles) : true).concat(this.canAccessSubscription() ? [{ label: 'Suscripción', route: '/dashboard/subscription', icon: 'credit-card', description: 'Plan y facturación' }] : []);
   }
 
   readonly form = this.fb.nonNullable.group(DEFAULT_SETTINGS);
@@ -274,8 +270,7 @@ export class SettingsPageComponent implements OnInit {
   }
 
   private canAccessSubscription(): boolean {
-    return this.permissionService.hasPermission('billing.subscription.manage')
-      || this.permissionService.hasRole('OWNER_ADMIN');
+    return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('billing.subscription.manage');
   }
 
   async ngOnInit(): Promise<void> {
@@ -295,7 +290,7 @@ export class SettingsPageComponent implements OnInit {
       const user = this.authFacade.currentUser();
       this.displayName = user ? `${user.firstName} ${user.lastName}`.trim() : 'Usuario';
       this.displayEmail = user?.email || 'usuario@hrcore.local';
-      this.displayRole = this.authFacade.getTenantLandingRoute() === '/dashboard/summary' ? 'Owner Admin' : 'Usuario';
+      this.displayRole = this.permissionService.isCurrentOwner() ? 'Owner Admin' : 'Usuario';
       this.preferencesStorageKey = this.buildStorageKey('tenant', this.displayEmail);
     }
 

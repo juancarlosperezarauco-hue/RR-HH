@@ -1,7 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
-import { PlatformService } from '../../../entities/platform/api/platform.service';
-import { PlatformStorageService } from '../lib/platform-storage.service';
+import { SessionCoordinatorService } from '../../../shared/lib/auth/session-coordinator.service';
+import { PlatformSuperadminMeUseCase } from './platform-superadmin-me.usecase';
 
 export interface PlatformLogoutState {
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -10,8 +9,8 @@ export interface PlatformLogoutState {
 
 @Injectable({ providedIn: 'root' })
 export class PlatformLogoutUseCase {
-  private readonly platformService = inject(PlatformService);
-  private readonly platformStorage = inject(PlatformStorageService);
+  private readonly sessions = inject(SessionCoordinatorService);
+  private readonly superadminMe = inject(PlatformSuperadminMeUseCase);
 
   private readonly state = signal<PlatformLogoutState>({ status: 'idle', error: null });
 
@@ -22,11 +21,10 @@ export class PlatformLogoutUseCase {
     this.state.set({ status: 'loading', error: null });
 
     try {
-      await firstValueFrom(this.platformService.logout());
-      this.platformStorage.clearSession();
-      this.state.set({ status: 'success', error: null });
+      const result = await this.sessions.logout('PLATFORM');
+      this.superadminMe.resetState();
+      this.state.set({ status: 'success', error: result.remoteRevoked ? null : 'La sesión se cerró, pero no se pudo confirmar la revocación en el servidor.' });
     } catch (err: any) {
-      this.platformStorage.clearSession();
       this.state.set({
         status: 'error',
         error: err.error?.message || err.message || 'Error al cerrar sesión'

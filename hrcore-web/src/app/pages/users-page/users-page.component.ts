@@ -15,6 +15,8 @@ import {
 import { UserRoleAssignmentComponent, UserRoleUseCase } from '../../features/user-role-management';
 import { TenantUserResponse, CreateTenantUserRequest, UpdateTenantUserRequest } from '../../entities/user';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
+import { PermissionService } from '../../shared/lib/auth/permission.service';
+import { AuthFacade } from '../../shared/lib/auth/auth.facade';
 
 @Component({
   selector: 'app-users-page',
@@ -179,14 +181,14 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
                     </td>
                     <td class="px-4 py-3">
                       <div class="flex items-center justify-end gap-2">
-                        <button *ngIf="'users.detail' | hasPermission" (click)="openRoleModal(user)" class="cursor-pointer rounded-full border border-border p-2 text-primary hover:bg-accent transition-colors" title="Gestionar roles">
+                        <button *ngIf="canReadUserRoles(user)" (click)="openRoleModal(user)" class="cursor-pointer rounded-full border border-border p-2 text-primary hover:bg-accent transition-colors" title="Gestionar roles">
                           <lucide-icon name="users" [size]="16"></lucide-icon>
                         </button>
-                        <button *ngIf="'users.update' | hasPermission" (click)="openEditModal(user)" class="cursor-pointer rounded-full border border-border p-2 text-primary hover:bg-accent transition-colors" title="Editar usuario">
+                        <button *ngIf="('users.update' | hasPermission) && !isCurrentOwner(user)" (click)="openEditModal(user)" class="cursor-pointer rounded-full border border-border p-2 text-primary hover:bg-accent transition-colors" title="Editar usuario">
                           <lucide-icon name="pencil" [size]="16"></lucide-icon>
                         </button>
                         <button
-                          *ngIf="(user.active && ('users.deactivate' | hasPermission)) || (!user.active && ('users.activate' | hasPermission))"
+                          *ngIf="!isCurrentOwner(user) && ((user.active && ('users.deactivate' | hasPermission)) || (!user.active && ('users.activate' | hasPermission)))"
                           (click)="handleToggleStatus(user)"
                           class="cursor-pointer rounded-full border border-border p-2 text-primary hover:bg-accent transition-colors"
                           [title]="user.active ? 'Desactivar' : 'Activar'">
@@ -233,6 +235,8 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
           <div class="max-h-[70vh] overflow-y-auto pt-6">
             <app-user-create-form
               [status]="userCreateUseCase.status()"
+              [canAssignRoles]="permissionService.isCurrentOwner()"
+              [availableRoles]="userRoleUseCase.availableRoles()"
               (formSubmit)="handleCreateUser($event)"
               (cancel)="closeCreateModal()">
             </app-user-create-form>
@@ -299,6 +303,8 @@ export class UsersPageComponent implements OnInit {
   public readonly userUpdateUseCase = inject(UserUpdateUseCase);
   public readonly userStatusUseCase = inject(UserStatusUseCase);
   public readonly userRoleUseCase = inject(UserRoleUseCase);
+  readonly permissionService = inject(PermissionService);
+  private readonly authFacade = inject(AuthFacade);
 
   readonly isCreateModalOpen = signal(false);
   readonly isEditModalOpen = signal(false);
@@ -403,6 +409,7 @@ export class UsersPageComponent implements OnInit {
   openCreateModal(): void {
     this.userCreateUseCase.resetState();
     this.isCreateModalOpen.set(true);
+    if (this.permissionService.isCurrentOwner()) void this.userRoleUseCase.loadAvailableRoles();
   }
 
   closeCreateModal(): void {
@@ -411,7 +418,7 @@ export class UsersPageComponent implements OnInit {
   }
 
   handleCreateUser(request: CreateTenantUserRequest): void {
-    this.userCreateUseCase.createUser(request);
+    this.userCreateUseCase.createUser({ ...request, roleIds: this.permissionService.isCurrentOwner() ? [...new Set(request.roleIds ?? [])] : [] });
   }
 
   openEditModal(user: TenantUserResponse): void {
@@ -434,6 +441,7 @@ export class UsersPageComponent implements OnInit {
   }
 
   async handleToggleStatus(user: TenantUserResponse): Promise<void> {
+    if (this.isCurrentOwner(user)) return;
     const confirmMessage = user.active
       ? `¿Estás seguro de desactivar a ${user.firstName} ${user.lastName}?`
       : `¿Estás seguro de activar a ${user.firstName} ${user.lastName}?`;
@@ -452,6 +460,7 @@ export class UsersPageComponent implements OnInit {
   }
 
   async openRoleModal(user: TenantUserResponse): Promise<void> {
+    if (!this.canReadUserRoles(user)) return;
     this.selectedUser.set(user);
     this.isRoleModalOpen.set(true);
     await this.userRoleUseCase.loadRolesForUser(String(user.id));
@@ -466,10 +475,17 @@ export class UsersPageComponent implements OnInit {
 
   async handleAssignRoles(roleIds: string[]): Promise<void> {
     const user = this.selectedUser();
-    if (!user) {
+    if (!user || !this.canAssignUserRoles()) {
       return;
     }
 
     await this.userRoleUseCase.assignRoles(String(user.id), roleIds);
   }
+
+  canReadUserRoles(user: TenantUserResponse): boolean {
+    return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.users.roles.read') && !this.isCurrentOwner(user);
+  }
+
+  canAssignUserRoles(): boolean { return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.users.roles.assign'); }
+  isCurrentOwner(user: TenantUserResponse): boolean { const current = this.authFacade.currentUser(); return !!current?.owner && current.id === user.id; }
 }

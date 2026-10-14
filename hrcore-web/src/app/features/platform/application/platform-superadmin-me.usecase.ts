@@ -2,7 +2,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthenticatedPlatformSuperadminResponse, PlatformService } from '../../../entities/platform/api/platform.service';
-import { PlatformStorageService } from '../lib/platform-storage.service';
 
 export interface PlatformSuperadminState {
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -13,7 +12,6 @@ export interface PlatformSuperadminState {
 @Injectable({ providedIn: 'root' })
 export class PlatformSuperadminMeUseCase {
   private platformService = inject(PlatformService);
-  private platformStorage = inject(PlatformStorageService);
 
   private state = signal<PlatformSuperadminState>({
     status: 'idle',
@@ -29,9 +27,9 @@ export class PlatformSuperadminMeUseCase {
     this.state.set({ status: 'loading', superadmin: null, error: null });
 
     try {
-      const response = await firstValueFrom(this.platformService.getSuperadminMe());
+      const response = await firstValueFrom(this.platformService.getMe());
       if (response.success && response.data) {
-        this.platformStorage.saveUser(response.data);
+        if (response.data.scope !== 'PLATFORM' || response.data.tenantSlug !== 'platform') throw new Error('Invalid platform identity');
         this.state.set({ status: 'success', superadmin: response.data, error: null });
       } else {
         this.state.set({ status: 'error', superadmin: null, error: response.message });

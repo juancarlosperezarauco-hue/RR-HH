@@ -16,6 +16,7 @@ import java.time.*;
 import java.util.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,15 +32,26 @@ public class LeaveService {
     private final TenantPlanEnforcementService plans;
     private final SecurityContextFacade security;
     private final AuditTrailService audit;
+    private final LeaveAttendanceSync attendanceSync;
 
+    @Autowired
     public LeaveService(LeaveStore store, EmployeeRepository employees, LeaveDayCalculator calculator,
             LeaveAttachmentService attachments,
             TenantSettingRepository settings,
             TenantPlanEnforcementService plans, SecurityContextFacade security,
-            AuditTrailService audit) {
+            AuditTrailService audit, LeaveAttendanceSync attendanceSync) {
         this.store = store; this.employees = employees; this.calculator = calculator;
         this.attachments = attachments;
         this.settings = settings; this.plans = plans; this.security = security; this.audit = audit;
+        this.attendanceSync = attendanceSync;
+    }
+
+    /** Constructor de compatibilidad para pruebas unitarias aisladas de HU18. */
+    public LeaveService(LeaveStore store, EmployeeRepository employees, LeaveDayCalculator calculator,
+            LeaveAttachmentService attachments, TenantSettingRepository settings,
+            TenantPlanEnforcementService plans, SecurityContextFacade security, AuditTrailService audit) {
+        this(store, employees, calculator, attachments, settings, plans, security, audit,
+                (employeeId, startDate, endDate) -> { });
     }
 
     @Transactional public TypeResponse createType(TypeInput input) {
@@ -232,6 +244,8 @@ public class LeaveService {
                 old.reviewedBy(), old.reviewedAt(), old.reviewComment()));
         history(id, old.status(), RequestStatus.CANCELLED, comment, who);
         event("LEAVE_REQUEST_CANCELLED", "LEAVE_REQUEST", id, Map.of("previousStatus", old.status()));
+        if (old.status() == RequestStatus.APPROVED)
+            attendanceSync.synchronize(saved.employeeId(), saved.startDate(), saved.endDate());
         return request(saved);
     }
 
@@ -263,6 +277,7 @@ public class LeaveService {
         history(old.id(), RequestStatus.PENDING, RequestStatus.APPROVED, comment, reviewer);
         event(automatic ? "LEAVE_REQUEST_AUTO_APPROVED" : "LEAVE_REQUEST_APPROVED", "LEAVE_REQUEST",
                 old.id(), Map.of("automatic", automatic));
+        attendanceSync.synchronize(saved.employeeId(), saved.startDate(), saved.endDate());
         return saved;
     }
 

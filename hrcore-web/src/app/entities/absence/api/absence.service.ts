@@ -34,7 +34,12 @@ export class AbsenceService {
   // ==========================================
 
   getLeaveTypes(): Observable<ApiResponse<LeaveTypeResponse[]>> {
-    return this.http.get<ApiResponse<LeaveTypeResponse[]>>(`${this.baseUrl}/types`);
+    return this.http.get<ApiResponse<PageResponse<LeaveTypeResponse>>>(`${this.baseUrl}/types`, {
+      params: new HttpParams().set('status', 'ACTIVE').set('page', '0').set('size', '100')
+    }).pipe(map((res) => ({
+      ...res,
+      data: res.data?.content || []
+    })));
   }
 
   getLeaveTypeById(id: string): Observable<ApiResponse<LeaveTypeResponse>> {
@@ -74,7 +79,7 @@ export class AbsenceService {
     return this.http.get<ApiResponse<PageResponse<any>>>(`${this.baseUrl}/balances`, { params }).pipe(
       map((res) => {
         const item = res.data?.content?.[0];
-        const entitled = item?.openingDays != null ? Number(item.openingDays) : 15;
+        const entitled = item?.openingDays != null ? Number(item.openingDays) : 0;
         const used = item?.usedDays != null ? Number(item.usedDays) : 0;
         const pending = item?.pendingDays != null ? Number(item.pendingDays) : 0;
         const available = item?.availableDays != null ? Number(item.availableDays) : Math.max(0, entitled - used - pending);
@@ -172,7 +177,17 @@ export class AbsenceService {
     return this.http.get<ApiResponse<PageResponse<LeaveRequestResponse>>>(
       `${this.baseUrl}/requests`,
       { params }
-    );
+    ).pipe(map((res) => ({
+      ...res,
+      data: {
+        ...res.data,
+        content: (res.data?.content || []).map((request) => ({
+          ...request,
+          totalDays: request.totalDays ?? Number(request.requestedDays ?? 0),
+          rejectionReason: request.rejectionReason ?? request.reviewComment ?? null
+        }))
+      }
+    })));
   }
 
   getRequestById(id: string): Observable<ApiResponse<LeaveRequestResponse>> {

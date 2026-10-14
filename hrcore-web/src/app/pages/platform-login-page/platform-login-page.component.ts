@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { PlatformLoginFormComponent } from '../../features/platform/ui/platform-login-form/platform-login-form.component';
 import { PlatformLoginUseCase } from '../../features/platform/application/platform-login.usecase';
 
@@ -18,12 +18,15 @@ import { PlatformLoginUseCase } from '../../features/platform/application/platfo
 })
 export class PlatformLoginPageComponent {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   protected loginUseCase = inject(PlatformLoginUseCase);
 
   async onLogin(credentials: { email: string; password: string }) {
     await this.loginUseCase.login(credentials);
     if (this.loginUseCase.status() === 'success') {
-      this.router.navigate(['/platform/dashboard']);
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      const safeUrl = returnUrl && returnUrl.startsWith('/platform/') && !returnUrl.startsWith('//') && !returnUrl.includes('\\') ? returnUrl : '/platform/dashboard';
+      this.router.navigateByUrl(safeUrl);
     }
   }
 }

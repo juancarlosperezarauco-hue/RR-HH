@@ -180,22 +180,15 @@ export class AttendanceRegularizeDialogComponent {
       return;
     }
 
-    const todayDate = this.record.workDate;
-    const fullCheckIn = this.correctedCheckInTime ? `${todayDate}T${this.correctedCheckInTime}:00Z` : undefined;
-    const fullCheckOut = this.correctedCheckOutTime ? `${todayDate}T${this.correctedCheckOutTime}:00Z` : undefined;
+    const adjusted = await this.useCase.regularizeTimes(
+      this.record.id,
+      this.record.workDate,
+      this.correctedCheckInTime || undefined,
+      this.correctedCheckOutTime || undefined,
+      this.reason
+    );
 
-    // Enviar solicitud canónica de ajuste a Spring Boot: POST /api/attendance/adjustments
-    const adj = await this.useCase.createAdjustment({
-      attendanceRecordId: this.record.id,
-      adjustmentType: this.adjustmentType,
-      reason: this.reason.trim(),
-      requestedValues: {
-        checkInTime: fullCheckIn,
-        checkOutTime: fullCheckOut
-      }
-    });
-
-    if (adj) {
+    if (adjusted) {
       this.close();
       this.regularized.emit();
     }

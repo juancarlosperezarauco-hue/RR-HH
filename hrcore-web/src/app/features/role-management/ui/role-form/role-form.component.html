@@ -4,6 +4,12 @@
     <!-- Información General -->
     <section class="space-y-4">
       <h4 class="border-b border-border pb-2 text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground">Información general</h4>
+      <div>
+        <label for="code" class="mb-1 block text-sm font-semibold text-muted-foreground">Código del rol</label>
+        <input id="code" type="text" formControlName="code" [readonly]="!!roleToEdit" class="w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none focus:border-primary focus:bg-card" placeholder="Ej: HR_OPERATOR">
+        @if (roleToEdit) { <p class="mt-1 text-xs text-muted-foreground">El código es inmutable.</p> }
+        @if (!roleToEdit && isFieldInvalid('code')) { <span class="mt-1 block text-xs text-destructive">Código requerido: letras, números y guion bajo.</span> }
+      </div>
       
       <div>
         <label for="name" class="mb-1 block text-sm font-semibold text-muted-foreground">Nombre del rol</label>
