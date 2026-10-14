@@ -33,6 +33,9 @@ public class TenantUserEntity {
     @Column(nullable = false, length = 30)
     private TenantUserStatus status;
 
+    @Column(nullable = false)
+    private long securityVersion;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -95,7 +98,17 @@ public class TenantUserEntity {
 
     public void setStatus(TenantUserStatus status) {
         this.status = status;
-    }    public Instant getCreatedAt() {
+    }
+
+    public long getSecurityVersion() {
+        return securityVersion;
+    }
+
+    public void setSecurityVersion(long securityVersion) {
+        this.securityVersion = securityVersion;
+    }
+
+    public Instant getCreatedAt() {
         return createdAt;
     }
 

@@ -12,10 +12,13 @@ public class TenantRoleMapper {
     public TenantRoleResponse toResponse(TenantRole tenantRole, List<String> permissionCodes) {
         return new TenantRoleResponse(
                 tenantRole.id(),
+                tenantRole.code(),
                 tenantRole.name(),
                 tenantRole.description(),
+                tenantRole.systemRole(),
                 tenantRole.active(),
                 tenantRole.createdAt(),
+                tenantRole.updatedAt(),
                 permissionCodes
         );
     }

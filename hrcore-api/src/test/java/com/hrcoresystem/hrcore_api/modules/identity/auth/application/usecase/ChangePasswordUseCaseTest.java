@@ -52,6 +52,7 @@ class ChangePasswordUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );
@@ -102,6 +103,7 @@ class ChangePasswordUseCaseTest {
                 "Tenant",
                 true,
                 TenantUserStatus.ACTIVE,
+                1,
                 Instant.now(),
                 Instant.now()
         );

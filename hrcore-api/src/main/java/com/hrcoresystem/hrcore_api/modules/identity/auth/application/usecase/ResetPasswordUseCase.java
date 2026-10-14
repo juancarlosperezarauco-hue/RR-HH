@@ -85,6 +85,7 @@ public class ResetPasswordUseCase {
                 tenantUser.lastName(),
                 tenantUser.active(),
                 tenantUser.status(),
+                tenantUser.securityVersion() + 1,
                 tenantUser.createdAt(),
                 tenantUser.updatedAt()
         );

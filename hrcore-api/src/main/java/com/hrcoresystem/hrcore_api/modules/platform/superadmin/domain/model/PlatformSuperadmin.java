@@ -10,6 +10,7 @@ public record PlatformSuperadmin(
         String firstName,
         String lastName,
         boolean active,
+        long securityVersion,
         Instant createdAt,
         Instant updatedAt
 ) {

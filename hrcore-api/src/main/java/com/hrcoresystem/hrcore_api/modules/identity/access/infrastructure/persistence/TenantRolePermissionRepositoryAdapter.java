@@ -37,9 +37,12 @@ public class TenantRolePermissionRepositoryAdapter implements TenantRolePermissi
 
     @Override
     public void replacePermissions(UUID roleId, List<String> permissionCodes) {
-        jdbcTemplate.update("DELETE FROM tenant_role_permissions WHERE role_id = ?", roleId);
-
-        for (String permissionCode : permissionCodes) {
+        Set<String> existing = findPermissionCodesByRoleId(roleId);
+        Set<String> requested = new LinkedHashSet<>(permissionCodes);
+        for (String permissionCode : existing) if (!requested.contains(permissionCode)) {
+            jdbcTemplate.update("DELETE FROM tenant_role_permissions WHERE role_id = ? AND permission_code = ?", roleId, permissionCode);
+        }
+        for (String permissionCode : requested) if (!existing.contains(permissionCode)) {
             jdbcTemplate.update(
                     """
                     INSERT INTO tenant_role_permissions (role_id, permission_code, assigned_at)

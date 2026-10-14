@@ -5,6 +5,7 @@ import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEv
 import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.TenantRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
@@ -22,23 +23,28 @@ public class DeactivateTenantRoleUseCase {
     private final TenantRolePermissionRepository tenantRolePermissionRepository;
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
+    private final TenantOwnershipPolicy tenantOwnershipPolicy;
 
     public DeactivateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
             TenantRoleMapper tenantRoleMapper,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
+        this.tenantOwnershipPolicy = tenantOwnershipPolicy;
     }
 
     @Transactional
     public TenantRoleResponse execute(UUID id) {
+        tenantOwnershipPolicy.requireCurrentOwner();
         TenantRole existingRole = tenantRoleRepository.findById(id)
                 .orElseThrow(() -> new TenantRoleNotFoundException("Tenant role not found with id: " + id));
+
+        tenantOwnershipPolicy.assertRoleIsCustom(existingRole);
 
         java.util.List<String> existingPermissionCodes = tenantRolePermissionRepository
                 .findPermissionCodesByRoleId(existingRole.id())
@@ -47,10 +53,13 @@ public class DeactivateTenantRoleUseCase {
 
         TenantRole updatedRole = new TenantRole(
                 existingRole.id(),
+                existingRole.code(),
                 existingRole.name(),
                 existingRole.description(),
+                existingRole.systemRole(),
                 false,
-                existingRole.createdAt()
+                existingRole.createdAt(),
+                existingRole.updatedAt()
         );
 
         TenantRole savedRole = tenantRoleRepository.save(updatedRole);

@@ -6,62 +6,69 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class PlatformSuperadminRepositoryAdapter implements PlatformSuperadminRepository {
 
-    private final PlatformSuperadminJpaRepository jpaRepository;
+  private final PlatformSuperadminJpaRepository jpaRepository;
 
-    public PlatformSuperadminRepositoryAdapter(PlatformSuperadminJpaRepository jpaRepository) {
-        this.jpaRepository = jpaRepository;
-    }
+  public PlatformSuperadminRepositoryAdapter(PlatformSuperadminJpaRepository jpaRepository) {
+    this.jpaRepository = jpaRepository;
+  }
 
-    @Override
-    public PlatformSuperadmin save(PlatformSuperadmin superadmin) {
-        PlatformSuperadminEntity entity = toEntity(superadmin);
-        PlatformSuperadminEntity saved = jpaRepository.save(entity);
-        return toDomain(saved);
-    }
+  @Override
+  public PlatformSuperadmin save(PlatformSuperadmin superadmin) {
+    PlatformSuperadminEntity entity = toEntity(superadmin);
+    PlatformSuperadminEntity saved = jpaRepository.save(entity);
+    return toDomain(saved);
+  }
 
-    @Override
-    public Optional<PlatformSuperadmin> findByEmail(String email) {
-        return jpaRepository.findByEmail(email).map(this::toDomain);
-    }
+  @Override
+  public Optional<PlatformSuperadmin> findByEmail(String email) {
+    return jpaRepository.findByEmail(email).map(this::toDomain);
+  }
 
-    @Override
-    public List<PlatformSuperadmin> findAll() {
-        return jpaRepository.findAll()
-                .stream()
-                .map(this::toDomain)
-                .toList();
-    }
+  @Override
+  public Optional<PlatformSuperadmin> findById(UUID id) {
+    return jpaRepository.findById(id).map(this::toDomain);
+  }
 
-    @Override
-    public boolean existsByEmail(String email) {
-        return jpaRepository.existsByEmail(email);
-    }
+  @Override
+  public List<PlatformSuperadmin> findAll() {
+    return jpaRepository.findAll()
+        .stream()
+        .map(this::toDomain)
+        .toList();
+  }
 
-    private PlatformSuperadminEntity toEntity(PlatformSuperadmin superadmin) {
-        PlatformSuperadminEntity entity = new PlatformSuperadminEntity();
-        entity.setId(superadmin.id());
-        entity.setEmail(superadmin.email());
-        entity.setPasswordHash(superadmin.passwordHash());
-        entity.setFirstName(superadmin.firstName());
-        entity.setLastName(superadmin.lastName());
-        entity.setActive(superadmin.active());
-        return entity;
-    }
+  @Override
+  public boolean existsByEmail(String email) {
+    return jpaRepository.existsByEmail(email);
+  }
 
-    private PlatformSuperadmin toDomain(PlatformSuperadminEntity entity) {
-        return new PlatformSuperadmin(
-                entity.getId(),
-                entity.getEmail(),
-                entity.getPasswordHash(),
-                entity.getFirstName(),
-                entity.getLastName(),
-                entity.isActive(),
-                entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
-    }
+  private PlatformSuperadminEntity toEntity(PlatformSuperadmin superadmin) {
+    PlatformSuperadminEntity entity = new PlatformSuperadminEntity();
+    entity.setId(superadmin.id());
+    entity.setEmail(superadmin.email());
+    entity.setPasswordHash(superadmin.passwordHash());
+    entity.setFirstName(superadmin.firstName());
+    entity.setLastName(superadmin.lastName());
+    entity.setActive(superadmin.active());
+    entity.setSecurityVersion(superadmin.securityVersion());
+    return entity;
+  }
+
+  private PlatformSuperadmin toDomain(PlatformSuperadminEntity entity) {
+    return new PlatformSuperadmin(
+        entity.getId(),
+        entity.getEmail(),
+        entity.getPasswordHash(),
+        entity.getFirstName(),
+        entity.getLastName(),
+        entity.isActive(),
+        entity.getSecurityVersion(),
+        entity.getCreatedAt(),
+        entity.getUpdatedAt());
+  }
 }

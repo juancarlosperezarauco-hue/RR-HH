@@ -157,7 +157,12 @@ export interface AuthenticatedPlatformSuperadminResponse {
   firstName: string;
   lastName: string;
   active: boolean;
+  tenantSlug: 'platform';
+  scope: 'PLATFORM';
   roles: string[];
+  permissions: string[];
+  securityVersion: number;
+  catalogVersion: number;
   createdAt: string;
   updatedAt: string;
 }

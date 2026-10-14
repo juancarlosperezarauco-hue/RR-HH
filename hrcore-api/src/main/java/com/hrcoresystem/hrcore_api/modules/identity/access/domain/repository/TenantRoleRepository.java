@@ -14,11 +14,15 @@ public interface TenantRoleRepository {
 
     Optional<TenantRole> findByName(String name);
 
+    Optional<TenantRole> findByCode(String code);
+
     List<TenantRole> findAll();
 
     List<TenantRole> findAllByIds(List<UUID> ids);
 
     boolean existsByName(String name);
+
+    boolean existsByCode(String code);
 
     long countActiveCustomRoles();
 }

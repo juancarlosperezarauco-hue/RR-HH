@@ -8,8 +8,6 @@ public interface ProfilePhotoStoragePort {
 
     PhotoFile read(String tenantSlug, UUID userId, String contentType);
 
-    PhotoFile readPublic(String tenantSlug, UUID userId);
-
     void delete(String tenantSlug, UUID userId);
 
     record StoredProfilePhoto(

@@ -10,6 +10,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.exception.Tenan
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.exception.TenantUserNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUser;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
+import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,21 +22,24 @@ public class UpdateTenantUserUseCase {
     private final TenantUserRepository tenantUserRepository;
     private final TenantUserMapper tenantUserMapper;
     private final AuditTrailService auditTrailService;
+    private final TenantAuthorizationStateRepository authorizationStateRepository;
 
     public UpdateTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
             TenantUserMapper tenantUserMapper,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, TenantAuthorizationStateRepository authorizationStateRepository
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserMapper = tenantUserMapper;
         this.auditTrailService = auditTrailService;
+        this.authorizationStateRepository = authorizationStateRepository;
     }
 
     @Transactional
     public TenantUserResponse execute(UUID id, UpdateTenantUserRequest request) {
         TenantUser existingUser = tenantUserRepository.findById(id)
                 .orElseThrow(() -> new TenantUserNotFoundException("Tenant user not found with id: " + id));
+        if (id.equals(authorizationStateRepository.ownerUserId())) throw new IllegalStateException("The tenant owner cannot be modified");
 
         String normalizedEmail = request.email().trim().toLowerCase();
 
@@ -55,6 +59,7 @@ public class UpdateTenantUserUseCase {
                 normalizeNullable(request.lastName()),
                 existingUser.active(),
                 existingUser.status(),
+                existingUser.securityVersion(),
                 existingUser.createdAt(),
                 existingUser.updatedAt()
         );

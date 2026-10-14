@@ -6,10 +6,13 @@ import java.util.UUID;
 
 public record TenantRoleResponse(
         UUID id,
+        String code,
         String name,
         String description,
+        boolean systemRole,
         boolean active,
         Instant createdAt,
+        Instant updatedAt,
         List<String> permissionCodes
 ) {
 }

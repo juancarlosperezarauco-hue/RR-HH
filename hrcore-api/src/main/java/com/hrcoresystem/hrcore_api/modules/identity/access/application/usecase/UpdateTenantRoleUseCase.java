@@ -10,7 +10,8 @@ import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.Inva
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleAlreadyExistsException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.SystemPermissionRepository;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.PermissionAssignmentPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
 import org.springframework.stereotype.Service;
@@ -26,28 +27,33 @@ public class UpdateTenantRoleUseCase {
 
     private final TenantRoleRepository tenantRoleRepository;
     private final TenantRolePermissionRepository tenantRolePermissionRepository;
-    private final SystemPermissionRepository systemPermissionRepository;
+    private final PermissionAssignmentPolicy permissionAssignmentPolicy;
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
+    private final TenantOwnershipPolicy tenantOwnershipPolicy;
 
     public UpdateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
-            SystemPermissionRepository systemPermissionRepository,
+            PermissionAssignmentPolicy permissionAssignmentPolicy,
             TenantRoleMapper tenantRoleMapper,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
-        this.systemPermissionRepository = systemPermissionRepository;
+        this.permissionAssignmentPolicy = permissionAssignmentPolicy;
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
+        this.tenantOwnershipPolicy = tenantOwnershipPolicy;
     }
 
     @Transactional
     public TenantRoleResponse execute(UUID id, UpdateTenantRoleRequest request) {
+        tenantOwnershipPolicy.requireCurrentOwner();
         TenantRole existingRole = tenantRoleRepository.findById(id)
                 .orElseThrow(() -> new TenantRoleNotFoundException("Tenant role not found with id: " + id));
+
+        tenantOwnershipPolicy.assertRoleIsCustom(existingRole);
 
         String normalizedName = request.name().trim().toUpperCase();
         List<String> normalizedPermissionCodes = normalizePermissionCodes(request.permissionCodes());
@@ -60,7 +66,7 @@ public class UpdateTenantRoleUseCase {
                     );
                 });
 
-        validatePermissions(normalizedPermissionCodes);
+        permissionAssignmentPolicy.validate(normalizedPermissionCodes);
 
         List<String> existingPermissionCodes = tenantRolePermissionRepository
                 .findPermissionCodesByRoleId(existingRole.id())
@@ -69,10 +75,13 @@ public class UpdateTenantRoleUseCase {
 
         TenantRole updatedRole = new TenantRole(
                 existingRole.id(),
+                existingRole.code(),
                 normalizedName,
                 normalizeNullable(request.description()),
+                existingRole.systemRole(),
                 existingRole.active(),
-                existingRole.createdAt()
+                existingRole.createdAt(),
+                existingRole.updatedAt()
         );
 
         TenantRole savedRole = tenantRoleRepository.save(updatedRole);
@@ -105,20 +114,6 @@ public class UpdateTenantRoleUseCase {
         );
 
         return tenantRoleMapper.toResponse(savedRole, normalizedPermissionCodes);
-    }
-
-    private void validatePermissions(List<String> permissionCodes) {
-        Set<String> validCodes = systemPermissionRepository.findActiveCodes();
-
-        List<String> invalidCodes = permissionCodes.stream()
-                .filter(code -> !validCodes.contains(code))
-                .toList();
-
-        if (!invalidCodes.isEmpty()) {
-            throw new InvalidSystemPermissionException(
-                    "Invalid system permission codes: " + invalidCodes
-            );
-        }
     }
 
     private List<String> normalizePermissionCodes(List<String> permissionCodes) {
