@@ -6,6 +6,10 @@ export const TENANT_ROUTE_PERMISSIONS = {
   backups: 'backups.list',
   employees: 'employees.list',
   contracts: 'contracts.list',
+  dossiers: 'employee_files.list',
+  shifts: 'shifts.list',
+  attendance: 'attendance.records.list',
+  absences: 'leaves.requests.list',
   departments: 'departments.list',
   positions: 'positions.list',
 } as const;

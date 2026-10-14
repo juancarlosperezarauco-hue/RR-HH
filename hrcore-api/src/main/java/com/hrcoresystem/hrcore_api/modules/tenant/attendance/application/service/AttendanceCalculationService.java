@@ -11,6 +11,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.Att
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.repository.AttendanceStore;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.leaves.application.service.ApprovedLeaveLookup;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleDetermination;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.EffectiveScheduleService;
@@ -22,6 +23,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.WorkShift;
 import java.time.*;
 import java.util.*;
 import org.springframework.data.domain.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,15 +41,28 @@ public class AttendanceCalculationService {
     private final AuditTrailService audit;
     private final AttendanceMapper mapper;
     private final ObjectMapper json;
+    private final ApprovedLeaveLookup approvedLeaves;
 
+    @Autowired
+    public AttendanceCalculationService(AttendanceStore store, EmployeeRepository employees,
+            EffectiveScheduleService schedules, ShiftAssignmentRepository assignments,
+            WorkShiftRepository shifts, ShiftBreakRepository breaks, AttendanceZone zones,
+            TenantPlanEnforcementService plans, AuditTrailService audit, AttendanceMapper mapper,
+            ObjectMapper json, ApprovedLeaveLookup approvedLeaves) {
+        this.store = store; this.employees = employees; this.schedules = schedules;
+        this.assignments = assignments; this.shifts = shifts; this.breaks = breaks;
+        this.zones = zones; this.plans = plans; this.audit = audit; this.mapper = mapper; this.json = json;
+        this.approvedLeaves = approvedLeaves;
+    }
+
+    /** Constructor de compatibilidad para pruebas unitarias aisladas del módulo HU17. */
     public AttendanceCalculationService(AttendanceStore store, EmployeeRepository employees,
             EffectiveScheduleService schedules, ShiftAssignmentRepository assignments,
             WorkShiftRepository shifts, ShiftBreakRepository breaks, AttendanceZone zones,
             TenantPlanEnforcementService plans, AuditTrailService audit, AttendanceMapper mapper,
             ObjectMapper json) {
-        this.store = store; this.employees = employees; this.schedules = schedules;
-        this.assignments = assignments; this.shifts = shifts; this.breaks = breaks;
-        this.zones = zones; this.plans = plans; this.audit = audit; this.mapper = mapper; this.json = json;
+        this(store, employees, schedules, assignments, shifts, breaks, zones, plans, audit, mapper,
+                json, (employeeId, date) -> List.of());
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +102,10 @@ public class AttendanceCalculationService {
                 .sorted(Comparator.comparing(AttendanceAdjustment::appliedAt,
                         Comparator.nullsLast(Comparator.naturalOrder())).thenComparing(AttendanceAdjustment::id))
                 .toList();
+        List<ApprovedLeaveLookup.ApprovedPeriod> approvedLeavePeriods =
+                approvedLeaves.onDate(before.employeeId(), before.workDate());
+        boolean fullDayApprovedLeave = approvedLeavePeriods.stream()
+                .anyMatch(period -> period.startTime() == null && period.endTime() == null);
         List<PunchTimeline.Event> events = new ArrayList<>();
         for (AttendancePunch punch : punches) events.add(new PunchTimeline.Event(punch.id(), punch.punchType(), punch.punchedAt()));
         AttendanceStatus override = null;
@@ -177,6 +196,12 @@ public class AttendanceCalculationService {
         }
         if (override != null && (status != AttendanceStatus.INCOMPLETE || override == AttendanceStatus.JUSTIFIED)
                 && !"INVALID_APPROVED_ADJUSTMENT".equals(reason)) status = override;
+        if (fullDayApprovedLeave && events.isEmpty()
+                && schedule.determination() == ScheduleDetermination.EXACT
+                && !"INVALID_APPROVED_ADJUSTMENT".equals(reason)) {
+            status = AttendanceStatus.JUSTIFIED;
+            reason = "APPROVED_LEAVE";
+        }
 
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("version", 1); details.put("timezone", zone.getId());
@@ -186,6 +211,8 @@ public class AttendanceCalculationService {
         details.put("lateToleranceMinutes", shift.map(v -> v.lateToleranceMinutes()).orElse(null));
         details.put("earlyDepartureToleranceMinutes", shift.map(v -> v.earlyDepartureToleranceMinutes()).orElse(null));
         details.put("scheduledBreaks", scheduledBreaks); details.put("appliedAdjustmentIds", approved.stream().map(AttendanceAdjustment::id).toList());
+        details.put("approvedLeaveRequestIds", approvedLeavePeriods.stream()
+                .map(ApprovedLeaveLookup.ApprovedPeriod::requestId).toList());
         JsonNode calculationDetails = json.valueToTree(details);
         AttendanceRecord updated = new AttendanceRecord(before.id(), before.employeeId(), assignmentId, before.workDate(),
                 expectedStart, expectedEnd, actualFirst, actualLast, worked, late, early, status,

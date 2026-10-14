@@ -83,7 +83,12 @@ export class EmployeeFileListUseCase {
     this.error.set(null);
     try {
       // 1. Obtener lista de expedientes laborales del tenant
-      const filesRes = await firstValueFrom(this.fileService.listFiles(undefined, 0, 50));
+      const employeeId = this.selectedEmployeeId();
+      const filesRes = await firstValueFrom(this.fileService.listFiles(
+        employeeId ? { employeeId } : undefined,
+        0,
+        50
+      ));
       const fileList = filesRes?.data?.content || [];
       this.files.set(fileList);
 
@@ -139,12 +144,31 @@ export class EmployeeFileListUseCase {
 
   setEmployeeId(employeeId: string): void {
     this.selectedEmployeeId.set(employeeId);
-    const found = this.files().find((f) => f.employeeId === employeeId);
-    if (found) {
-      this.activeFile.set(found);
-    }
+    this.activeFile.set(null);
     this.currentPage.set(0);
     this.loadDocuments();
+  }
+
+  async createFileForEmployee(employeeId: string, employeeNumber: string): Promise<boolean> {
+    if (!employeeId) {
+      this.toast.warning('Seleccione un empleado para crear su expediente.');
+      return false;
+    }
+    try {
+      const response = await firstValueFrom(this.fileService.createFile({
+        employeeId,
+        fileNumber: `EXP-${employeeNumber || employeeId.substring(0, 8)}`.toUpperCase(),
+        notes: 'Expediente laboral digital del colaborador'
+      }));
+      this.activeFile.set(response.data);
+      this.files.set([response.data]);
+      this.toast.success('Expediente laboral creado correctamente.');
+      await this.loadDocuments();
+      return true;
+    } catch (err: any) {
+      this.toast.error(err?.error?.message || 'No se pudo crear el expediente laboral.');
+      return false;
+    }
   }
 
   setActiveFile(file: EmployeeFileResponse): void {

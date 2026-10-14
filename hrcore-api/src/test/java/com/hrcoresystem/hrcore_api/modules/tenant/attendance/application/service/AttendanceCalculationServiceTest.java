@@ -11,6 +11,8 @@ import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.repository.AttendanceStore;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.Employee;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.leaves.application.service.ApprovedLeaveLookup;
+import java.math.BigDecimal;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.EffectiveScheduleService;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.*;
@@ -37,12 +39,13 @@ class AttendanceCalculationServiceTest {
     private final AttendanceZone zones = mock(AttendanceZone.class);
     private final TenantPlanEnforcementService plans = mock(TenantPlanEnforcementService.class);
     private final AuditTrailService audit = mock(AuditTrailService.class);
+    private final ApprovedLeaveLookup approvedLeaves = mock(ApprovedLeaveLookup.class);
     private AttendanceCalculationService service;
 
     @BeforeEach
     void setUp() {
         service = new AttendanceCalculationService(store, employees, schedules, assignments, shifts, breaks,
-                zones, plans, audit, new AttendanceMapper(), new ObjectMapper());
+                zones, plans, audit, new AttendanceMapper(), new ObjectMapper(), approvedLeaves);
         when(zones.required()).thenReturn(ZoneOffset.UTC);
         when(zones.uniqueInstant(any(LocalDateTime.class), eq(ZoneOffset.UTC)))
                 .thenAnswer(invocation -> ((LocalDateTime) invocation.getArgument(0)).toInstant(ZoneOffset.UTC));
@@ -50,6 +53,7 @@ class AttendanceCalculationServiceTest {
         when(store.lockOrCreate(employeeId, date)).thenReturn(initial());
         when(store.adjustments(recordId)).thenReturn(List.of());
         when(store.save(any(AttendanceRecord.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(approvedLeaves.onDate(employeeId, date)).thenReturn(List.of());
     }
 
     @Test
@@ -86,6 +90,23 @@ class AttendanceCalculationServiceTest {
         exact(LocalTime.of(8, 0), LocalTime.of(16, 0), false, 0);
         when(store.punches(recordId)).thenReturn(List.of());
         assertEquals(AttendanceStatus.ABSENT, service.calculate(employeeId, date).status());
+    }
+
+    @Test
+    void approvedFullDayLeaveJustifiesTheScheduledAbsence() {
+        exact(LocalTime.of(8, 0), LocalTime.of(16, 0), false, 0);
+        when(store.punches(recordId)).thenReturn(List.of());
+        UUID leaveRequestId = UUID.randomUUID();
+        when(approvedLeaves.onDate(employeeId, date)).thenReturn(List.of(
+                new ApprovedLeaveLookup.ApprovedPeriod(leaveRequestId, UUID.randomUUID(), date, date,
+                        null, null, BigDecimal.ONE)));
+
+        var result = service.calculate(employeeId, date);
+
+        assertEquals(AttendanceStatus.JUSTIFIED, result.status());
+        assertEquals("APPROVED_LEAVE", result.calculationDetails().path("reason").asText());
+        assertEquals(leaveRequestId.toString(),
+                result.calculationDetails().path("approvedLeaveRequestIds").get(0).asText());
     }
 
     @Test

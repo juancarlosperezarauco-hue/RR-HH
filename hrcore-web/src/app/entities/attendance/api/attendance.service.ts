@@ -112,18 +112,26 @@ export class AttendanceService {
     return this.http.get<ApiResponse<PageResponse<AttendanceRecordResponse>>>(
       `${this.baseUrl}/records`,
       { params }
-    );
+    ).pipe(map((res) => ({
+      ...res,
+      data: {
+        ...res.data,
+        content: (res.data?.content || []).map((record) => this.toViewRecord(record))
+      }
+    })));
   }
 
   getRecordById(id: string): Observable<ApiResponse<AttendanceRecordResponse>> {
-    return this.http.get<ApiResponse<AttendanceRecordResponse>>(`${this.baseUrl}/records/${id}`);
+    return this.http.get<ApiResponse<AttendanceRecordResponse>>(`${this.baseUrl}/records/${id}`).pipe(
+      map((res) => ({ ...res, data: this.toViewRecord(res.data) }))
+    );
   }
 
   calculateRecord(request: CalculateRecordRequest): Observable<ApiResponse<AttendanceRecordResponse>> {
     return this.http.post<ApiResponse<AttendanceRecordResponse>>(
       `${this.baseUrl}/records/calculate`,
       request
-    );
+    ).pipe(map((res) => ({ ...res, data: this.toViewRecord(res.data) })));
   }
 
   getTodayStatus(employeeId?: string): Observable<ApiResponse<AttendanceRecordResponse | null>> {
@@ -145,7 +153,7 @@ export class AttendanceService {
       map((res) => ({
         success: res.success,
         message: res.message,
-        data: res.data?.content?.[0] || null,
+        data: res.data?.content?.[0] ? this.toViewRecord(res.data.content[0]) : null,
         timestamp: res.timestamp
       }))
     );
@@ -316,5 +324,14 @@ export class AttendanceService {
         checkOutTime: request.correctedCheckOut
       }
     });
+  }
+
+  private toViewRecord(record: AttendanceRecordResponse): AttendanceRecordResponse {
+    return {
+      ...record,
+      checkInTime: record.checkInTime ?? record.actualFirstInAt ?? null,
+      checkOutTime: record.checkOutTime ?? record.actualLastOutAt ?? null,
+      workedHours: record.workedHours ?? Number(((record.workedMinutes ?? 0) / 60).toFixed(2))
+    };
   }
 }

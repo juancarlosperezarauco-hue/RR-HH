@@ -7,10 +7,13 @@ import {
   CreateShiftAssignmentRequest
 } from '../../../entities/shift';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
+import { EmployeesService, EmployeeSummary } from '../../../entities/employees';
+import { ShiftResponse } from '../../../entities/shift';
 
 @Injectable({ providedIn: 'root' })
 export class ShiftAssignmentUseCase {
   private readonly shiftService = inject(ShiftService);
+  private readonly employeesService = inject(EmployeesService);
   private readonly toastService = inject(ToastService);
 
   readonly assignments = signal<EmployeeShiftAssignmentResponse[]>([]);
@@ -22,9 +25,29 @@ export class ShiftAssignmentUseCase {
     this.loading.set(true);
     try {
       // 1. Intentar listado canónico de Spring Boot: /api/shifts/assignments
-      const res = await firstValueFrom(this.shiftService.listAssignments());
+      const [res, employeesRes, shiftsRes] = await Promise.all([
+        firstValueFrom(this.shiftService.listAssignments()),
+        firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
+        firstValueFrom(this.shiftService.listShifts('ALL', 0, 100)).catch(() => null)
+      ]);
       if (res?.data?.content) {
-        this.assignments.set(res.data.content);
+        const employees = new Map<string, EmployeeSummary>(
+          (employeesRes?.data?.content || []).map((employee) => [employee.id, employee])
+        );
+        const shifts = new Map<string, ShiftResponse>(
+          (shiftsRes?.data?.content || []).map((shift) => [shift.id, shift])
+        );
+        this.assignments.set(res.data.content.map((assignment) => {
+          const employee = employees.get(assignment.employeeId);
+          const shift = shifts.get(assignment.shiftId);
+          return {
+            ...assignment,
+            employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : undefined,
+            employeeCode: employee?.employeeNumber,
+            shiftName: shift?.name,
+            isRecurring: (assignment.weekdays?.length || 0) > 0
+          };
+        }));
         return;
       }
     } catch {

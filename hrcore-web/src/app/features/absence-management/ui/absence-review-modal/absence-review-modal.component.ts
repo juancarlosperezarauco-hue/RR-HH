@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { LeaveRequestResponse } from '../../../../entities/absence';
+import { firstValueFrom } from 'rxjs';
+import { AbsenceService, LeaveAttachmentResponse, LeaveRequestResponse } from '../../../../entities/absence';
 import { AbsenceReviewUseCase } from '../../application/absence-review.usecase';
 import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-status-badge.component';
 
@@ -65,17 +66,25 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
               </p>
             </div>
 
-            <!-- Respaldo Adjunto HU15 si existe -->
-            <div *ngIf="request.attachmentUrl" class="pt-2">
-              <a
-                [href]="request.attachmentUrl"
-                target="_blank"
-                class="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+            <!-- Documentos probatorios privados de la solicitud -->
+            <div class="pt-2 border-t border-border/40">
+              <p class="text-xs font-semibold text-foreground mb-1.5">Documentos probatorios</p>
+              <p *ngIf="attachmentsLoading" class="text-xs text-muted-foreground">Cargando documentos...</p>
+              <p *ngIf="!attachmentsLoading && attachments.length === 0" class="text-xs text-muted-foreground">
+                La solicitud no tiene documentos adjuntos.
+              </p>
+              <button
+                *ngFor="let attachment of attachments"
+                type="button"
+                (click)="downloadAttachment(attachment)"
+                class="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-primary hover:bg-background/70"
               >
-                <lucide-icon name="file-text" class="h-3.5 w-3.5"></lucide-icon>
-                <span>Ver Documento Probatorio Adjunto</span>
-                <lucide-icon name="external-link" class="h-3 w-3"></lucide-icon>
-              </a>
+                <span class="inline-flex min-w-0 items-center gap-1.5">
+                  <lucide-icon name="file-text" class="h-3.5 w-3.5 shrink-0"></lucide-icon>
+                  <span class="truncate">{{ attachment.filename }}</span>
+                </span>
+                <lucide-icon name="download" class="h-3.5 w-3.5 shrink-0"></lucide-icon>
+              </button>
             </div>
           </div>
 
@@ -168,8 +177,9 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
     </div>
   `
 })
-export class AbsenceReviewModalComponent {
+export class AbsenceReviewModalComponent implements OnChanges {
   readonly useCase = inject(AbsenceReviewUseCase);
+  private readonly absenceService = inject(AbsenceService);
 
   @Input() isOpen = false;
   @Input() request: LeaveRequestResponse | null = null;
@@ -179,11 +189,47 @@ export class AbsenceReviewModalComponent {
   isRejectMode = false;
   rejectionReason = '';
   rejectionTouched = false;
+  attachments: LeaveAttachmentResponse[] = [];
+  attachmentsLoading = false;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ((changes['isOpen'] || changes['request']) && this.isOpen && this.request) {
+      void this.loadAttachments();
+    }
+  }
+
+  private async loadAttachments(): Promise<void> {
+    if (!this.request) return;
+    this.attachmentsLoading = true;
+    this.attachments = [];
+    try {
+      const response = await firstValueFrom(this.absenceService.listAttachments(this.request.id));
+      this.attachments = response.data.content ?? [];
+    } catch {
+      this.attachments = [];
+    } finally {
+      this.attachmentsLoading = false;
+    }
+  }
+
+  async downloadAttachment(attachment: LeaveAttachmentResponse): Promise<void> {
+    if (!this.request) return;
+    const blob = await firstValueFrom(
+      this.absenceService.downloadAttachment(this.request.id, attachment.id)
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = attachment.filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   close(): void {
     this.isRejectMode = false;
     this.rejectionReason = '';
     this.rejectionTouched = false;
+    this.attachments = [];
     this.closeModal.emit();
   }
 

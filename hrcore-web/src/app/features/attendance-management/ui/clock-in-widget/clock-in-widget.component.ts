@@ -12,6 +12,8 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { AttendanceClockUseCase } from '../../application/attendance-clock.usecase';
 import { AttendanceRecordResponse } from '../../../../entities/attendance';
+import { EmployeesService } from '../../../../entities/employees';
+import { firstValueFrom } from 'rxjs';
 
 export interface ClockEmployeeOption {
   id: string;
@@ -80,6 +82,7 @@ export interface ClockEmployeeOption {
               (ngModelChange)="onEmployeeChange()"
               class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground shadow-xs transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
+              <option value="" disabled>Seleccione un colaborador</option>
               <option *ngFor="let emp of employeeOptions" [value]="emp.id">
                 {{ emp.name }} ({{ emp.code }})
               </option>
@@ -104,7 +107,7 @@ export interface ClockEmployeeOption {
             <!-- Botón Entrada -->
             <button
               (click)="punch('IN')"
-              [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
               title="Registrar inicio de jornada laboral"
             >
@@ -116,7 +119,7 @@ export interface ClockEmployeeOption {
             <!-- Botón Pausa Almuerzo -->
             <button
               (click)="punch('BREAK_START')"
-              [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-amber-500 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
               title="Registrar inicio de pausa o almuerzo"
             >
@@ -128,7 +131,7 @@ export interface ClockEmployeeOption {
             <!-- Botón Fin Pausa -->
             <button
               (click)="punch('BREAK_END')"
-              [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
               title="Registrar fin de pausa y retorno al puesto"
             >
@@ -140,7 +143,7 @@ export interface ClockEmployeeOption {
             <!-- Botón Salida -->
             <button
               (click)="punch('OUT')"
-              [disabled]="clockUseCase.clocking() || clockUseCase.isDebounced()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-rose-500 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
               title="Registrar cierre de jornada laboral"
             >
@@ -169,6 +172,7 @@ export interface ClockEmployeeOption {
 })
 export class ClockInWidgetComponent implements OnInit, OnDestroy {
   readonly clockUseCase = inject(AttendanceClockUseCase);
+  private readonly employeesService = inject(EmployeesService);
 
   @Output() clockRegistered = new EventEmitter<AttendanceRecordResponse>();
 
@@ -176,19 +180,31 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
   readonly currentDate = signal<string>('');
   readonly todayRecord = signal<AttendanceRecordResponse | null>(null);
 
-  readonly employeeOptions: ClockEmployeeOption[] = [
-    { id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d', name: 'Carlos Mamani Quispe', code: 'EMP-00104' },
-    { id: '8a2ceb3c-4a6c-4cbe-8acc-1a0c6a2cba5c', name: 'Valeria Rios Salazar', code: 'EMP-00105' },
-    { id: '7b3dfc4d-5c7d-5dcf-9bdd-3b1d8c4dcb7e', name: 'Rodrigo Flores Condori', code: 'EMP-00106' }
-  ];
-  selectedEmployeeId = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+  employeeOptions: ClockEmployeeOption[] = [];
+  selectedEmployeeId = '';
 
   private clockInterval: any = null;
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.updateClock();
     this.clockInterval = setInterval(() => this.updateClock(), 1000);
-    this.onEmployeeChange();
+    await this.loadEmployees();
+  }
+
+  private async loadEmployees(): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.employeesService.list(0, 100, { status: 'ACTIVE' }));
+      this.employeeOptions = (response.data?.content || []).map((employee) => ({
+        id: employee.id,
+        name: `${employee.firstName} ${employee.lastName}`.trim(),
+        code: employee.employeeNumber
+      }));
+      this.selectedEmployeeId = this.employeeOptions[0]?.id || '';
+      if (this.selectedEmployeeId) await this.onEmployeeChange();
+    } catch {
+      this.employeeOptions = [];
+      this.selectedEmployeeId = '';
+    }
   }
 
   ngOnDestroy(): void {
@@ -218,6 +234,10 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
   }
 
   async onEmployeeChange(): Promise<void> {
+    if (!this.selectedEmployeeId) {
+      this.todayRecord.set(null);
+      return;
+    }
     const record = await this.clockUseCase.fetchTodayRecord(this.selectedEmployeeId);
     this.todayRecord.set(record);
   }

@@ -166,8 +166,8 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
 
   availableEmployees: EmployeeSelectOption[] = [];
   selectedEmployeeIds: string[] = [];
-  startDate = '2026-11-01';
-  endDate = '2026-11-30';
+  startDate = new Date().toISOString().substring(0, 10);
+  endDate = '';
   isRecurring = true;
   weekdays: number[] = [1, 2, 3, 4, 5];
 

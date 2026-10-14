@@ -8,10 +8,12 @@ import {
   LeaveStatus
 } from '../../../entities/absence';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
+import { EmployeesService, EmployeeSummary } from '../../../entities/employees';
 
 @Injectable({ providedIn: 'root' })
 export class AbsenceListUseCase {
   private readonly absenceService = inject(AbsenceService);
+  private readonly employeesService = inject(EmployeesService);
   private readonly toastService = inject(ToastService);
 
   readonly requests = signal<LeaveRequestResponse[]>([]);
@@ -68,10 +70,24 @@ export class AbsenceListUseCase {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const res = await firstValueFrom(
-        this.absenceService.listRequests(employeeId, this.statusFilter())
+      const [res, employeesRes, typesRes] = await Promise.all([
+        firstValueFrom(this.absenceService.listRequests(employeeId, this.statusFilter())),
+        firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
+        firstValueFrom(this.absenceService.getLeaveTypes()).catch(() => null)
+      ]);
+      const employees = new Map<string, EmployeeSummary>(
+        (employeesRes?.data?.content || []).map((employee) => [employee.id, employee])
       );
-      this.requests.set(res.data.content);
+      const types = new Map((typesRes?.data || []).map((type) => [type.id, type]));
+      if (typesRes?.data) this.leaveTypes.set(typesRes.data);
+      this.requests.set((res.data.content || []).map((request) => {
+        const employee = employees.get(request.employeeId);
+        return {
+          ...request,
+          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : request.employeeFullName,
+          leaveTypeName: types.get(request.leaveTypeId)?.name || request.leaveTypeName
+        };
+      }));
     } catch (err: any) {
       this.error.set(err?.error?.message || 'Error al cargar las solicitudes de ausencia');
     } finally {

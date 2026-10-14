@@ -13,8 +13,12 @@ export interface TenantNavigationItem {
 export const TENANT_NAVIGATION: TenantNavigationItem[] = [
   { id: 'home', label: 'Inicio', route: '/dashboard/home', icon: 'layout-dashboard' },
   { id: 'users', label: 'Usuarios', route: '/dashboard/users', icon: 'users', permission: TENANT_ROUTE_PERMISSIONS.users },
-  { id: 'employees', label: 'Empleados', route: '/dashboard/employees', icon: 'contact-round', permission: TENANT_ROUTE_PERMISSIONS.employees },
+  { id: 'employees', label: 'Empleados', route: '/dashboard/employees', icon: 'user', permission: TENANT_ROUTE_PERMISSIONS.employees },
   { id: 'contracts', label: 'Contratos', route: '/dashboard/contracts', icon: 'file-text', permission: TENANT_ROUTE_PERMISSIONS.contracts },
+  { id: 'dossiers', label: 'Expedientes', route: '/dashboard/dossiers', icon: 'folder-open', permission: TENANT_ROUTE_PERMISSIONS.dossiers },
+  { id: 'shifts', label: 'Turnos', route: '/dashboard/shifts', icon: 'clock', permission: TENANT_ROUTE_PERMISSIONS.shifts },
+  { id: 'attendance', label: 'Asistencia', route: '/dashboard/attendance', icon: 'clipboard-list', permission: TENANT_ROUTE_PERMISSIONS.attendance },
+  { id: 'absences', label: 'Ausencias', route: '/dashboard/absences', icon: 'calendar', permission: TENANT_ROUTE_PERMISSIONS.absences },
   { id: 'departments', label: 'Departamentos', route: '/dashboard/departments', icon: 'building-2', permission: TENANT_ROUTE_PERMISSIONS.departments },
   { id: 'positions', label: 'Cargos', route: '/dashboard/positions', icon: 'briefcase', permission: TENANT_ROUTE_PERMISSIONS.positions },
   { id: 'roles', label: 'Roles', route: '/dashboard/roles', icon: 'key', permission: TENANT_ROUTE_PERMISSIONS.roles, ownerOnly: true },
