@@ -1,65 +1,37 @@
 import { Injectable } from '@angular/core';
+import { StoredAuthSession } from '../auth/auth-session.model';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AuthStorageService {
-  private readonly TOKEN_KEY = 'access_token';
-  private readonly REFRESH_TOKEN_KEY = 'refresh_token';
-  private readonly TENANT_SLUG_KEY = 'tenant_slug';
-
-  saveToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
+  private readonly key = 'hrcore.auth.tenant.session.v2';
+  private readonly legacyKeys = ['access_token', 'refresh_token', 'tenant_slug'];
+  constructor() { for (const key of this.legacyKeys) localStorage.removeItem(key); }
+  saveSession(session: StoredAuthSession): void {
+    if (session.scope !== 'TENANT' || !session.tenantSlug || session.tenantSlug === 'platform') throw new Error('Invalid tenant session');
+    localStorage.setItem(this.key, JSON.stringify(session));
   }
-
-  getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
-  }
-
-  hasToken(): boolean {
-    const token = this.getToken();
-    return !!token && token.trim().length > 0;
-  }
-
-  saveRefreshToken(token: string): void {
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, token);
-  }
-
-  getRefreshToken(): string | null {
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
-  }
-
-  hasRefreshToken(): boolean {
-    const token = this.getRefreshToken();
-    return !!token && token.trim().length > 0;
-  }
-
-  saveTenantSlug(slug: string): void {
-    localStorage.setItem(this.TENANT_SLUG_KEY, slug);
-  }
-
-  getTenantSlug(): string | null {
-    return localStorage.getItem(this.TENANT_SLUG_KEY);
-  }
-
-  hasTenantSlug(): boolean {
-    const slug = this.getTenantSlug();
-    return !!slug && slug.trim().length > 0;
-  }
-
-  hasValidTenantSession(): boolean {
-    return this.hasToken() && this.hasTenantSlug();
-  }
-
-  getSessionKey(): string {
-    const token = this.getToken() ?? '';
-    const tenantSlug = this.getTenantSlug() ?? '';
-    return `${token}|${tenantSlug}`;
-  }
-
-  clear(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
-    localStorage.removeItem(this.TENANT_SLUG_KEY);
+  getSession(): StoredAuthSession | null { return this.read(); }
+  hasValidTenantSession(): boolean { return this.read() !== null; }
+  clear(): void { localStorage.removeItem(this.key); }
+  getToken(): string | null { return this.read()?.accessToken ?? null; }
+  getRefreshToken(): string | null { return this.read()?.refreshToken ?? null; }
+  getTenantSlug(): string | null { return this.read()?.tenantSlug ?? null; }
+  hasToken(): boolean { return !!this.getToken(); }
+  hasRefreshToken(): boolean { return !!this.getRefreshToken(); }
+  hasTenantSlug(): boolean { return !!this.getTenantSlug(); }
+  getSessionKey(): string { const s = this.read(); return s ? `${s.loginId}:${s.revision}` : ''; }
+  saveToken(token: string): void { this.update({ accessToken: token }); }
+  saveRefreshToken(token: string): void { this.update({ refreshToken: token }); }
+  saveTenantSlug(slug: string): void { this.update({ tenantSlug: slug }); }
+  private update(update: Partial<StoredAuthSession>): void { const s = this.read(); if (s) this.saveSession({ ...s, ...update, revision: crypto.randomUUID() }); }
+  private read(): StoredAuthSession | null {
+    const raw = localStorage.getItem(this.key); if (!raw) return null;
+    try {
+      const value = JSON.parse(raw) as Partial<StoredAuthSession>;
+      if (value.scope !== 'TENANT' || typeof value.tenantSlug !== 'string' || !value.tenantSlug || value.tenantSlug === 'platform' ||
+          typeof value.accessToken !== 'string' || !value.accessToken || typeof value.refreshToken !== 'string' || !value.refreshToken ||
+          typeof value.accessExpiresAt !== 'number' || typeof value.revision !== 'string' || typeof value.loginId !== 'string') throw new Error('Invalid session');
+      return value as StoredAuthSession;
+    } catch { this.clear(); return null; }
   }
 }

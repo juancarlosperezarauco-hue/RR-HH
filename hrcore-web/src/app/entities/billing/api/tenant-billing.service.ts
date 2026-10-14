@@ -3,9 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse } from '../../../shared/api';
-import { PlatformSubscription } from '../../../entities/platform/api/platform.service';
 import {
   TenantBillingPlan,
+  TenantCurrentSubscription,
   TenantCheckoutResultResponse,
   TenantCheckoutSessionRequest,
   TenantCheckoutSessionResponse
@@ -18,8 +18,8 @@ export class TenantBillingService {
   private readonly http = inject(HttpClient);
   private readonly API_URL = `${environment.apiUrl}/api/subscription`;
 
-  getCurrentSubscription(): Observable<ApiResponse<PlatformSubscription>> {
-    return this.http.get<ApiResponse<PlatformSubscription>>(`${this.API_URL}/current`);
+  getCurrentSubscription(): Observable<ApiResponse<TenantCurrentSubscription>> {
+    return this.http.get<ApiResponse<TenantCurrentSubscription>>(`${this.API_URL}/current`);
   }
 
   listPlans(): Observable<ApiResponse<TenantBillingPlan[]>> {

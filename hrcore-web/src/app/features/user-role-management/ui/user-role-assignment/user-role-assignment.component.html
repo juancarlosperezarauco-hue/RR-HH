@@ -4,7 +4,7 @@
     @if (user) {
       <div class="rounded-2xl border border-border bg-background p-4 flex items-center gap-4">
         <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg border border-primary/20">
-          {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+          {{ user.firstName?.charAt(0) }}{{ user.lastName?.charAt(0) }}
         </div>
         <div>
           <h4 class="font-semibold text-accent-foreground">{{ user.firstName }} {{ user.lastName }}</h4>

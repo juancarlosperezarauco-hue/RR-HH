@@ -6,7 +6,7 @@ import { PermissionListUseCase } from '../../features/role-management';
 
 interface PermissionGroupView {
   module: string;
-  permissions: { code: string; module: string; description: string }[];
+  permissions: { code: string; module: string; description: string; scope: 'TENANT' | 'PLATFORM'; customRoleAssignable: boolean }[];
 }
 
 @Component({
@@ -148,7 +148,7 @@ interface PermissionGroupView {
                       <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                           <p class="break-words text-sm font-semibold text-accent-foreground">{{ permission.code }}</p>
-                          <p class="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{{ formatModuleLabel(permission.module) }}</p>
+                          <p class="mt-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">{{ formatModuleLabel(permission.module) }} · {{ permission.customRoleAssignable ? 'Asignable' : 'Reservado' }}</p>
                         </div>
                       </div>
                       <p class="mt-3 text-sm leading-6 text-muted-foreground">{{ permission.description }}</p>
@@ -177,7 +177,7 @@ export class PermissionsPageComponent implements OnInit {
     const query = this.searchQuery().trim().toLowerCase();
     const moduleFilter = this.moduleFilter();
 
-    return this.permissionListUseCase.data().filter(permission => {
+    return this.permissionListUseCase.tenantPermissions().filter(permission => {
       const queryMatches =
         query.length === 0 ||
         [permission.code, permission.module, permission.description]

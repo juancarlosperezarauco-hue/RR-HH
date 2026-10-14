@@ -5,17 +5,17 @@ import {
   TenantBillingPlan,
   TenantBillingService,
   TenantCheckoutActivationStatusResponse,
+  TenantCurrentSubscription,
   TenantUpgradeCheckoutPending,
   TenantUpgradeCheckoutStorageService
 } from '../../../entities/billing';
 import { AuthStorageService } from '../../../shared/lib/storage/auth-storage.service';
-import { PlatformSubscription } from '../../../entities/platform/api/platform.service';
 
 interface TenantSubscriptionState {
   loading: boolean;
   checkoutLoading: boolean;
   statusLoading: boolean;
-  current: PlatformSubscription | null;
+  current: TenantCurrentSubscription | null;
   plans: TenantBillingPlan[];
   activationStatus: TenantCheckoutActivationStatusResponse | null;
   error: string | null;
@@ -102,11 +102,18 @@ export class TenantSubscriptionUseCase {
 
       this.storage.save({
         stripeSessionId: response.data.stripeSessionId,
-        selectedPlanCode: response.data.selectedPlanCode,
+        tenantSlug: this.authStorage.getTenantSlug() || '',
+        planCode: response.data.planCode,
         billingInterval: response.data.billingInterval,
         checkoutUrl: response.data.checkoutUrl,
         createdAt: new Date().toISOString()
       });
+
+      if (!this.isTrustedCheckoutUrl(response.data.checkoutUrl)) {
+        this.state.update((state) => ({ ...state, checkoutLoading: false, error: 'La URL de checkout no es válida.' }));
+        this.storage.clear();
+        return;
+      }
 
       window.location.assign(response.data.checkoutUrl);
     } catch (err: any) {
@@ -196,13 +203,22 @@ export class TenantSubscriptionUseCase {
 
   private mapActivationMessage(status: 'PENDING' | 'ACTIVE' | 'FAILED'): string {
     if (status === 'ACTIVE') {
-      return 'Payment confirmed and plan activated.';
+      return 'Pago confirmado y plan activado.';
     }
 
     if (status === 'FAILED') {
-      return 'Checkout expired or failed.';
+      return 'El pago venció o no pudo completarse.';
     }
 
-    return 'Payment received, activation pending.';
+    return 'Pago recibido; la activación está pendiente.';
+  }
+
+  private isTrustedCheckoutUrl(value: string): boolean {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && !url.username && !url.password && !['localhost', '127.0.0.1'].includes(url.hostname);
+    } catch {
+      return false;
+    }
   }
 }

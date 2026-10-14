@@ -6,11 +6,12 @@ import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { PlatformService } from '../../entities/platform/api/platform.service';
 import { PlatformSuperadminMeUseCase } from '../../features/platform/application/platform-superadmin-me.usecase';
+import { SessionListComponent, SessionManagementFacade } from '../../features/session-management';
 
 @Component({
   selector: 'app-platform-security-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, LucideAngularModule, SessionListComponent],
   template: `
     <div class="space-y-6 p-4 sm:p-6 lg:p-8">
       <section class="rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-muted p-6 shadow-lg">
@@ -46,6 +47,7 @@ import { PlatformSuperadminMeUseCase } from '../../features/platform/application
           Cargando información de seguridad...
         </section>
       }
+      <section class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm"><app-session-list [scope]="'PLATFORM'" [sessions]="sessionsState().sessions" [status]="sessionsState().status" [error]="sessionsState().error" [pendingAction]="sessionsState().pendingAction" [pendingSessionId]="sessionsState().pendingSessionId" [mutationError]="sessionsState().mutationError" (refreshRequested)="loadSessions()" (revokeRequested)="revokeSession($event)" (revokeOthersRequested)="revokeOthers()" /></section>
 
       @if (error()) {
         <section class="rounded-[24px] border border-border bg-muted p-6 shadow-sm">
@@ -187,6 +189,8 @@ export class PlatformSecurityPageComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly platformService = inject(PlatformService);
   private readonly superadminMeUseCase = inject(PlatformSuperadminMeUseCase);
+  private readonly sessionFacade = inject(SessionManagementFacade);
+  readonly sessionsState = this.sessionFacade.platformState;
 
   readonly status = this.superadminMeUseCase.status;
   readonly superadmin = this.superadminMeUseCase.superadmin;
@@ -207,7 +211,12 @@ export class PlatformSecurityPageComponent implements OnInit {
 
   ngOnInit(): void {
     void this.superadminMeUseCase.loadCurrentSuperadmin();
+    void this.loadSessions();
   }
+
+  loadSessions(): Promise<void> { return this.sessionFacade.load('PLATFORM'); }
+  async revokeSession(sessionId: string): Promise<void> { const session = this.sessionsState().sessions.find(item => item.id === sessionId); if (!session || !confirm(session.current ? 'Cerrar esta sesión requerirá iniciar sesión nuevamente. ¿Continuar?' : '¿Cerrar esta sesión?')) return; if (session.current) await this.sessionFacade.revokeCurrentSession('PLATFORM', sessionId); else await this.sessionFacade.revokeOtherSession('PLATFORM', sessionId); }
+  async revokeOthers(): Promise<void> { if (confirm('Se cerrarán las demás sesiones de plataforma. ¿Continuar?')) await this.sessionFacade.revokeOtherSessions('PLATFORM'); }
 
   reset(): void {
     this.form.reset();

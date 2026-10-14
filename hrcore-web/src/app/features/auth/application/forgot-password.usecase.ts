@@ -30,7 +30,6 @@ export class ForgotPasswordUseCase {
 
     try {
       const response = await firstValueFrom(this.authService.forgotPassword(request));
-      console.log('forgot password response', response);
 
       if (response.success) {
         this.state.set({

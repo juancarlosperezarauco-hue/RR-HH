@@ -2,9 +2,7 @@ import { inject, Pipe, PipeTransform } from '@angular/core';
 import { PermissionService } from '../../lib/auth/permission.service';
 
 /**
- * Pipe puro para verificar permisos en el HTML sin afectar el rendimiento.
- * Angular cachea el resultado de un Pipe puro y solo lo re-evalúa cuando el input cambia,
- * evitando ejecuciones innecesarias en cada ciclo de detección de cambios.
+ * Pipe reactivo: la fuente de verdad es la proyección actual de /me.
  *
  * Uso:
  *   *ngIf="'accounts.create' | hasPermission"
@@ -13,7 +11,7 @@ import { PermissionService } from '../../lib/auth/permission.service';
 @Pipe({
   name: 'hasPermission',
   standalone: true,
-  pure: true
+  pure: false
 })
 export class HasPermissionPipe implements PipeTransform {
   private readonly permissionService = inject(PermissionService);
@@ -32,7 +30,7 @@ export class HasPermissionPipe implements PipeTransform {
 @Pipe({
   name: 'hasAnyPermission',
   standalone: true,
-  pure: true
+  pure: false
 })
 export class HasAnyPermissionPipe implements PipeTransform {
   private readonly permissionService = inject(PermissionService);

@@ -46,11 +46,11 @@ export class AccessService {
   }
 
   // --- User Roles Assignment ---
-  getUserRoles(userId: number | string): Observable<ApiResponse<UserRolesResponse>> {
+  getUserRoles(userId: string): Observable<ApiResponse<UserRolesResponse>> {
     return this.http.get<ApiResponse<UserRolesResponse>>(`${this.API_URL}/users/${userId}/roles`);
   }
 
-  assignUserRoles(userId: number | string, request: AssignUserRolesRequest): Observable<ApiResponse<UserRolesResponse>> {
+  assignUserRoles(userId: string, request: AssignUserRolesRequest): Observable<ApiResponse<UserRolesResponse>> {
     return this.http.put<ApiResponse<UserRolesResponse>>(`${this.API_URL}/users/${userId}/roles`, request);
   }
 }

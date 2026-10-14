@@ -11,10 +11,10 @@ import { SidebarComponent, HeaderComponent } from '../../widgets/layoutAdmin';
 
   template: `
     <div class="hrcore-brand-theme flex h-screen w-full overflow-hidden bg-accent">
-      <app-sidebar class="w-0 md:w-64 shrink-0 transition-all duration-300 relative z-50" (logoutAction)="logout()"></app-sidebar>
+      <app-sidebar [scope]="'TENANT'" class="w-0 md:w-64 shrink-0 transition-all duration-300 relative z-50" (logoutAction)="logout()"></app-sidebar>
 
       <main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-        <app-header (logoutAction)="logout()"></app-header>
+        <app-header [scope]="'TENANT'" (logoutAction)="logout()"></app-header>
 
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <router-outlet></router-outlet>
