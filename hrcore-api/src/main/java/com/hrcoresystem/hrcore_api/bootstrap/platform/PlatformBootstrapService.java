@@ -24,7 +24,7 @@ public class PlatformBootstrapService {
 
   public void seedBasePlans() {
     List<PlanSeed> plans = List.of(
-        new PlanSeed("DEMO", "Demo", "Demo trial plan", 5, 3, "DEMO", 10, null, null, false, 1),
+        new PlanSeed("DEMO", "Demo", "Demo trial plan", 5, 3, "DEMO", 10, null, null, true, 1),
         new PlanSeed("BASIC", "Basic", "Basic subscription plan", 10, 5, "PAID", null,
             envDecimalOrDefault("BASIC_MONTHLY_AMOUNT", "9.99"), envDecimalOrDefault("BASIC_YEARLY_AMOUNT", "99.99"),
             true, 2),
@@ -39,6 +39,12 @@ public class PlatformBootstrapService {
           p.code(), p.name(), p.description(), p.maxUsers(), p.maxRoles(), p.planType(), p.trialDays(),
           p.monthlyAmount(), p.yearlyAmount(), envOrDefault("STRIPE_DEFAULT_CURRENCY", "USD"), p.publicVisible(),
           p.sortOrder());
+
+    // DEMO debe poder aparecer en el registro público aunque haya sido creado
+    // anteriormente con public_visible=false. Los demás planes conservan su
+    // comportamiento existente y no se modifican en conflictos.
+    jdbcTemplate.update(
+        "UPDATE public.platform_plans SET plan_type = 'DEMO', trial_days = 10, monthly_amount = NULL, yearly_amount = NULL, public_visible = true, active = true, sort_order = 1, updated_at = NOW() WHERE code = 'DEMO'");
   }
 
   public void seedInitialPlatformSuperadmin() {
