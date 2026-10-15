@@ -21,6 +21,10 @@ export class PositionsPageComponent implements OnInit {
   readonly items = signal<Position[]>([]); readonly requirements = signal<PositionRequirement[]>([]);
   readonly error = signal(''); readonly panelError = signal('');
   readonly levels = ORGANIZATIONAL_LEVELS; readonly types = REQUIREMENT_TYPES;
+  readonly currencies = [
+    { code: 'BOB', name: 'Boliviano' }, { code: 'USD', name: 'Dólar estadounidense' }, { code: 'EUR', name: 'Euro' }
+  ];
+  statusTarget: Position | null = null;
   page = 0; totalPages = 0; total = 0; size = 25; sort = 'name,asc';
   requirementPage = 0; requirementPages = 0;
   filters: PositionFilters = { name: '', code: '', status: '', organizationalLevel: '' };
@@ -33,6 +37,16 @@ export class PositionsPageComponent implements OnInit {
   private listRequest?: Subscription;
   ngOnInit() { this.load(0); }
   label(value: string | null) { return ({ EXECUTIVE: 'Ejecutivo', MANAGEMENT: 'Gerencia', SUPERVISORY: 'Supervisión', PROFESSIONAL: 'Profesional', TECHNICAL: 'Técnico', OPERATIONAL: 'Operativo', EDUCATION: 'Educación', EXPERIENCE: 'Experiencia', SKILL: 'Habilidad', CERTIFICATION: 'Certificación', OTHER: 'Otro' } as Record<string, string>)[value || ''] || value || '—'; }
+  salary(value: string | null): string {
+    if (value === null || value === undefined || value === '') return '—';
+    const match = /^(\d+)(?:\.(\d+))?$/.exec(String(value));
+    if (!match) return String(value);
+    const decimals = match[2] || '';
+    const cents = BigInt(match[1]) * 100n + BigInt((decimals + '00').slice(0, 2)) + (Number(decimals[2] || '0') >= 5 ? 1n : 0n);
+    const integer = (cents / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${integer}.${String(cents % 100n).padStart(2, '0')}`;
+  }
+  knownCurrency(code: string) { return this.currencies.some(currency => currency.code === code); }
   load(page = this.page, refresh = false) {
     if (this.loading() && !refresh) return;
     // A successful mutation replaces an older query instead of losing its refresh.
@@ -65,8 +79,13 @@ export class PositionsPageComponent implements OnInit {
   }
   transition(item: Position) {
     const activate = item.status !== 'ACTIVE';
-    if (this.saving() || !this.permissions.hasPermission(`positions.${activate ? 'activate' : 'deactivate'}`) || !window.confirm(`¿${activate ? 'Activar' : 'Desactivar'} ${item.name}?`)) return;
-    this.mutate(this.service.changeStatus(item.id, activate), () => this.load(0, true));
+    if (this.saving() || !this.permissions.hasPermission(`positions.${activate ? 'activate' : 'deactivate'}`)) return;
+    this.statusTarget = item; this.panelError.set('');
+  }
+  confirmTransition() {
+    const item = this.statusTarget;
+    if (!item || this.saving()) return;
+    this.mutate(this.service.changeStatus(item.id, item.status !== 'ACTIVE'), () => { this.statusTarget = null; this.load(0, true); });
   }
   openRequirements(item: Position) {
     if (this.saving() || !this.permissions.hasAnyPermission('positions.requirements.list', 'positions.requirements.create', 'positions.requirements.update', 'positions.requirements.delete')) return;

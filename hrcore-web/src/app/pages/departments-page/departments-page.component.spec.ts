@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { PermissionService } from '../../shared/lib/auth/permission.service';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { DepartmentsService } from '../../entities/departments';
@@ -16,6 +16,65 @@ describe('DepartmentsPageComponent: reglas de jerarquía', () => {
   beforeEach(() => { TestBed.configureTestingModule({ imports: [DepartmentsPageComponent], providers: [provideHttpClient(), provideHttpClientTesting(), { provide: PermissionService, useValue: { hasPermission: () => true } }, { provide: ToastService, useValue: { warning: () => {}, error: () => {}, success: () => {} } }] }); page = TestBed.createComponent(DepartmentsPageComponent).componentInstance; http = TestBed.inject(HttpTestingController); });
   afterEach(() => http.verify());
   const department = { id: '11111111-1111-1111-1111-111111111111', code: 'FIN', name: 'Finanzas', status: 'ACTIVE' as const, description: null, parentDepartmentId: null, managerEmployeeId: null, costCenterCode: null, createdBy: '', updatedBy: '', createdAt: '', updatedAt: '' };
+  it('resuelve una sola vez el usuario de creación y actualización en Detalle', () => {
+    const userId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    expect(page.detailUserLabel(userId)).toBe('Usuario no disponible');
+    page.open({ ...department, createdBy: userId, updatedBy: userId }, 'detail');
+    http.expectOne(r => r.url.endsWith(`/api/users/${userId}`)).flush(reply({ id: userId, firstName: 'Betzaida', lastName: 'Theiss' }));
+    http.expectOne(r => r.url === `${api}/${department.id}`).flush(reply({ ...department, createdBy: userId, updatedBy: userId }));
+    http.expectNone(r => r.url.endsWith(`/api/users/${userId}`));
+    expect(page.detailUserLabel(userId)).toBe('Betzaida Theiss');
+  });
+  it('busca responsables activos tras una espera y conserva el ID seleccionado', fakeAsync(() => {
+    page.mode = 'create'; page.employeeSearch = 'Betzaida'; page.employeeInput(); tick(299);
+    http.expectNone(r => r.url.includes('/api/employees'));
+    tick(1);
+    const search = http.expectOne(r => r.url.includes('/api/employees') && r.params.get('name') === 'Betzaida');
+    expect(search.request.params.get('status')).toBe('ACTIVE');
+    const employee = { id: '22222222-2222-2222-2222-222222222222', firstName: 'Betzaida', lastName: 'Blanco', employeeNumber: 'EMP-1', employmentStatus: 'ACTIVE' as const };
+    search.flush(listed([employee])); page.chooseEmployee(employee);
+    expect(page.form.managerEmployeeId).toBe(employee.id);
+    expect(page.employeeSearch).toBe('Betzaida Blanco');
+    expect(page.suggestionsOpen()).toBeFalse();
+    tick(500); http.expectNone(r => r.url.includes('/api/employees'));
+  }));
+  it('conserva el responsable al editar mientras obtiene su nombre', () => {
+    const id = '22222222-2222-2222-2222-222222222222';
+    page.form.managerEmployeeId = id; page.prepareEmployee(id);
+    expect(page.form.managerEmployeeId).toBe(id);
+    http.expectOne(r => r.url.endsWith(`/api/employees/${id}`)).flush(reply({ id, firstName: 'Betzaida', lastName: 'Blanco', employeeNumber: 'EMP-1', employmentStatus: 'ACTIVE' }));
+    expect(page.employeeSearch).toBe('Betzaida Blanco');
+    expect(page.form.managerEmployeeId).toBe(id);
+  });
+  it('impide guardar un nombre escrito sin seleccionar un empleado real', () => {
+    prepareCreate(); page.employeeSearch = 'Persona inventada'; page.employeeInput();
+    page.save();
+    expect(page.panelError()).toContain('Seleccione un empleado');
+    http.expectNone(r => r.method === 'POST');
+    page.clearEmployee();
+  });
+  it('acumula páginas de superiores activos y conserva el ID elegido', () => {
+    page.mode = 'create'; page.loadParents(0);
+    const first = http.expectOne(r => r.url === api && r.params.get('page') === '0');
+    expect(first.request.params.get('status')).toBe('ACTIVE');
+    first.flush(reply({ content: [department], number: 0, totalPages: 2, totalElements: 2 }));
+    const second = { ...department, id: '33333333-3333-3333-3333-333333333333', name: 'Operaciones' };
+    page.loadParents(1);
+    http.expectOne(r => r.url === api && r.params.get('page') === '1').flush(reply({ content: [second], number: 1, totalPages: 2, totalElements: 2 }));
+    expect(page.availableParents().map(item => item.name)).toEqual(['Finanzas', 'Operaciones']);
+    page.parentOpen.set(true);
+    page.chooseParent(second);
+    expect(page.form.parentDepartmentId).toBe(second.id);
+    expect(page.parentOpen()).toBeFalse();
+  });
+  it('presenta el historial como campos y valores legibles', () => {
+    const rows = page.historyRows({ id: 'h1', departmentId: department.id, action: 'UPDATED', createdAt: '', performedBy: '', reason: null,
+      previousData: { name: 'Finanzas', status: 'ACTIVE', managerEmployeeId: null },
+      newData: { name: 'Recursos Humanos', status: 'INACTIVE', managerEmployeeId: null } });
+    expect(rows).toContain(jasmine.objectContaining({ label: 'Nombre', previous: 'Finanzas', next: 'Recursos Humanos' }));
+    expect(rows).toContain(jasmine.objectContaining({ label: 'Estado', previous: 'Activo', next: 'Inactivo' }));
+    expect(rows).toContain(jasmine.objectContaining({ label: 'Responsable', previous: 'Sin especificar' }));
+  });
   it('rechaza padre propio y descendiente conocido', () => {
     page.selected = department;
     const child = { ...department, id: '22222222-2222-2222-2222-222222222222', parentDepartmentId: department.id };
