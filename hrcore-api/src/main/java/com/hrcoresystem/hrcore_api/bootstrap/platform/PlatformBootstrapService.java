@@ -24,7 +24,7 @@ public class PlatformBootstrapService {
 
   public void seedBasePlans() {
     List<PlanSeed> plans = List.of(
-        new PlanSeed("DEMO", "Demo", "Demo trial plan", 5, 3, "DEMO", 10, null, null, false, 1),
+        new PlanSeed("DEMO", "Demo", "Demo trial plan", 5, 3, "DEMO", 10, null, null, true, 1),
         new PlanSeed("BASIC", "Basic", "Basic subscription plan", 10, 5, "PAID", null,
             envDecimalOrDefault("BASIC_MONTHLY_AMOUNT", "9.99"), envDecimalOrDefault("BASIC_YEARLY_AMOUNT", "99.99"),
             true, 2),

@@ -36,6 +36,11 @@ public class TenantBootstrapService {
         VALUES ('company.name', ?, NOW(), NOW())
         ON CONFLICT (setting_key) DO NOTHING
         """.formatted(schemaName), tenantName);
+    jdbcTemplate.update("""
+        INSERT INTO %s.tenant_settings (setting_key, setting_value, created_at, updated_at)
+        VALUES ('company.timezone', 'America/La_Paz', NOW(), NOW())
+        ON CONFLICT (setting_key) DO NOTHING
+        """.formatted(schemaName));
   }
 
   private void validateSchemaName(String schemaName) {
