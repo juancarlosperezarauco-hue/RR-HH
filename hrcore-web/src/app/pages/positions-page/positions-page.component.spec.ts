@@ -7,6 +7,7 @@ import { PermissionService } from '../../shared/lib/auth/permission.service';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { PositionsPageComponent } from './positions-page.component';
 import { environment } from '../../../environments/environment';
+import { Position } from '../../entities/positions';
 
 describe('PositionsPageComponent: validaciones backend', () => {
   let page: PositionsPageComponent; let http: HttpTestingController;
@@ -25,14 +26,41 @@ describe('PositionsPageComponent: validaciones backend', () => {
     page.form.salaryMin = '12345678901234.1234'; page.form.salaryMax = '12345678901234.1233';
     page.save(); expect(page.panelError()).toContain('mínimo'); http.expectNone(() => true);
   });
-  it('muestra los salarios completos en la tabla sin redondearlos', () => {
+  it('muestra dos decimales y separadores de miles en la tabla sin alterar el dato recibido', () => {
     page.mode = null; fixture.detectChanges();
     const row = JSON.stringify(position).replace('"salaryMin":null', '"salaryMin":12345678901234.1234').replace('"salaryMax":null', '"salaryMax":999999999999999.9999');
     http.expectOne(r => r.url === api && r.method === 'GET').flush(`{"success":true,"data":{"content":[${row}],"number":0,"totalPages":1,"totalElements":1}}`);
     fixture.detectChanges();
     const salaryCell = (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr td')[2];
-    expect(salaryCell.textContent).toContain('12345678901234.1234');
-    expect(salaryCell.textContent).toContain('999999999999999.9999');
+    expect(salaryCell.textContent).toContain('12,345,678,901,234.12');
+    expect(salaryCell.textContent).toContain('1,000,000,000,000,000.00');
+  });
+  it('redondea solo al mostrar y respeta salarios opcionales', () => {
+    expect(page.salary('1000')).toBe('1,000.00');
+    expect(page.salary('100.005')).toBe('100.01');
+    expect(page.salary('999.9999')).toBe('1,000.00');
+    expect(page.salary(null)).toBe('—');
+  });
+  it('presenta Detalle sin identificador y aclara el cargo en Requisitos', () => {
+    const selected: Position = { ...position, organizationalLevel: 'PROFESSIONAL', status: 'ACTIVE', code: 'ANALISTA_RRHH', name: 'Betzaida Theiss Arispe', salaryMin: '1000', salaryMax: '2000', currency: 'BOB', createdAt: '2026-10-15T10:53:00', updatedAt: '2026-10-15T10:53:00' };
+    fixture.detectChanges();
+    http.expectOne(r => r.url === api && r.method === 'GET').flush(listed([selected]));
+    page.open(selected, 'detail');
+    http.expectOne(r => r.url === `${api}/${selected.id}` && r.method === 'GET').flush(reply(selected));
+    fixture.detectChanges();
+    const detail = (fixture.nativeElement as HTMLElement).querySelector('[role="dialog"]')!.textContent!;
+    expect(detail).toContain('Información general');
+    expect(detail).toContain('Información del registro');
+    expect(detail).toContain('1,000.00 — 2,000.00 BOB');
+    expect(detail).not.toContain('Identificador');
+    expect(detail).not.toContain(selected.id);
+
+    page.openRequirements(selected);
+    http.expectOne(r => r.url.includes('/requirements') && r.method === 'GET').flush(listed());
+    fixture.detectChanges();
+    const requirements = (fixture.nativeElement as HTMLElement).querySelector('[role="dialog"]')!.textContent!;
+    expect(requirements).toContain('Cargo: Betzaida Theiss Arispe');
+    expect(requirements).toContain('Código: ANALISTA_RRHH');
   });
   it('conserva el texto decimal introducido en el formulario real', async () => {
     fixture.detectChanges();
