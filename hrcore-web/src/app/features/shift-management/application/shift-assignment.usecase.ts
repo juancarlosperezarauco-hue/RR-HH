@@ -97,6 +97,41 @@ export class ShiftAssignmentUseCase {
     return { hasOverlap: false };
   }
 
+  private extractErrorMessage(err: unknown): string {
+    const errorObj = err as any;
+    const apiError = errorObj?.error;
+
+    let rawMessage = '';
+    if (apiError) {
+      if (Array.isArray(apiError.errors) && apiError.errors.length > 0) {
+        rawMessage = apiError.errors.join('. ');
+      } else if (typeof apiError.message === 'string' && apiError.message.trim().length > 0) {
+        rawMessage = apiError.message;
+      }
+    } else if (typeof errorObj?.message === 'string') {
+      rawMessage = errorObj.message;
+    }
+
+    if (!rawMessage) {
+      return 'Error al asignar turno al colaborador';
+    }
+
+    if (rawMessage.includes('startDate cannot precede today')) {
+      return 'La fecha de inicio no puede ser anterior a la fecha de hoy.';
+    }
+    if (rawMessage.includes('endDate cannot precede startDate')) {
+      return 'La fecha fin no puede ser anterior a la fecha de inicio.';
+    }
+    if (rawMessage.includes('company.timezone')) {
+      return 'Configure la zona horaria en la configuración de la empresa antes de asignar turnos.';
+    }
+    if (rawMessage.includes('Employee must be active')) {
+      return 'El colaborador seleccionado debe estar activo.';
+    }
+
+    return rawMessage;
+  }
+
   async assign(request: AssignShiftRequest): Promise<boolean> {
     // Validar solapamiento para cada colaborador seleccionado
     for (const empId of request.employeeIds) {
@@ -112,43 +147,49 @@ export class ShiftAssignmentUseCase {
     this.error.set(null);
 
     const weekdays = request.weekdays && request.weekdays.length > 0 ? request.weekdays : [1, 2, 3, 4, 5];
+    const errors: string[] = [];
+    const newAssignments: EmployeeShiftAssignmentResponse[] = [];
 
     try {
-      // Intentar asignación canónica individual por cada empleado en Spring Boot
-      let successCount = 0;
       for (const empId of request.employeeIds) {
         const payload: CreateShiftAssignmentRequest = {
           employeeId: empId,
           shiftId: request.shiftId,
           startDate: request.startDate,
-          endDate: request.endDate,
+          endDate: request.endDate ? request.endDate : null,
           weekdays
         };
+
         try {
           const res = await firstValueFrom(this.shiftService.createAssignment(payload));
           if (res?.data) {
-            this.assignments.update((prev) => [res.data, ...prev]);
-            successCount++;
+            newAssignments.push(res.data);
           }
-        } catch {
-          // Si el endpoint individual falla en modo mock, continuar al fallback
-          break;
+        } catch (err: unknown) {
+          const detail = this.extractErrorMessage(err);
+          errors.push(detail);
         }
       }
 
-      if (successCount === request.employeeIds.length) {
-        this.toastService.success(`Turno asignado a ${successCount} colaborador(es) exitosamente`);
-        return true;
+      if (newAssignments.length > 0) {
+        this.assignments.update((prev) => [...newAssignments, ...prev]);
+        this.loadAssignments().catch(() => {});
       }
 
-      // Fallback a asignación en lote
-      const res = await firstValueFrom(this.shiftService.assignShifts({ ...request, weekdays }));
-      this.toastService.success('Turno asignado exitosamente sin solapamientos');
-      this.assignments.update((prev) => [...res.data, ...prev]);
-      return true;
+      if (errors.length === 0) {
+        this.toastService.success(
+          `Turno asignado exitosamente a ${newAssignments.length} colaborador(es)`
+        );
+        return true;
+      } else {
+        const uniqueErrors = Array.from(new Set(errors));
+        const errorMessage = uniqueErrors.join('. ');
+        this.error.set(errorMessage);
+        this.toastService.error(errorMessage);
+        return newAssignments.length > 0;
+      }
     } catch (err: unknown) {
-      const errorResponse = err as { error?: { message?: string } };
-      const msg = errorResponse?.error?.message || 'Error al asignar el turno a los trabajadores';
+      const msg = this.extractErrorMessage(err);
       this.error.set(msg);
       this.toastService.error(msg);
       return false;

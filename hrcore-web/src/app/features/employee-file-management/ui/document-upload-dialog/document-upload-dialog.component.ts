@@ -17,180 +17,199 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
   template: `
     <div
       *ngIf="isOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      (click)="close()"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
       <div
-        class="relative w-full max-w-lg rounded-[24px] border border-border bg-card p-6 shadow-2xl overflow-hidden space-y-5">
+        (click)="$event.stopPropagation()"
+        class="relative flex w-full max-w-lg max-h-[90vh] flex-col rounded-[24px] border border-border bg-card shadow-2xl overflow-hidden">
         
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-border pb-4">
-          <div>
-            <h3 class="text-xl font-bold text-accent-foreground">Adjuntar Documento Legal</h3>
-            <p class="text-xs text-muted-foreground mt-0.5">Clasifica y archiva un documento en el expediente del trabajador.</p>
-          </div>
-          <button
-            type="button"
-            (click)="close()"
-            class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
-            <lucide-icon name="x" [size]="16"></lucide-icon>
-          </button>
-        </div>
-
-        <!-- Formulario -->
-        <form (ngSubmit)="submit()" class="space-y-4">
-          <!-- Tipo de Documento -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Tipo de Documento *
-            </label>
-            <select
-              [(ngModel)]="selectedTypeId"
-              name="documentTypeId"
-              required
-              class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-              <option value="" disabled selected>Selecciona una categoría de documento...</option>
-              <ng-container *ngIf="documentTypes && documentTypes.length > 0; else fallbackTypesTpl">
-                <option *ngFor="let t of documentTypes" [value]="t.id">
-                  {{ t.name }} ({{ t.category }})
-                </option>
-              </ng-container>
-              <ng-template #fallbackTypesTpl>
-                <option *ngFor="let opt of defaultDocumentTypeOptions" [value]="opt.type">
-                  {{ opt.label }}
-                </option>
-              </ng-template>
-            </select>
-          </div>
-
-          <!-- Título del Documento -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Título o Nombre Descriptivo (Opcional)
-            </label>
-            <input
-              type="text"
-              [(ngModel)]="documentTitle"
-              name="documentTitle"
-              placeholder="Ej: Contrato de Trabajo Indefinido 2026, Carnet de Identidad"
-              class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-          </div>
-
-          <!-- Nro de Documento / Folio -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Nro. de Documento o Folio (Opcional)
-            </label>
-            <input
-              type="text"
-              [(ngModel)]="documentNumber"
-              name="documentNumber"
-              placeholder="Ej: CI-7483920 o CTR-2026-01"
-              class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-          </div>
-
-          <!-- Fechas: Emisión y Vencimiento -->
-          <div class="grid grid-cols-2 gap-3">
+        <!-- Header (Fijo / Sin scroll) -->
+        <div class="border-b border-border bg-card/95 px-6 py-4 shrink-0 space-y-2.5 backdrop-blur-xs">
+          <div class="flex items-center justify-between">
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Fecha Emisión
-              </label>
-              <input
-                type="date"
-                [(ngModel)]="issueDate"
-                name="issueDate"
-                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <h3 class="text-lg font-bold text-accent-foreground">Adjuntar Documento Legal</h3>
+              <p class="text-xs text-muted-foreground mt-0.5">Clasifica y archiva un documento en el expediente del trabajador.</p>
             </div>
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Fecha Vencimiento
-              </label>
-              <input
-                type="date"
-                [(ngModel)]="expirationDate"
-                name="expirationDate"
-                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-            </div>
-          </div>
-
-          <!-- Documento Confidencial (HU15) -->
-          <div class="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3">
-            <div class="space-y-0.5 pr-2">
-              <div class="flex items-center gap-1.5 text-xs font-bold text-accent-foreground">
-                <lucide-icon name="lock" [size]="14" class="text-amber-500"></lucide-icon>
-                <span>Documento Confidencial</span>
-              </div>
-              <p class="text-[11px] text-muted-foreground">
-                Restringe el acceso exclusivamente a roles de RRHH autorizados y administradores.
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              [(ngModel)]="isConfidential"
-              name="isConfidential"
-              class="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer" />
-          </div>
-
-          <!-- Selector de Archivo / Drop Area con Validación Inmediata -->
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Archivo Digital (PDF, JPG, PNG, DOCX - Máx 10 MB) *
-            </label>
-            <div
-              (dragover)="onDragOver($event)"
-              (dragleave)="isDragging = false"
-              (drop)="onFileDrop($event)"
-              [class.border-primary]="isDragging"
-              [class.bg-primary/5]="isDragging"
-              [class.border-destructive]="!!fileError"
-              [class.bg-destructive/5]="!!fileError"
-              class="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20 p-5 text-center transition-colors hover:border-primary/50">
-              
-              <input
-                type="file"
-                (change)="onFileSelected($event)"
-                accept=".pdf,.png,.jpg,.jpeg,.docx"
-                class="absolute inset-0 cursor-pointer opacity-0" />
-              
-              <div *ngIf="!selectedFile" class="space-y-1.5 pointer-events-none">
-                <lucide-icon
-                  [name]="fileError ? 'circle-alert' : 'upload'"
-                  [size]="28"
-                  [class.text-destructive]="!!fileError"
-                  [class.text-muted-foreground]="!fileError"
-                  class="mx-auto"></lucide-icon>
-                <p class="text-xs font-semibold text-accent-foreground">
-                  {{ isDragging ? 'Suelta el archivo aquí...' : 'Arrastra un archivo aquí o haz clic para explorar' }}
-                </p>
-                <p class="text-[11px] text-muted-foreground">PDF, JPEG, PNG, DOCX hasta 10MB</p>
-              </div>
-
-              <div *ngIf="selectedFile" class="flex items-center gap-3 text-left w-full bg-card p-3 rounded-xl border border-border">
-                <lucide-icon name="file-text" [size]="24" class="text-primary shrink-0"></lucide-icon>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate text-xs font-bold text-accent-foreground">{{ selectedFile.name }}</p>
-                  <p class="text-[11px] text-muted-foreground">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</p>
-                </div>
-                <button
-                  type="button"
-                  (click)="clearFile($event)"
-                  class="p-1 text-muted-foreground hover:text-destructive cursor-pointer">
-                  <lucide-icon name="x" [size]="16"></lucide-icon>
-                </button>
-              </div>
-            </div>
-
-            <!-- Mensaje de error inmediato -->
-            <p *ngIf="fileError" class="mt-1.5 flex items-center gap-1 text-xs font-semibold text-destructive">
-              <lucide-icon name="circle-alert" [size]="13"></lucide-icon>
-              {{ fileError }}
-            </p>
-          </div>
-
-          <!-- Botones de Acción -->
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-border">
             <button
               type="button"
               (click)="close()"
-              class="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer">
+              class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+              <lucide-icon name="x" [size]="16"></lucide-icon>
+            </button>
+          </div>
+
+          <!-- Badge de Destinatario / Contexto del Empleado -->
+          <div *ngIf="employeeName || fileNumber" class="flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs">
+            <span class="inline-flex items-center gap-1.5 font-bold text-primary">
+              <lucide-icon name="user" [size]="13"></lucide-icon>
+              {{ employeeName || 'Colaborador' }}
+            </span>
+            <span *ngIf="fileNumber" class="inline-flex items-center gap-1 text-muted-foreground">
+              • Expediente: <span class="font-semibold text-foreground">{{ fileNumber }}</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Formulario con Contenedor Scrolleable Interno y Footer Fijo -->
+        <form (ngSubmit)="submit()" class="flex flex-1 flex-col min-h-0 overflow-hidden">
+          
+          <!-- Cuerpo Scrolleable del Formulario -->
+          <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3.5">
+            <!-- Tipo de Documento -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Tipo de Documento *
+              </label>
+              <select
+                [(ngModel)]="selectedTypeId"
+                name="documentTypeId"
+                required
+                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+                <option value="" disabled selected>Selecciona una categoría de documento...</option>
+                <ng-container *ngIf="documentTypes && documentTypes.length > 0; else fallbackTypesTpl">
+                  <option *ngFor="let t of documentTypes" [value]="t.id">
+                    {{ t.name }} ({{ t.category }})
+                  </option>
+                </ng-container>
+                <ng-template #fallbackTypesTpl>
+                  <option *ngFor="let opt of defaultDocumentTypeOptions" [value]="opt.type">
+                    {{ opt.label }}
+                  </option>
+                </ng-template>
+              </select>
+            </div>
+
+            <!-- Título del Documento -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Título o Nombre Descriptivo (Opcional)
+              </label>
+              <input
+                type="text"
+                [(ngModel)]="documentTitle"
+                name="documentTitle"
+                placeholder="Ej: Contrato de Trabajo Indefinido 2026, Carnet de Identidad"
+                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </div>
+
+            <!-- Nro de Documento / Folio -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Nro. de Documento o Folio (Opcional)
+              </label>
+              <input
+                type="text"
+                [(ngModel)]="documentNumber"
+                name="documentNumber"
+                placeholder="Ej: CI-7483920 o CTR-2026-01"
+                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </div>
+
+            <!-- Fechas: Emisión y Vencimiento -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  Fecha Emisión
+                </label>
+                <input
+                  type="date"
+                  [(ngModel)]="issueDate"
+                  name="issueDate"
+                  class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-1.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                  Fecha Vencimiento
+                </label>
+                <input
+                  type="date"
+                  [(ngModel)]="expirationDate"
+                  name="expirationDate"
+                  class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-1.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              </div>
+            </div>
+
+            <!-- Documento Confidencial (HU15) -->
+            <div class="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3">
+              <div class="space-y-0.5 pr-2">
+                <div class="flex items-center gap-1.5 text-xs font-bold text-accent-foreground">
+                  <lucide-icon name="lock" [size]="14" class="text-amber-500"></lucide-icon>
+                  <span>Documento Confidencial</span>
+                </div>
+                <p class="text-[11px] text-muted-foreground">
+                  Restringe el acceso exclusivamente a roles de RRHH autorizados y administradores.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                [(ngModel)]="isConfidential"
+                name="isConfidential"
+                class="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer" />
+            </div>
+
+            <!-- Selector de Archivo / Drop Area con Validación Inmediata -->
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Archivo Digital (PDF, JPG, PNG - Máx 10 MB) *
+              </label>
+              <div
+                (dragover)="onDragOver($event)"
+                (dragleave)="isDragging = false"
+                (drop)="onFileDrop($event)"
+                [class.border-primary]="isDragging"
+                [class.bg-primary/5]="isDragging"
+                [class.border-destructive]="!!fileError"
+                [class.bg-destructive/5]="!!fileError"
+                class="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border bg-muted/20 p-4 text-center transition-colors hover:border-primary/50">
+                
+                <input
+                  type="file"
+                  (change)="onFileSelected($event)"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  class="absolute inset-0 cursor-pointer opacity-0" />
+                
+                <div *ngIf="!selectedFile" class="space-y-1 pointer-events-none">
+                  <lucide-icon
+                    [name]="fileError ? 'circle-alert' : 'upload'"
+                    [size]="24"
+                    [class.text-destructive]="!!fileError"
+                    [class.text-muted-foreground]="!fileError"
+                    class="mx-auto"></lucide-icon>
+                  <p class="text-xs font-semibold text-accent-foreground">
+                    {{ isDragging ? 'Suelta el archivo aquí...' : 'Arrastra un archivo aquí o haz clic para explorar' }}
+                  </p>
+                  <p class="text-[11px] text-muted-foreground">PDF, JPEG o PNG hasta 10MB</p>
+                </div>
+
+                <div *ngIf="selectedFile" class="flex items-center gap-3 text-left w-full bg-card p-2.5 rounded-xl border border-border">
+                  <lucide-icon name="file-text" [size]="20" class="text-primary shrink-0"></lucide-icon>
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate text-xs font-bold text-accent-foreground">{{ selectedFile.name }}</p>
+                    <p class="text-[11px] text-muted-foreground">{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="clearFile($event)"
+                    class="p-1 text-muted-foreground hover:text-destructive cursor-pointer">
+                    <lucide-icon name="x" [size]="16"></lucide-icon>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Mensaje de error inmediato -->
+              <p *ngIf="fileError" class="mt-1 flex items-center gap-1 text-xs font-semibold text-destructive">
+                <lucide-icon name="circle-alert" [size]="13"></lucide-icon>
+                {{ fileError }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Botones de Acción (Fijos en la base) -->
+          <div class="flex items-center justify-end gap-3 border-t border-border bg-card px-6 py-3.5 shrink-0">
+            <button
+              type="button"
+              (click)="close()"
+              class="rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer transition-colors">
               Cancelar
             </button>
             <button
@@ -213,6 +232,9 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
 export class DocumentUploadDialogComponent {
   @Input() isOpen = false;
   @Input() employeeId = '';
+  @Input() employeeName = '';
+  @Input() fileNumber = '';
+  @Input() fileId = '';
   @Input() documentTypes: DocumentTypeResponse[] = [];
   @Output() closeDialog = new EventEmitter<void>();
   @Output() uploaded = new EventEmitter<void>();
@@ -277,17 +299,30 @@ export class DocumentUploadDialogComponent {
   }
 
   isValid(): boolean {
-    return !!this.selectedTypeId && !!this.selectedFile && !this.fileError;
+    if (!this.selectedTypeId || !this.selectedFile || !!this.fileError) {
+      return false;
+    }
+    return this.uploadUseCase.validateFile(this.selectedFile).isValid;
   }
 
   async submit(): Promise<void> {
-    if (!this.isValid()) return;
+    if (!this.isValid()) {
+      if (this.selectedFile) {
+        const val = this.uploadUseCase.validateFile(this.selectedFile);
+        if (!val.isValid) {
+          this.fileError = val.message || 'Formato de archivo no permitido';
+          this.toastService.error(this.fileError);
+        }
+      }
+      return;
+    }
 
     // Detectar si selectedTypeId es un enum canónico de Spring Boot
     const isCanonicalEnum = Object.keys(DOCUMENT_TYPE_LABELS).includes(this.selectedTypeId);
     const documentType = isCanonicalEnum ? (this.selectedTypeId as DocumentType) : undefined;
 
     const ok = await this.uploadUseCase.upload({
+      fileId: this.fileId || undefined,
       employeeId: this.employeeId,
       documentTypeId: this.selectedTypeId,
       documentType,

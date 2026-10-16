@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PendingCheckoutStorageService } from '../../../entities/billing';
 import { PublicPaidSignupRequest, PublicSignupRequest, TenantService } from '../../../entities/tenant';
+import { extractHttpErrorMessage } from '../../../shared/api';
 
 export interface SignupState {
   loading: boolean;
@@ -48,10 +49,10 @@ export class SignupUseCase {
         success: false,
         redirectingToPayment: false
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.state.set({
         loading: false,
-        error: err.error?.message || err.message || 'Error al conectar con el servidor',
+        error: extractHttpErrorMessage(err, 'Error al conectar con el servidor'),
         success: false,
         redirectingToPayment: false
       });
@@ -97,10 +98,10 @@ export class SignupUseCase {
         success: false,
         redirectingToPayment: false
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.state.set({
         loading: false,
-        error: err.error?.message || err.message || 'Error al conectar con el servidor',
+        error: extractHttpErrorMessage(err, 'Error al conectar con el servidor'),
         success: false,
         redirectingToPayment: false
       });

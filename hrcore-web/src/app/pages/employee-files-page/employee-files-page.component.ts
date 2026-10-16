@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { firstValueFrom } from 'rxjs';
 import {
   EmployeeFileListUseCase,
   DocumentCategoryFilterComponent,
@@ -11,9 +13,8 @@ import {
   DocumentPreviewModalComponent
 } from '../../features/employee-file-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
-import { MOCK_DOSSIERS } from '../../shared/api/interceptors/data/mock-dossiers.data';
 import { EmployeesService, EmployeeSummary } from '../../entities/employees';
-import { firstValueFrom } from 'rxjs';
+import { EmployeeDocumentAuditResponse } from '../../entities/employee-file';
 
 @Component({
   selector: 'app-employee-files-page',
@@ -37,14 +38,14 @@ import { firstValueFrom } from 'rxjs';
           <div class="space-y-3">
             <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               <span class="h-2 w-2 rounded-full bg-secondary"></span>
-              Gestión de Talento Humano
+              Gestión de Talento Humano · HU15
             </div>
             <div>
               <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
-                Expedientes Laborales
+                Expedientes Laborales Digitales
               </h1>
               <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Centraliza y clasifica la documentación legal, contractual y personal del trabajador con custodia inmutable, archivo legal y control RBAC.
+                Centraliza y clasifica la documentación legal, contractual y personal del trabajador con custodia inmutable, archivo legal y control RBAC en Spring Boot.
               </p>
             </div>
           </div>
@@ -63,7 +64,7 @@ import { firstValueFrom } from 'rxjs';
               type="button"
               (click)="openUploadModal()"
               [disabled]="!fileListUseCase.activeFile()"
-              class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
+              class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed">
               <lucide-icon name="upload" [size]="16"></lucide-icon>
               Adjuntar Documento
             </button>
@@ -71,109 +72,141 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </section>
 
-      <section class="rounded-2xl border border-border bg-card p-5 shadow-sm">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div class="flex-1 max-w-xl">
+      <!-- Selector de Empleado y Tarjeta del Titular -->
+      <section class="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-4">
+        <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div class="flex-1 max-w-2xl">
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Empleado del expediente
+              Seleccionar Colaborador Titular *
             </label>
             <select
               [(ngModel)]="selectedEmployeeId"
               (ngModelChange)="onEmployeeSelected($event)"
-              class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground">
-              <option value="" disabled>Seleccione un empleado</option>
-              <option *ngFor="let employee of employees" [value]="employee.id">
-                {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+              class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+              <option value="" disabled>Seleccione un colaborador de la empresa...</option>
+              <option *ngFor="let emp of employees" [value]="emp.id">
+                {{ emp.employeeNumber }} · {{ emp.firstName }} {{ emp.lastName }}
               </option>
             </select>
           </div>
-          <button
-            *ngIf="selectedEmployeeId && !fileListUseCase.activeFile()"
-            type="button"
-            (click)="createEmployeeFile()"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">
-            <lucide-icon name="folder-plus" [size]="16"></lucide-icon>
-            Crear expediente
-          </button>
-        </div>
-      </section>
 
-      <!-- Selector y Estado del Expediente Activo -->
-      <section
-        *ngIf="fileListUseCase.activeFile()"
-        class="rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-4">
-          <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary font-black text-base border border-primary/20">
-            <lucide-icon name="folder" [size]="22"></lucide-icon>
+          <!-- Botón Rápido de Apertura si no tiene expediente -->
+          <div *ngIf="selectedEmployee && !fileListUseCase.activeFile() && !fileListUseCase.loading()">
+            <button
+              type="button"
+              (click)="openCreateModal()"
+              class="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
+              <lucide-icon name="folder-plus" [size]="18"></lucide-icon>
+              Aperturar Expediente
+            </button>
           </div>
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-base font-bold text-accent-foreground">
-                Expediente N° {{ fileListUseCase.activeFile()?.fileNumber }}
-              </h2>
-              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 border border-emerald-500/20">
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                {{ fileListUseCase.activeFile()?.status }}
+        </div>
+
+        <!-- Ficha Resumen del Colaborador Seleccionado -->
+        <div *ngIf="selectedEmployee" class="flex flex-col gap-4 rounded-xl border border-border/80 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-3.5">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary font-black text-sm border border-primary/20">
+              {{ getInitials(selectedEmployee.firstName, selectedEmployee.lastName) }}
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-sm font-bold text-accent-foreground">
+                  {{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}
+                </h2>
+                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                  {{ selectedEmployee.employeeNumber }}
+                </span>
+                <span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600">
+                  {{ selectedEmployee.employmentStatus || 'ACTIVO' }}
+                </span>
+              </div>
+              <p class="text-xs text-muted-foreground mt-0.5">
+                Ficha de colaborador registrada en el tenant
+              </p>
+            </div>
+          </div>
+
+          <!-- Estado del Expediente del Colaborador -->
+          <div class="text-right sm:border-l sm:border-border sm:pl-4">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Estado Expediente
+            </span>
+            <div *ngIf="fileListUseCase.activeFile(); else noFileStatusTpl" class="flex items-center gap-1.5 justify-end mt-0.5">
+              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span class="text-xs font-bold text-foreground">
+                Folio: {{ fileListUseCase.activeFile()?.fileNumber }}
               </span>
             </div>
-            <p class="text-xs text-muted-foreground mt-0.5">
-              {{ fileListUseCase.activeFile()?.notes || 'Expediente digital activo en el sistema' }}
-            </p>
+            <ng-template #noFileStatusTpl>
+              <span class="text-xs font-semibold text-amber-600 mt-0.5 inline-block">
+                Sin expediente aperturado
+              </span>
+            </ng-template>
           </div>
-        </div>
-
-        <!-- Selector si hay múltiples expedientes -->
-        <div *ngIf="fileListUseCase.files().length > 1" class="min-w-[220px]">
-          <label class="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-            Cambiar Expediente
-          </label>
-          <select
-            [ngModel]="fileListUseCase.activeFile()?.id"
-            (ngModelChange)="onFileSelected($event)"
-            class="w-full rounded-xl border border-border bg-muted/40 px-3 py-1.5 text-xs font-semibold text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
-            <option *ngFor="let f of fileListUseCase.files()" [value]="f.id">
-              Expediente: {{ f.fileNumber }}
-            </option>
-          </select>
         </div>
       </section>
 
       <!-- Estado: Cargando -->
       <div *ngIf="fileListUseCase.loading()" class="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center space-y-3">
         <lucide-icon name="loader-circle" [size]="32" class="animate-spin text-primary"></lucide-icon>
-        <p class="text-xs font-semibold text-muted-foreground">Consultando expediente laboral y documentos...</p>
+        <p class="text-xs font-semibold text-muted-foreground">Consultando expediente laboral y documentos en el backend...</p>
       </div>
 
-      <!-- Estado Vacío cuando no hay documentos registrados -->
+      <!-- Estado A: El empleado NO tiene expediente digital aún -->
       <div
-        *ngIf="!fileListUseCase.loading() && fileListUseCase.documents().length === 0"
-        class="rounded-[24px] border-2 border-dashed border-border bg-card/60 p-12 text-center space-y-5 shadow-sm">
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <lucide-icon name="folder-open" [size]="32"></lucide-icon>
+        *ngIf="!fileListUseCase.loading() && selectedEmployee && !fileListUseCase.activeFile()"
+        class="rounded-[24px] border-2 border-dashed border-border bg-card/60 p-10 text-center space-y-4 shadow-sm">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+          <lucide-icon name="folder-plus" [size]="32"></lucide-icon>
         </div>
         <div class="max-w-md mx-auto space-y-2">
           <h3 class="text-xl font-bold text-accent-foreground">
-            {{ fileListUseCase.activeFile() ? 'No hay documentos en el expediente' : 'El empleado no tiene expediente' }}
+            Expediente Digital No Aperturado
           </h3>
           <p class="text-xs text-muted-foreground leading-relaxed">
-            {{ fileListUseCase.activeFile()
-              ? 'Adjunta el primer documento para comenzar a gestionar el expediente digital.'
-              : 'Crea el expediente laboral del empleado seleccionado antes de adjuntar documentación.' }}
+            El colaborador <strong>{{ selectedEmployee.firstName }} {{ selectedEmployee.lastName }}</strong> ({{ selectedEmployee.employeeNumber }}) aún no cuenta con un expediente laboral en el sistema.
+            Apertura su expediente para comenzar a archivar y clasificar sus contratos, cédulas y certificados.
           </p>
         </div>
         <div class="pt-2">
           <button
             type="button"
-            (click)="fileListUseCase.activeFile() ? openUploadModal() : createEmployeeFile()"
-            class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
-            <lucide-icon name="upload" [size]="16"></lucide-icon>
-            {{ fileListUseCase.activeFile() ? 'Adjuntar Primer Documento' : 'Crear Expediente' }}
+            (click)="openCreateModal()"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
+            <lucide-icon name="folder-plus" [size]="16"></lucide-icon>
+            Aperturar Expediente de {{ selectedEmployee.firstName }}
           </button>
         </div>
       </div>
 
-      <!-- Contenido Principal cuando sí hay documentos -->
-      <ng-container *ngIf="!fileListUseCase.loading() && fileListUseCase.documents().length > 0">
+      <!-- Estado B: Hay expediente activo pero sin documentos -->
+      <div
+        *ngIf="!fileListUseCase.loading() && fileListUseCase.activeFile() && fileListUseCase.documents().length === 0"
+        class="rounded-[24px] border-2 border-dashed border-border bg-card/60 p-10 text-center space-y-4 shadow-sm">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <lucide-icon name="folder-open" [size]="32"></lucide-icon>
+        </div>
+        <div class="max-w-md mx-auto space-y-2">
+          <h3 class="text-xl font-bold text-accent-foreground">
+            No hay documentos en el expediente N° {{ fileListUseCase.activeFile()?.fileNumber }}
+          </h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">
+            El expediente digital está aperturado y activo. Adjunta el primer documento (contrato de trabajo, documento de identidad, títulos, etc.) para iniciar el registro.
+          </p>
+        </div>
+        <div class="pt-2">
+          <button
+            type="button"
+            (click)="openUploadModal()"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-xs font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
+            <lucide-icon name="upload" [size]="16"></lucide-icon>
+            Adjuntar Primer Documento
+          </button>
+        </div>
+      </div>
+
+      <!-- Contenido Principal cuando sí hay documentos registrados -->
+      <ng-container *ngIf="!fileListUseCase.loading() && fileListUseCase.activeFile() && fileListUseCase.documents().length > 0">
         <!-- Fila de Tarjetas KPI -->
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <!-- KPI 1 -->
@@ -223,7 +256,7 @@ import { firstValueFrom } from 'rxjs';
                 type="text"
                 [ngModel]="fileListUseCase.searchQuery()"
                 (ngModelChange)="fileListUseCase.setSearchQuery($event)"
-                placeholder="Buscar por nombre, tipo o nro de folio..."
+                placeholder="Buscar por título, tipo o nro de folio..."
                 class="w-full rounded-full border border-border bg-muted/40 pl-10 pr-4 py-2 text-xs font-medium text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </div>
 
@@ -282,17 +315,91 @@ import { firstValueFrom } from 'rxjs';
           </div>
         </div>
 
-        <!-- Vista: Línea de Tiempo -->
+        <!-- Vista: Línea de Tiempo Real (Audit Trail) -->
         <app-document-timeline
           *ngIf="activeView === 'TIMELINE'"
-          [audits]="getAudits()">
+          [audits]="audits()">
         </app-document-timeline>
       </ng-container>
+
+      <!-- Modal: Apertura de Nuevo Expediente (POST /api/employee-files) -->
+      <div *ngIf="showCreateFileDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div class="relative w-full max-w-md rounded-[24px] border border-border bg-card p-6 shadow-2xl space-y-4">
+          <div class="flex items-center justify-between border-b border-border pb-3">
+            <div>
+              <h3 class="text-lg font-bold text-accent-foreground">Aperturar Expediente Digital</h3>
+              <p class="text-xs text-muted-foreground">Crea la carpeta laboral maestra del colaborador en Spring Boot.</p>
+            </div>
+            <button
+              type="button"
+              (click)="showCreateFileDialog = false"
+              class="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+              <lucide-icon name="x" [size]="16"></lucide-icon>
+            </button>
+          </div>
+
+          <form (ngSubmit)="submitCreateFile()" class="space-y-3.5">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Colaborador Titular
+              </label>
+              <div class="rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-xs font-bold text-foreground">
+                {{ selectedEmployee?.firstName }} {{ selectedEmployee?.lastName }} ({{ selectedEmployee?.employeeNumber }})
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Número de Expediente / Folio *
+              </label>
+              <input
+                type="text"
+                [(ngModel)]="newFileNumber"
+                name="newFileNumber"
+                required
+                maxlength="80"
+                placeholder="Ej: EXP-EMP-00104"
+                class="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Observaciones / Notas Iniciales
+              </label>
+              <textarea
+                [(ngModel)]="newFileNotes"
+                name="newFileNotes"
+                rows="2"
+                placeholder="Notas sobre la apertura del expediente digital..."
+                class="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+              <button
+                type="button"
+                (click)="showCreateFileDialog = false"
+                class="rounded-full border border-border px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-accent">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                [disabled]="!newFileNumber || isCreatingFile"
+                class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 disabled:opacity-50">
+                <lucide-icon *ngIf="isCreatingFile" name="loader-circle" [size]="14" class="animate-spin"></lucide-icon>
+                {{ isCreatingFile ? 'Aperturando...' : 'Confirmar Apertura' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <!-- Modal de Carga de Documentos (Flujo Canónico 2 Pasos Spring Boot) -->
       <app-document-upload-dialog
         [isOpen]="isUploadOpen"
-        [employeeId]="fileListUseCase.selectedEmployeeId()"
+        [fileId]="fileListUseCase.activeFile()?.id || ''"
+        [fileNumber]="fileListUseCase.activeFile()?.fileNumber || ''"
+        [employeeId]="selectedEmployeeId"
+        [employeeName]="selectedEmployeeName"
         [documentTypes]="fileListUseCase.documentTypes()"
         (closeDialog)="isUploadOpen = false"
         (uploaded)="onDocumentUploaded()">
@@ -306,19 +413,42 @@ import { firstValueFrom } from 'rxjs';
 export class EmployeeFilesPageComponent implements OnInit {
   readonly fileListUseCase = inject(EmployeeFileListUseCase);
   private readonly employeesService = inject(EmployeesService);
+  private readonly route = inject(ActivatedRoute);
 
   employees: EmployeeSummary[] = [];
   selectedEmployeeId = '';
 
   activeView: 'GRID' | 'TIMELINE' = 'GRID';
   isUploadOpen = false;
+  showCreateFileDialog = false;
+  newFileNumber = '';
+  newFileNotes = 'Expediente digital principal del colaborador';
+  isCreatingFile = false;
+
+  get selectedEmployee(): EmployeeSummary | undefined {
+    return this.employees.find((item) => item.id === this.selectedEmployeeId);
+  }
+
+  get selectedEmployeeName(): string {
+    const emp = this.selectedEmployee;
+    return emp ? `${emp.firstName} ${emp.lastName}` : '';
+  }
 
   async ngOnInit(): Promise<void> {
     this.fileListUseCase.loadDocumentTypes();
+
+    const queryEmployeeId = this.route.snapshot.queryParamMap.get('employeeId');
+
     try {
       const response = await firstValueFrom(this.employeesService.list(0, 100));
       this.employees = response.data?.content || [];
-      this.selectedEmployeeId = this.employees[0]?.id || '';
+
+      if (queryEmployeeId && this.employees.some((e) => e.id === queryEmployeeId)) {
+        this.selectedEmployeeId = queryEmployeeId;
+      } else {
+        this.selectedEmployeeId = this.employees[0]?.id || '';
+      }
+
       if (this.selectedEmployeeId) {
         this.fileListUseCase.setEmployeeId(this.selectedEmployeeId);
       } else {
@@ -331,28 +461,94 @@ export class EmployeeFilesPageComponent implements OnInit {
   }
 
   onEmployeeSelected(employeeId: string): void {
+    this.selectedEmployeeId = employeeId;
     this.fileListUseCase.setEmployeeId(employeeId);
   }
 
-  async createEmployeeFile(): Promise<void> {
-    const employee = this.employees.find((item) => item.id === this.selectedEmployeeId);
-    if (!employee) return;
-    await this.fileListUseCase.createFileForEmployee(employee.id, employee.employeeNumber);
+  openCreateModal(): void {
+    if (!this.selectedEmployee) return;
+    this.newFileNumber = `EXP-${this.selectedEmployee.employeeNumber || this.selectedEmployee.id.substring(0, 8)}`.toUpperCase();
+    this.newFileNotes = 'Expediente digital principal del colaborador';
+    this.showCreateFileDialog = true;
   }
 
-  getAudits() {
-    return MOCK_DOSSIERS.documentAudits;
+  async submitCreateFile(): Promise<void> {
+    if (!this.selectedEmployeeId || !this.newFileNumber) return;
+    this.isCreatingFile = true;
+    try {
+      const ok = await this.fileListUseCase.createFileForEmployee(
+        this.selectedEmployeeId,
+        this.newFileNumber,
+        this.newFileNotes
+      );
+      if (ok) {
+        this.showCreateFileDialog = false;
+      }
+    } finally {
+      this.isCreatingFile = false;
+    }
+  }
+
+  /**
+   * Genera auditoría reactiva y memoizada a partir del expediente activo y sus documentos
+   */
+  readonly audits = computed<EmployeeDocumentAuditResponse[]>(() => {
+    const list: EmployeeDocumentAuditResponse[] = [];
+    const file = this.fileListUseCase.activeFile();
+    const docs = this.fileListUseCase.documents();
+
+    if (file?.createdAt) {
+      list.push({
+        id: `audit-file-${file.id}`,
+        documentId: file.id,
+        userId: 'SYS',
+        userEmail: 'Gestión RRHH',
+        action: 'UPLOAD',
+        performedAt: file.createdAt,
+        ipAddress: `Apertura de Expediente: ${file.fileNumber}`
+      });
+    }
+
+    for (const doc of docs) {
+      if (doc.createdAt) {
+        list.push({
+          id: `audit-create-${doc.id}`,
+          documentId: doc.id,
+          userId: 'RRHH',
+          userEmail: 'Gestión RRHH',
+          action: 'UPLOAD',
+          performedAt: doc.createdAt,
+          ipAddress: `Registro: ${doc.title || doc.documentTypeName}`
+        });
+      }
+      if (doc.verifiedAt) {
+        list.push({
+          id: `audit-verify-${doc.id}`,
+          documentId: doc.id,
+          userId: doc.verifiedBy || 'Auditoría RRHH',
+          userEmail: 'Auditoría RRHH',
+          action: 'VIEW',
+          performedAt: doc.verifiedAt,
+          ipAddress: `Verificación: ${doc.verificationStatus} (${doc.title || doc.documentTypeName})`
+        });
+      }
+    }
+
+    return list.sort((a, b) => new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime());
+  });
+
+  getAudits(): EmployeeDocumentAuditResponse[] {
+    return this.audits();
+  }
+
+  getInitials(first = '', last = ''): string {
+    const f = first ? first.charAt(0).toUpperCase() : '';
+    const l = last ? last.charAt(0).toUpperCase() : '';
+    return f + l || 'EX';
   }
 
   reload(): void {
     this.fileListUseCase.loadDocuments();
-  }
-
-  onFileSelected(fileId: string): void {
-    const file = this.fileListUseCase.files().find((f) => f.id === fileId);
-    if (file) {
-      this.fileListUseCase.setActiveFile(file);
-    }
   }
 
   openUploadModal(): void {

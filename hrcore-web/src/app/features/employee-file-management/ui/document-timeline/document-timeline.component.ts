@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { EmployeeDocumentAuditResponse } from '../../../../entities/employee-file';
@@ -7,6 +7,7 @@ import { EmployeeDocumentAuditResponse } from '../../../../entities/employee-fil
   selector: 'app-document-timeline',
   standalone: true,
   imports: [CommonModule, LucideAngularModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6">
       <div class="flex items-center justify-between border-b border-border pb-4">
@@ -21,8 +22,8 @@ import { EmployeeDocumentAuditResponse } from '../../../../entities/employee-fil
       </div>
 
       <!-- Timeline vertical -->
-      <div class="relative pl-6 space-y-8 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border">
-        <div *ngFor="let audit of audits" class="relative group">
+      <div *ngIf="audits && audits.length > 0; else emptyTimelineTpl" class="relative pl-6 space-y-8 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-border">
+        <div *ngFor="let audit of audits; trackBy: trackById" class="relative group">
           <!-- Icono de Nodo -->
           <div
             [class]="getNodeClass(audit.action)"
@@ -43,16 +44,32 @@ import { EmployeeDocumentAuditResponse } from '../../../../entities/employee-fil
 
             <p class="text-xs text-muted-foreground mt-1">
               Ejecutado por <span class="font-semibold text-foreground">{{ audit.userEmail || 'Responsable de RRHH' }}</span>
-              <span *ngIf="audit.ipAddress"> desde IP: {{ audit.ipAddress }}</span>
+              <span *ngIf="audit.ipAddress"> • {{ audit.ipAddress }}</span>
             </p>
           </div>
         </div>
       </div>
+
+      <ng-template #emptyTimelineTpl>
+        <div class="text-center py-10 space-y-2">
+          <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+            <lucide-icon name="clock" [size]="24"></lucide-icon>
+          </div>
+          <p class="text-sm font-semibold text-accent-foreground">Sin eventos en la línea de tiempo</p>
+          <p class="text-xs text-muted-foreground max-w-sm mx-auto">
+            Aún no se registran acciones de auditoría en los documentos de este expediente.
+          </p>
+        </div>
+      </ng-template>
     </div>
   `
 })
 export class DocumentTimelineComponent {
   @Input() audits: EmployeeDocumentAuditResponse[] = [];
+
+  trackById(_index: number, audit: EmployeeDocumentAuditResponse): string {
+    return audit.id;
+  }
 
   getActionIcon(action: string): string {
     switch (action) {
@@ -87,6 +104,7 @@ export class DocumentTimelineComponent {
   formatTime(isoString: string): string {
     if (!isoString) return '';
     const date = new Date(isoString);
+    if (isNaN(date.getTime())) return isoString;
     return date.toLocaleString('es-BO', {
       day: '2-digit',
       month: 'short',

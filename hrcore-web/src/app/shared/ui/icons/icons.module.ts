@@ -8,7 +8,10 @@ import {
   Building, Receipt, Plus, X, Eye, PlayCircle, PauseCircle,
   EyeOff, Wand2, Clock,
   ClipboardList, ArrowLeft, ArrowRight, Search, Archive, Database, DatabaseSearch,
-  Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen
+  Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen,
+  AlertCircle,
+  Check, CircleCheck, CircleX, CircleAlert, LoaderCircle, FolderPlus,
+  Upload, User, Download, TriangleAlert
 } from 'lucide-angular';
 
 @NgModule({
@@ -19,9 +22,13 @@ import {
       Lock, ShieldAlert, BookOpen, Calendar, FileText, LogOut,
       Building, Receipt, Plus, X, Eye, PlayCircle, PauseCircle, ClipboardList,
       EyeOff, Wand2, ArrowLeft, ArrowRight, Clock, Search, Archive, Database, DatabaseSearch,
-      Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen
+      Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen,
+      AlertCircle,
+      Check, CircleCheck, 'check-circle': CircleCheck, CircleX, CircleAlert, LoaderCircle, FolderPlus,
+      Upload, User, Download, TriangleAlert
     })
   ],
   exports: [LucideAngularModule]
 })
 export class IconsModule { }
+

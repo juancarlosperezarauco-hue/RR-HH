@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { LoginRequest } from '../../../entities/auth/model/login-request.model';
 import { AuthService } from '../../../entities/auth/api/auth.service';
 import { SessionCoordinatorService } from '../../../shared/lib/auth/session-coordinator.service';
+import { extractHttpErrorMessage } from '../../../shared/api';
 
 export interface LoginState {
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -37,8 +38,8 @@ export class LoginUseCase {
       } else {
         this.state.set({ status: 'error', error: response.message || 'Error desconocido al iniciar sesión' });
       }
-    } catch (err: any) {
-      const errorMsg = err.error?.message || err.message || 'Error al conectar con el servidor';
+    } catch (err: unknown) {
+      const errorMsg = extractHttpErrorMessage(err, 'Error al conectar con el servidor');
       this.state.set({ status: 'error', error: errorMsg });
     }
   }

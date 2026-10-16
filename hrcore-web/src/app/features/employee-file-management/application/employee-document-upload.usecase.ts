@@ -20,23 +20,21 @@ export class EmployeeDocumentUploadUseCase {
     'application/pdf',
     'image/jpeg',
     'image/png',
-    'image/jpg',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword'
+    'image/jpg'
   ];
   readonly MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
   validateFile(file: File): { isValid: boolean; message?: string } {
     const fileName = file.name || '';
     const ext = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
-    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.docx', '.doc'];
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
     const isMimeValid = this.ALLOWED_MIME_TYPES.includes(file.type);
     const isExtValid = allowedExtensions.includes(ext);
 
     if (!isMimeValid && !isExtValid) {
       return {
         isValid: false,
-        message: 'Formato no soportado. Se aceptan únicamente PDF, JPG, PNG o DOCX.'
+        message: 'Formato no soportado. Se aceptan únicamente documentos PDF o imágenes JPG y PNG.'
       };
     }
     if (file.size > this.MAX_FILE_SIZE_BYTES) {
@@ -49,37 +47,22 @@ export class EmployeeDocumentUploadUseCase {
   }
 
   /**
-   * Resuelve o crea el expediente (EmployeeFile) del colaborador si no existe
+   * Resuelve el expediente (EmployeeFile) del colaborador
    */
-  private async ensureEmployeeFileId(employeeId?: string): Promise<string> {
+  private async ensureEmployeeFileId(employeeId?: string, fileId?: string): Promise<string> {
+    if (fileId) {
+      return fileId;
+    }
     if (!employeeId) {
       throw new Error('Seleccione un empleado antes de adjuntar documentos.');
     }
-    // 1. Si el parámetro recibido es directamente un UUID de EmployeeFile existente
-    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
-      try {
-        const fileRes = await firstValueFrom(this.fileService.getFileById(employeeId));
-        if (fileRes?.data?.id) return fileRes.data.id;
-      } catch {}
 
-      try {
-        const res = await firstValueFrom(this.fileService.getFileByEmployee(employeeId));
-        if (res?.data?.id) return res.data.id;
-      } catch {}
+    try {
+      const res = await firstValueFrom(this.fileService.getFileByEmployee(employeeId));
+      if (res?.data?.id) return res.data.id;
+    } catch {}
 
-      try {
-        const created = await firstValueFrom(
-          this.fileService.createFile({
-            employeeId,
-            fileNumber: `EXP-${employeeId.substring(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
-            notes: 'Expediente digital aperturado automáticamente'
-          })
-        );
-        if (created?.data?.id) return created.data.id;
-      } catch {}
-    }
-
-    throw new Error('El empleado seleccionado todavía no tiene un expediente activo. Créelo antes de adjuntar documentos.');
+    throw new Error('El colaborador seleccionado no cuenta con un expediente digital aperturado. Apertúrelo antes de adjuntar documentos.');
   }
 
   /**
@@ -114,13 +97,17 @@ export class EmployeeDocumentUploadUseCase {
     this.uploading.set(true);
     this.error.set(null);
 
+    let fileId: string | null = null;
+    let createdDocId: string | null = null;
+    let metadataPayload: CreateDocumentRequest | null = null;
+
     try {
       // 1. Obtener expediente padre canónico
-      const fileId = await this.ensureEmployeeFileId(request.employeeId);
+      fileId = await this.ensureEmployeeFileId(request.employeeId, request.fileId);
 
       // 2. Paso 1: Registrar metadatos
       const docType = request.documentType || this.mapToDocumentType(request.documentTypeId);
-      const metadataPayload: CreateDocumentRequest = {
+      metadataPayload = {
         contractId: null,
         documentType: docType,
         title: request.title || request.file.name.replace(/\.[^/.]+$/, ''),
@@ -135,18 +122,41 @@ export class EmployeeDocumentUploadUseCase {
         this.fileService.createDocumentMetadata(fileId, metadataPayload)
       );
 
+      createdDocId = docRes?.data?.id || null;
       // 3. Paso 2: Subir archivo físico como versión (MultipartFile)
-      if (!docRes?.data?.id) {
+      if (!createdDocId) {
         throw new Error('No se pudo registrar los metadatos del documento en el backend.');
       }
 
       await firstValueFrom(
-        this.fileService.uploadVersion(fileId, docRes.data.id, request.file)
+        this.fileService.uploadVersion(fileId, createdDocId, request.file)
       );
 
       this.toast.success('Documento legal y versión física registrados con éxito en el backend.');
       return true;
     } catch (err: unknown) {
+      // Compensación / Rollback: Si se registraron metadatos pero falló la carga binaria (ej: formato no válido en backend),
+      // se archiva inmediatamente el registro para no dejar documentos huérfanos o vacíos en el expediente.
+      if (fileId && createdDocId && metadataPayload) {
+        try {
+          await firstValueFrom(
+            this.fileService.updateDocumentMetadata(fileId, createdDocId, {
+              contractId: metadataPayload.contractId,
+              documentType: metadataPayload.documentType,
+              title: metadataPayload.title,
+              description: 'Carga fallida - archivado automáticamente',
+              documentNumber: metadataPayload.documentNumber,
+              issuedAt: metadataPayload.issuedAt,
+              expiresAt: metadataPayload.expiresAt,
+              confidential: metadataPayload.confidential,
+              status: 'ARCHIVED'
+            })
+          );
+        } catch (rollbackErr) {
+          console.warn('No se pudo compensar el documento huérfano:', rollbackErr);
+        }
+      }
+
       const errorResponse = err as { error?: { message?: string } };
       const msg = errorResponse?.error?.message || (err as any)?.message || 'Error al subir el documento';
       this.error.set(msg);

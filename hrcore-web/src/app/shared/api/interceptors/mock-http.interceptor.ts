@@ -1,7 +1,6 @@
 import { HttpInterceptorFn, HttpResponse, HttpHeaders } from '@angular/common/http';
 import { of, delay } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { MOCK_DOSSIERS } from './data/mock-dossiers.data';
 import { MOCK_SHIFTS } from './data/mock-shifts.data';
 import { MOCK_ATTENDANCE } from './data/mock-attendance.data';
 import { MOCK_LEAVES } from './data/mock-leaves.data';
@@ -82,6 +81,14 @@ const MOCK_EMPLOYEES = [
 export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
   // Si el modo mock no está activo, pasar al backend real
   if (!environment.useMocks) {
+    return next(req);
+  }
+
+  // ============================================================
+  // HU15: EXPEDIENTES DIGITALES (Dominio 6)
+  // Sin mocks: Flujo 100% canónico contra backend Spring Boot
+  // ============================================================
+  if (req.url.includes('/api/employee-files')) {
     return next(req);
   }
 
@@ -876,439 +883,8 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // ============================================================
-  // HU15: EXPEDIENTES LABORALES (Dominio 6)
+  // HU15: EXPEDIENTES LABORALES (Dominio 6) - 100% Real sin mocks
   // ============================================================
-  if ((url.includes('/employee-files/employee/') || url.includes('/employee-files/by-employee/')) && method === 'GET') {
-    const parts = url.split('/');
-    const empId = parts[parts.length - 1].split('?')[0];
-    const foundFile = MOCK_DOSSIERS.employeeFiles.find(f => f.employeeId === empId);
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Expediente digital obtenido',
-        data: foundFile || {
-          id: 'ef-' + empId,
-          employeeId: empId,
-          fileNumber: 'EXP-' + empId.substring(0, 8).toUpperCase(),
-          status: 'ACTIVE',
-          notes: 'Expediente principal de colaborador',
-          createdAt: '2026-01-15T08:00:00Z',
-          updatedAt: now
-        },
-        timestamp: now
-      }
-    })).pipe(delay(150));
-  }
-
-  // GET /api/employee-files (listar o detalle por id)
-  if (url.includes('/employee-files') && !url.includes('/documents') && !url.includes('/versions') && !url.includes('/document-types') && method === 'GET') {
-    const parts = url.split('?')[0].split('/');
-    const lastPart = parts[parts.length - 1];
-    const isSingle = lastPart !== 'employee-files';
-
-    if (isSingle) {
-      const foundFile = MOCK_DOSSIERS.employeeFiles.find(f => f.id === lastPart) || MOCK_DOSSIERS.employeeFiles[0];
-      return of(new HttpResponse({
-        status: 200,
-        body: {
-          success: true,
-          message: 'Expediente digital obtenido',
-          data: foundFile,
-          timestamp: now
-        }
-      })).pipe(delay(100));
-    }
-
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Expedientes laborales obtenidos',
-        data: {
-          content: MOCK_DOSSIERS.employeeFiles,
-          page: 0,
-          size: 50,
-          totalElements: MOCK_DOSSIERS.employeeFiles.length,
-          totalPages: 1
-        },
-        timestamp: now
-      }
-    })).pipe(delay(120));
-  }
-
-  // POST /api/employee-files (crear expediente)
-  if (url.includes('/employee-files') && !url.includes('/documents') && method === 'POST') {
-    const body = req.body as any;
-    const empId = body?.employeeId || '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
-    const newFile = {
-      id: 'ef-' + Date.now(),
-      employeeId: empId,
-      fileNumber: body?.fileNumber || 'EXP-' + empId.substring(0, 8).toUpperCase(),
-      status: 'ACTIVE' as const,
-      notes: body?.notes || 'Expediente digital aperturado',
-      createdAt: now,
-      updatedAt: now
-    };
-    MOCK_DOSSIERS.employeeFiles.unshift(newFile);
-    return of(new HttpResponse({
-      status: 201,
-      body: {
-        success: true,
-        message: 'Expediente digital creado',
-        data: newFile,
-        timestamp: now
-      }
-    })).pipe(delay(150));
-  }
-
-  // PUT /api/employee-files/{id} (actualizar expediente)
-  if (url.includes('/employee-files') && !url.includes('/documents') && method === 'PUT') {
-    const parts = url.split('?')[0].split('/');
-    const fileId = parts[parts.length - 1];
-    const targetFile = MOCK_DOSSIERS.employeeFiles.find(f => f.id === fileId) || MOCK_DOSSIERS.employeeFiles[0];
-    const body = req.body as any;
-    if (body.fileNumber) targetFile.fileNumber = body.fileNumber;
-    if (body.notes) targetFile.notes = body.notes;
-    if (body.status) targetFile.status = body.status;
-    targetFile.updatedAt = now;
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Expediente digital actualizado',
-        data: targetFile,
-        timestamp: now
-      }
-    })).pipe(delay(150));
-  }
-
-  if (url.includes('/versions') && url.includes('/download') && method === 'GET') {
-    return of(new HttpResponse({
-      status: 200,
-      body: new Blob(['%PDF-1.4 mock pdf binary content'], { type: 'application/pdf' })
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/versions') && method === 'POST') {
-    const parts = url.split('/');
-    const docId = parts[parts.indexOf('documents') + 1] || 'doc-1';
-    const foundDoc = MOCK_DOSSIERS.employeeDocuments.find(d => d.id === docId);
-    let fileName = 'archivo_v1.pdf';
-    let fileSizeBytes = 1048576;
-    let mimeType = 'application/pdf';
-
-    if (req.body instanceof FormData) {
-      const file = req.body.get('file') as File;
-      if (file && file.name) {
-        fileName = file.name;
-        fileSizeBytes = file.size || 1048576;
-        mimeType = file.type || 'application/pdf';
-      }
-    }
-
-    if (foundDoc) {
-      foundDoc.fileName = fileName;
-      foundDoc.fileSizeBytes = fileSizeBytes;
-      foundDoc.mimeType = mimeType;
-      foundDoc.versionNumber = (foundDoc.versionNumber || 1) + 1;
-      foundDoc.updatedAt = now;
-    }
-
-    return of(new HttpResponse({
-      status: 201,
-      body: {
-        success: true,
-        message: 'Versión digital subida y registrada',
-        data: {
-          id: 'ver-' + Date.now(),
-          documentId: docId,
-          versionNumber: foundDoc?.versionNumber || 1,
-          fileName,
-          fileSizeBytes,
-          mimeType,
-          uploadedBy: '550e8400-e29b-41d4-a716-446655440000',
-          uploadedAt: now
-        },
-        timestamp: now
-      }
-    })).pipe(delay(250));
-  }
-
-  if (url.includes('/versions') && method === 'GET') {
-    const parts = url.split('/');
-    const docId = parts[parts.indexOf('documents') + 1] || 'doc-1';
-    const foundDoc = MOCK_DOSSIERS.employeeDocuments.find(d => d.id === docId);
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Historial de versiones obtenido',
-        data: [
-          {
-            id: 'ver-1-' + docId,
-            documentId: docId,
-            versionNumber: foundDoc?.versionNumber || 1,
-            fileName: foundDoc?.fileName || 'documento.pdf',
-            fileSizeBytes: foundDoc?.fileSizeBytes || 1048576,
-            mimeType: foundDoc?.mimeType || 'application/pdf',
-            uploadedBy: '550e8400-e29b-41d4-a716-446655440000',
-            uploadedAt: foundDoc?.createdAt || now
-          }
-        ],
-        timestamp: now
-      }
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/verify') && method === 'PATCH') {
-    const parts = url.split('/');
-    const docId = parts[parts.indexOf('documents') + 1] || parts[parts.indexOf('verify') - 1];
-    const body = req.body as any;
-    const foundDoc = MOCK_DOSSIERS.employeeDocuments.find(d => d.id === docId);
-    if (foundDoc) {
-      foundDoc.verificationStatus = body?.status || 'VERIFIED';
-      foundDoc.verifiedAt = now;
-      foundDoc.verifiedBy = '550e8400-e29b-41d4-a716-446655440000';
-      foundDoc.updatedAt = now;
-    }
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Estado de verificación actualizado',
-        data: foundDoc || { id: docId, verificationStatus: body?.status || 'VERIFIED' },
-        timestamp: now
-      }
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/document-types') && method === 'GET') {
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Catálogo de tipos de documento obtenido con éxito',
-        data: MOCK_DOSSIERS.documentTypes,
-        timestamp: now
-      }
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/documents') && url.includes('/preview') && method === 'GET') {
-    const parts = url.split('/');
-    const docId = parts[parts.indexOf('preview') - 1] || parts[parts.length - 2];
-    MOCK_DOSSIERS.documentAudits.unshift({
-      id: 'aud-' + Date.now(),
-      documentId: docId,
-      userId: '550e8400-e29b-41d4-a716-446655440000',
-      userEmail: 'rrhh@hrcore.com',
-      action: 'VIEW' as const,
-      performedAt: now,
-      ipAddress: '190.181.12.45'
-    });
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'URL firmada de visualización generada',
-        data: {
-          downloadUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf',
-          expiresInMinutes: 15
-        },
-        timestamp: now
-      }
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/documents') && url.includes('/audits') && method === 'GET') {
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Auditoría de documento obtenida',
-        data: MOCK_DOSSIERS.documentAudits,
-        timestamp: now
-      }
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/documents') && method === 'DELETE') {
-    const parts = url.split('/');
-    const docId = parts[parts.length - 1];
-    const idx = MOCK_DOSSIERS.employeeDocuments.findIndex(d => d.id === docId);
-    if (idx !== -1) {
-      MOCK_DOSSIERS.employeeDocuments.splice(idx, 1);
-      MOCK_DOSSIERS.documentAudits.unshift({
-        id: 'aud-' + Date.now(),
-        documentId: docId,
-        userId: '550e8400-e29b-41d4-a716-446655440000',
-        userEmail: 'rrhh@hrcore.com',
-        action: 'ARCHIVE' as const,
-        performedAt: now,
-        ipAddress: '190.181.12.45'
-      });
-    }
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Documento archivado (soft delete aplicado)',
-        data: null,
-        timestamp: now
-      }
-    })).pipe(delay(200));
-  }
-
-  if (url.includes('/documents') && method === 'PUT') {
-    const parts = url.split('?')[0].split('/');
-    const docId = parts[parts.length - 1];
-    const body = req.body as any;
-    const foundDoc = MOCK_DOSSIERS.employeeDocuments.find(d => d.id === docId);
-    if (foundDoc) {
-      if (body.title) foundDoc.title = body.title;
-      if (body.documentNumber) foundDoc.documentNumber = body.documentNumber;
-      if (body.status) foundDoc.status = body.status;
-      foundDoc.updatedAt = now;
-    }
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: body?.status === 'ARCHIVED' ? 'Documento archivado con éxito' : 'Documento actualizado con éxito',
-        data: foundDoc || { id: docId, ...body },
-        timestamp: now
-      }
-    })).pipe(delay(150));
-  }
-
-  if (url.includes('/documents') && method === 'GET') {
-    const urlObj = new URL(req.urlWithParams, 'http://localhost');
-    const category = urlObj.searchParams.get('category');
-    const type = urlObj.searchParams.get('type');
-    const status = urlObj.searchParams.get('status');
-
-    let filtered = MOCK_DOSSIERS.employeeDocuments;
-    if (status && status !== 'ALL') {
-      filtered = filtered.filter(d => d.status === status);
-    }
-    if (category && category !== 'ALL') {
-      filtered = filtered.filter(d => d.documentCategory === category);
-    }
-    if (type && type !== 'ALL') {
-      filtered = filtered.filter(d => d.documentType === type);
-    }
-
-    return of(new HttpResponse({
-      status: 200,
-      body: {
-        success: true,
-        message: 'Documentos del empleado obtenidos',
-        data: {
-          content: filtered,
-          page: 0,
-          size: 50,
-          totalElements: filtered.length,
-          totalPages: 1
-        },
-        timestamp: now
-      }
-    })).pipe(delay(150));
-  }
-
-  if (url.includes('/documents') && method === 'POST') {
-    let typeName = 'Documento Legal';
-    let cat: any = 'CONTRACT';
-    let docType: any = 'OTHER';
-    let docNumber = '';
-    let fileName = 'Documento_' + Date.now() + '.pdf';
-    let title = 'Documento Digital';
-    let issueDate: string | undefined;
-    let expDate: string | undefined;
-    let isConfidential = false;
-
-    if (req.body instanceof FormData) {
-      const typeId = req.body.get('documentTypeId') as string;
-      const foundType = MOCK_DOSSIERS.documentTypes.find(t => t.id === typeId);
-      if (foundType) {
-        typeName = foundType.name;
-        cat = foundType.category;
-      }
-      docNumber = (req.body.get('documentNumber') as string) || '';
-      issueDate = (req.body.get('issueDate') as string) || undefined;
-      expDate = (req.body.get('expirationDate') as string) || undefined;
-      isConfidential = req.body.get('confidential') === 'true';
-      title = (req.body.get('title') as string) || typeName;
-      const file = req.body.get('file') as File;
-      if (file && file.name) {
-        fileName = file.name;
-      }
-    } else if (req.body && typeof req.body === 'object') {
-      const body = req.body as any;
-      docType = body.documentType || 'OTHER';
-      typeName = body.title || docType;
-      title = body.title || docType;
-      docNumber = body.documentNumber || '';
-      issueDate = body.issuedAt || undefined;
-      expDate = body.expiresAt || undefined;
-      isConfidential = !!body.confidential;
-      cat = docType === 'IDENTITY' ? 'IDENTIFICATION' : (docType === 'CONTRACT' ? 'CONTRACT' : (docType === 'MEDICAL' ? 'HEALTH' : 'OTHER'));
-    }
-
-    const parts = url.split('/');
-    const fileIdIdx = parts.indexOf('employee-files');
-    const targetFileId = (fileIdIdx !== -1 && parts[fileIdIdx + 1] && parts[fileIdIdx + 1] !== 'documents')
-      ? parts[fileIdIdx + 1]
-      : (MOCK_DOSSIERS.employeeFiles[0]?.id || 'ef-9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d');
-    const targetEmployeeId = MOCK_DOSSIERS.employeeFiles.find(f => f.id === targetFileId)?.employeeId || '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
-
-    const newDoc: any = {
-      id: 'doc-' + Date.now(),
-      employeeFileId: targetFileId,
-      tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-      employeeId: targetEmployeeId,
-      documentTypeId: '11111111-1111-1111-1111-111111111101',
-      documentType: docType,
-      documentTypeName: typeName,
-      documentCategory: cat,
-      title: title,
-      documentNumber: docNumber || undefined,
-      fileName: fileName,
-      filePath: `tenants/uploads/${fileName}`,
-      fileSizeBytes: 1048576,
-      mimeType: fileName.endsWith('.docx') ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : (fileName.endsWith('.png') ? 'image/png' : 'application/pdf'),
-      versionNumber: 1,
-      issueDate: issueDate,
-      expirationDate: expDate,
-      confidential: isConfidential,
-      verificationStatus: 'PENDING' as const,
-      status: 'ACTIVE' as const,
-      createdAt: now,
-      updatedAt: now,
-      downloadUrl: 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf'
-    };
-
-    MOCK_DOSSIERS.employeeDocuments.unshift(newDoc);
-    MOCK_DOSSIERS.documentAudits.unshift({
-      id: 'aud-' + Date.now(),
-      documentId: newDoc.id,
-      userId: '550e8400-e29b-41d4-a716-446655440000',
-      userEmail: 'rrhh@hrcore.com',
-      action: 'UPLOAD' as const,
-      performedAt: now,
-      ipAddress: '190.181.12.45'
-    });
-
-    return of(new HttpResponse({
-      status: 201,
-      body: {
-        success: true,
-        message: 'Documento cargado y registrado en el expediente',
-        data: newDoc,
-        timestamp: now
-      }
-    })).pipe(delay(250));
-  }
 
   // ============================================================
   // HU16: GESTIÓN DE TURNOS (Dominio 7)
@@ -1430,35 +1006,39 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
       '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6f': { name: 'Roberto Gómez Flores', code: 'EMP-00106' }
     };
 
-    if (Array.isArray(body?.employeeIds)) {
-      body.employeeIds.forEach((empId: string) => {
-        const emp = empNames[empId] || { name: 'Colaborador Asignado', code: 'EMP-99999' };
-        const asg = {
-          id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-          tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          employeeId: empId,
-          employeeFullName: emp.name,
-          employeeCode: emp.code,
-          shiftId: body.shiftId,
-          shiftName: targetShift?.name || 'Turno Asignado',
-          startDate: body.startDate,
-          endDate: body.endDate || null,
-          weekdays: body.weekdays || [1, 2, 3, 4, 5],
-          isRecurring: !!body.isRecurring,
-          status: 'ACTIVE' as const,
-          createdAt: now
-        };
-        MOCK_SHIFTS.employeeShiftAssignments.unshift(asg);
-        newAssignments.push(asg);
-      });
-    }
+    const employeeIds: string[] = Array.isArray(body?.employeeIds)
+      ? body.employeeIds
+      : body?.employeeId
+      ? [body.employeeId]
+      : [];
+
+    employeeIds.forEach((empId: string) => {
+      const emp = empNames[empId] || { name: 'Colaborador Asignado', code: 'EMP-99999' };
+      const asg = {
+        id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        employeeId: empId,
+        employeeFullName: emp.name,
+        employeeCode: emp.code,
+        shiftId: body.shiftId,
+        shiftName: targetShift?.name || 'Turno Asignado',
+        startDate: body.startDate,
+        endDate: body.endDate || null,
+        weekdays: body.weekdays || [1, 2, 3, 4, 5],
+        isRecurring: !!body.isRecurring,
+        status: 'ACTIVE' as const,
+        createdAt: now
+      };
+      MOCK_SHIFTS.employeeShiftAssignments.unshift(asg);
+      newAssignments.push(asg);
+    });
 
     return of(new HttpResponse({
       status: 201,
       body: {
         success: true,
         message: 'Turno asignado exitosamente a los colaboradores',
-        data: newAssignments,
+        data: Array.isArray(body?.employeeIds) ? newAssignments : (newAssignments[0] || null),
         timestamp: now
       }
     })).pipe(delay(250));
@@ -2555,23 +2135,6 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
 
     if (proofFile) {
       docUrl = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf';
-      MOCK_DOSSIERS.employeeDocuments.unshift({
-        id: 'doc-leave-' + Date.now(),
-        tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-        employeeId: empId,
-        documentTypeId: '11111111-1111-1111-1111-111111111103',
-        documentTypeName: 'Comprobante de Baja Médica',
-        documentCategory: 'HEALTH',
-        fileName: proofFile.name || 'comprobante_baja_medica.pdf',
-        filePath: `tenants/uploads/${proofFile.name || 'comprobante_baja.pdf'}`,
-        fileSizeBytes: proofFile.size || 524288,
-        mimeType: 'application/pdf',
-        versionNumber: 1,
-        status: 'ACTIVE',
-        createdAt: now,
-        updatedAt: now,
-        downloadUrl: docUrl
-      } as any);
 
       MOCK_LEAVES.leaveAttachments.unshift({
         id: 'att-' + Date.now(),

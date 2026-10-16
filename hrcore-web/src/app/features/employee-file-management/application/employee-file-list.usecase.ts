@@ -4,6 +4,7 @@ import {
   EmployeeFileService,
   EmployeeDocumentResponse,
   DocumentResponse,
+  DocumentVersionResponse,
   EmployeeFileResponse,
   DocumentTypeResponse,
   DocumentCategory,
@@ -65,59 +66,70 @@ export class EmployeeFileListUseCase {
   });
 
   async loadDocumentTypes(): Promise<void> {
-    try {
-      const res = await firstValueFrom(this.fileService.getDocumentTypes());
-      this.documentTypes.set(res?.data || []);
-    } catch {
-      // Se usarán los tipos canónicos de DOCUMENT_TYPE_LABELS
+    const canonicalTypes: DocumentTypeResponse[] = Object.entries(DOCUMENT_TYPE_LABELS).map(([type, label]) => ({
+      id: type,
+      name: label,
+      category: this.mapTypeToCategory(type as DocumentType),
+      status: 'ACTIVE' as const
+    }));
+    this.documentTypes.set(canonicalTypes);
+  }
+
+  private mapTypeToCategory(type: DocumentType): DocumentCategory {
+    switch (type) {
+      case 'IDENTITY': return 'IDENTIFICATION';
+      case 'CONTRACT': return 'CONTRACT';
+      case 'CERTIFICATE': return 'EDUCATION';
+      case 'EDUCATION': return 'EDUCATION';
+      case 'MEDICAL': return 'HEALTH';
+      case 'DISCIPLINARY': return 'DISCIPLINARY';
+      case 'PAYROLL': return 'CONTRACT';
+      default: return 'ASSET';
     }
   }
 
   /**
    * Consulta expedientes y documentos reales desde Spring Boot
-   * GET /api/employee-files
+   * GET /api/employee-files/by-employee/{employeeId}
    * GET /api/employee-files/{id}/documents
    */
   async loadDocuments(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
-      // 1. Obtener lista de expedientes laborales del tenant
       const employeeId = this.selectedEmployeeId();
-      const filesRes = await firstValueFrom(this.fileService.listFiles(
-        employeeId ? { employeeId } : undefined,
-        0,
-        50
-      ));
-      const fileList = filesRes?.data?.content || [];
-      this.files.set(fileList);
+      let currentFile: EmployeeFileResponse | null = null;
 
-      if (fileList.length === 0) {
-        // No hay expedientes registrados aún
-        this.activeFile.set(null);
+      if (employeeId) {
+        try {
+          const res = await firstValueFrom(this.fileService.getFileByEmployee(employeeId));
+          currentFile = res?.data || null;
+        } catch {
+          currentFile = null;
+        }
+      } else {
+        const filesRes = await firstValueFrom(this.fileService.listFiles(undefined, 0, 50));
+        const fileList = filesRes?.data?.content || [];
+        this.files.set(fileList);
+        currentFile = fileList[0] || null;
+      }
+
+      this.activeFile.set(currentFile);
+
+      if (!currentFile) {
         this.documents.set([]);
         this.totalElements.set(0);
         this.totalPages.set(1);
         return;
       }
 
-      // Determinar expediente activo
-      let current = this.activeFile();
-      if (!current || !fileList.some((f) => f.id === current?.id)) {
-        current = fileList[0];
-        this.activeFile.set(current);
-        if (current.employeeId) {
-          this.selectedEmployeeId.set(current.employeeId);
-        }
-      }
-
-      // 2. Mapear categoría a enum DocumentType para filtro de backend
+      // Mapear categoría a enum DocumentType para filtro de backend
       const docTypeFilter = this.mapCategoryToDocumentType(this.selectedCategory());
 
-      // 3. Consultar documentos activos del expediente (status=ACTIVE para excluir archivados)
+      // Consultar documentos activos del expediente (status=ACTIVE para excluir archivados)
       const docsRes = await firstValueFrom(
         this.fileService.listDocuments(
-          current.id,
+          currentFile.id,
           docTypeFilter,
           'ACTIVE',
           undefined,
@@ -127,13 +139,24 @@ export class EmployeeFileListUseCase {
       );
 
       const rawDocs = docsRes?.data?.content || [];
-      const mapped = rawDocs.map((d) => this.mapDocumentResponse(d));
+      const mapped = await Promise.all(
+        rawDocs.map(async (d) => {
+          let latestVersion: DocumentVersionResponse | null = null;
+          try {
+            const vRes = await firstValueFrom(
+              this.fileService.listVersions(currentFile!.id, d.id, 0, 1)
+            );
+            latestVersion = vRes?.data?.content?.[0] || null;
+          } catch {}
+          return this.mapDocumentResponse(d, latestVersion);
+        })
+      );
 
       this.documents.set(mapped);
       this.totalElements.set(docsRes?.data?.totalElements ?? mapped.length);
       this.totalPages.set(docsRes?.data?.totalPages ?? 1);
     } catch (err: any) {
-      console.warn('No se encontraron documentos o error de carga:', err);
+      console.warn('Error al consultar documentos del expediente:', err);
       this.documents.set([]);
       this.totalElements.set(0);
       this.totalPages.set(1);
@@ -149,20 +172,20 @@ export class EmployeeFileListUseCase {
     this.loadDocuments();
   }
 
-  async createFileForEmployee(employeeId: string, employeeNumber: string): Promise<boolean> {
+  async createFileForEmployee(employeeId: string, fileNumber: string, notes?: string): Promise<boolean> {
     if (!employeeId) {
-      this.toast.warning('Seleccione un empleado para crear su expediente.');
+      this.toast.warning('Seleccione un empleado para aperturar su expediente.');
       return false;
     }
     try {
+      this.selectedEmployeeId.set(employeeId);
       const response = await firstValueFrom(this.fileService.createFile({
         employeeId,
-        fileNumber: `EXP-${employeeNumber || employeeId.substring(0, 8)}`.toUpperCase(),
-        notes: 'Expediente laboral digital del colaborador'
+        fileNumber: fileNumber.trim(),
+        notes: notes?.trim() || 'Expediente digital aperturado'
       }));
       this.activeFile.set(response.data);
-      this.files.set([response.data]);
-      this.toast.success('Expediente laboral creado correctamente.');
+      this.toast.success('Expediente laboral aperturado correctamente.');
       await this.loadDocuments();
       return true;
     } catch (err: any) {
@@ -267,7 +290,10 @@ export class EmployeeFileListUseCase {
     }
   }
 
-  private mapDocumentResponse(doc: DocumentResponse): EmployeeDocumentResponse {
+  private mapDocumentResponse(
+    doc: DocumentResponse,
+    latestVersion?: DocumentVersionResponse | null
+  ): EmployeeDocumentResponse {
     const categoryMap: Record<DocumentType, DocumentCategory> = {
       IDENTITY: 'IDENTIFICATION',
       CONTRACT: 'CONTRACT',
@@ -278,6 +304,18 @@ export class EmployeeFileListUseCase {
       PAYROLL: 'CONTRACT',
       OTHER: 'ASSET'
     };
+
+    let resolvedMime = latestVersion?.mimeType || 'application/pdf';
+    const originalName = latestVersion?.originalFilename || doc.title;
+    const lowerName = originalName.toLowerCase();
+    if (lowerName.endsWith('.pdf')) {
+      resolvedMime = 'application/pdf';
+    } else if (lowerName.endsWith('.png')) {
+      resolvedMime = 'image/png';
+    } else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+      resolvedMime = 'image/jpeg';
+    }
+
     return {
       id: doc.id,
       employeeFileId: doc.employeeFileId,
@@ -298,14 +336,17 @@ export class EmployeeFileListUseCase {
       documentTypeId: doc.documentType,
       documentTypeName: DOCUMENT_TYPE_LABELS[doc.documentType] || doc.documentType,
       documentCategory: categoryMap[doc.documentType] || 'CONTRACT',
-      fileName: doc.title,
+      fileName: originalName,
       filePath: '',
-      fileSizeBytes: 0,
-      mimeType: 'application/pdf',
-      versionNumber: 1,
+      fileSizeBytes: latestVersion?.fileSize || 0,
+      mimeType: resolvedMime,
+      versionNumber: latestVersion?.versionNumber || 1,
+      activeVersionId: latestVersion?.id,
       issueDate: doc.issuedAt,
       expirationDate: doc.expiresAt,
-      downloadUrl: `${environment.apiUrl}/api/employee-files/${doc.employeeFileId}/documents/${doc.id}`
+      downloadUrl: latestVersion
+        ? `${environment.apiUrl}/api/employee-files/${doc.employeeFileId}/documents/${doc.id}/versions/${latestVersion.id}/download`
+        : undefined
     };
   }
 }

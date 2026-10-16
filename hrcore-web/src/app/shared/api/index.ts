@@ -13,3 +13,6 @@ export * from './models/page-response.model';
 
 // export pipes
 export * from './pipes/has-permission.pipe';
+
+// export error handler
+export * from './http-error-handler';

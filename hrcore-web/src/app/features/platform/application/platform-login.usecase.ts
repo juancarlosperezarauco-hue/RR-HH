@@ -2,6 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PlatformService } from '../../../entities/platform/api/platform.service';
 import { SessionCoordinatorService } from '../../../shared/lib/auth/session-coordinator.service';
+import { extractHttpErrorMessage } from '../../../shared/api';
 
 export interface PlatformLoginState {
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -30,8 +31,8 @@ export class PlatformLoginUseCase {
       } else {
         this.state.set({ status: 'error', error: response.message || 'Error al iniciar sesión' });
       }
-    } catch (err: any) {
-      const errorMsg = err.error?.message || err.message || 'Error al conectar con el servidor';
+    } catch (err: unknown) {
+      const errorMsg = extractHttpErrorMessage(err, 'Error al conectar con el servidor');
       this.state.set({ status: 'error', error: errorMsg });
     }
   }

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { forkJoin } from 'rxjs';
@@ -25,6 +26,11 @@ export class EmployeesPageComponent implements OnInit {
   private readonly service = inject(EmployeesService);
   private readonly related = inject(ContractsService);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
+
+  goToDossier(employeeId: string): void {
+    this.router.navigate(['/dashboard/dossiers'], { queryParams: { employeeId } });
+  }
 
   readonly loading = signal(false);
   readonly saving = signal(false);

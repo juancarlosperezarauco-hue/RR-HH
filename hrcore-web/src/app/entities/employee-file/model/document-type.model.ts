@@ -35,12 +35,12 @@ export type DocumentCategory =
   | 'ASSET';         // Actas de entrega de equipos / tokens
 
 export interface DocumentTypeResponse {
-  id: string;              // UUID
-  tenantId: string;        // UUID
+  id: string;              // UUID o código de enum
+  tenantId?: string;       // UUID opcional
   name: string;            // VARCHAR(100)
-  code: string;            // VARCHAR(50)
+  code?: string;           // VARCHAR(50) opcional
   category: DocumentCategory;
-  isMandatory: boolean;
-  hasExpiration: boolean;
-  status: 'ACTIVE' | 'INACTIVE';
+  isMandatory?: boolean;
+  hasExpiration?: boolean;
+  status?: 'ACTIVE' | 'INACTIVE';
 }

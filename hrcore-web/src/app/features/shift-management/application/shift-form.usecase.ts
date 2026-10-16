@@ -45,7 +45,7 @@ export class ShiftFormUseCase {
    * Valida restricciones laborales según la Ley General del Trabajo (LGT) de Bolivia
    * y las reglas temporales estrictas del backend Spring Boot
    */
-  validateLaborLaw(request: CreateShiftRequest): { isValid: boolean; message?: string } {
+  validateLaborLaw(request: CreateShiftRequest): { isValid: boolean; isWarning?: boolean; message?: string } {
     const { hours, isOvernight } = this.calculateEffectiveHours(
       request.startTime,
       request.endTime,
@@ -72,30 +72,26 @@ export class ShiftFormUseCase {
       };
     }
 
-    // Validación de horario nocturno (máximo 7 horas continuas)
-    if (request.shiftType === 'NIGHT' || effectiveCrosses) {
-      if (hours > 7) {
-        return {
-          isValid: false,
-          message: `La jornada nocturna no puede exceder las 7 horas continuas (LGT Bolivia). Calculado: ${hours}h.`
-        };
-      }
-    } else {
-      // Jornada diurna estándar (máximo 8 horas ordinarias al día)
-      if (hours > 8) {
-        return {
-          isValid: false,
-          message: `La jornada ordinaria diaria no puede exceder las 8 horas (LGT Bolivia). Calculado: ${hours}h.`
-        };
-      }
-    }
-
-    // Validación de tolerancia de puntualidad (5 a 15 min)
-    const lateTol = request.lateToleranceMinutes ?? request.gracePeriodMinutes ?? 10;
-    if (lateTol < 5 || lateTol > 15) {
+    if (hours <= 0) {
       return {
         isValid: false,
-        message: 'La tolerancia de llegada tarde debe estar configurada entre 5 y 15 minutos.'
+        message: 'La jornada de trabajo efectiva debe ser mayor a 0 horas.'
+      };
+    }
+
+    if (hours > 12) {
+      return {
+        isValid: false,
+        message: `La jornada efectiva continua no puede superar las 12 horas consecutivas. Calculado: ${hours}h.`
+      };
+    }
+
+    // Validación de tolerancia de puntualidad
+    const lateTol = request.lateToleranceMinutes ?? request.gracePeriodMinutes ?? 10;
+    if (lateTol < 0 || lateTol > 60) {
+      return {
+        isValid: false,
+        message: 'La tolerancia de llegada tarde debe estar entre 0 y 60 minutos.'
       };
     }
 
@@ -107,7 +103,30 @@ export class ShiftFormUseCase {
       };
     }
 
-    return { isValid: true };
+    // Aviso normativo en caso de jornada extendida (LGT Bolivia)
+    if (request.shiftType === 'NIGHT' || effectiveCrosses) {
+      if (hours > 7) {
+        return {
+          isValid: true,
+          isWarning: true,
+          message: `Jornada nocturna extendida (${hours}h > 7h). El tiempo excedente computa con recargo nocturno según Art. 55 LGT.`
+        };
+      }
+    } else {
+      if (hours > 8) {
+        return {
+          isValid: true,
+          isWarning: true,
+          message: `Jornada diaria extendida (${hours}h > 8h ordinarias). El tiempo adicional computa como horas extraordinarias (Art. 46 y 50 LGT).`
+        };
+      }
+    }
+
+    return {
+      isValid: true,
+      isWarning: false,
+      message: 'Jornada ordinaria conforme a la Ley General del Trabajo de Bolivia.'
+    };
   }
 
   async saveShift(request: CreateShiftRequest, shiftId?: string): Promise<boolean> {

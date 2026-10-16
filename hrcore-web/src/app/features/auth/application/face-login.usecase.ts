@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../entities/auth/api/auth.service';
 import { SessionCoordinatorService } from '../../../shared/lib/auth/session-coordinator.service';
 import { FaceLoginRequest } from '../../../entities/auth/model/face-login-request.model';
+import { extractHttpErrorMessage } from '../../../shared/api';
 
 export interface FaceLoginState {
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -36,8 +37,8 @@ export class FaceLoginUseCase {
       }
 
       this.state.set({ status: 'error', error: response.message || 'Error desconocido al iniciar sesión con rostro' });
-    } catch (err: any) {
-      const errorMsg = err.error?.message || err.message || 'Error al conectar con el servidor';
+    } catch (err: unknown) {
+      const errorMsg = extractHttpErrorMessage(err, 'Error al conectar con el servidor');
       this.state.set({ status: 'error', error: errorMsg });
     }
   }
