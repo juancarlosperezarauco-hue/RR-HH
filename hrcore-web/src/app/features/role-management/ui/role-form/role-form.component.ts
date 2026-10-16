@@ -46,7 +46,6 @@ export class RoleFormComponent implements OnInit, OnChanges {
 
   private initForm(): void {
     this.roleForm = this.fb.group({
-      code: ['', [Validators.required, Validators.maxLength(100), Validators.pattern(/^[A-Za-z][A-Za-z0-9_]*$/)]],
       name: ['', [Validators.required, Validators.maxLength(100)]],
       description: ['', [Validators.maxLength(255)]],
       permissionCodes: this.fb.array([])
@@ -62,7 +61,6 @@ export class RoleFormComponent implements OnInit, OnChanges {
     
     if (this.roleToEdit) {
       this.roleForm.patchValue({
-        code: this.roleToEdit.code,
         name: this.roleToEdit.name,
         description: this.roleToEdit.description || ''
       });
@@ -189,8 +187,6 @@ export class RoleFormComponent implements OnInit, OnChanges {
       const permissionCodes: string[] = [...new Set(selected.filter(code => allowed.includes(code)))];
       if (permissionCodes.length !== selected.length) { this.roleForm.setErrors({ invalidPermissions: true }); return; }
       const name = String(formValue.name ?? '').trim();
-      const code = String(formValue.code ?? '').trim().toUpperCase();
-      if (!this.roleToEdit && (!/^[A-Z][A-Z0-9_]{0,99}$/.test(code) || code === 'OWNER_ADMIN' || code === 'SUPERADMIN' || code.startsWith('ROLE_'))) { this.roleForm.get('code')?.setErrors({ invalid: true }); return; }
       
       if (this.roleToEdit) {
         const request: UpdateTenantRoleRequest = {
@@ -201,7 +197,6 @@ export class RoleFormComponent implements OnInit, OnChanges {
         this.submitUpdate.emit({ id: this.roleToEdit.id, request });
       } else {
         const request: CreateTenantRoleRequest = {
-          code,
           name,
           description: String(formValue.description ?? '').trim() || null,
           permissionCodes

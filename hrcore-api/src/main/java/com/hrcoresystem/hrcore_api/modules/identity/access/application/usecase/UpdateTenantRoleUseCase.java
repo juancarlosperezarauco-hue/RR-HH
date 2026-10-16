@@ -6,11 +6,11 @@ import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.TenantRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.UpdateTenantRoleRequest;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
-import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.InvalidSystemPermissionException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleAlreadyExistsException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.PermissionAssignmentPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.TenantAuthorizationRevisionService;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
@@ -18,8 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -31,13 +29,15 @@ public class UpdateTenantRoleUseCase {
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
     private final TenantOwnershipPolicy tenantOwnershipPolicy;
+    private final TenantAuthorizationRevisionService revisionService;
 
     public UpdateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
             PermissionAssignmentPolicy permissionAssignmentPolicy,
             TenantRoleMapper tenantRoleMapper,
-            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy
+            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy,
+            TenantAuthorizationRevisionService revisionService
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
@@ -45,6 +45,7 @@ public class UpdateTenantRoleUseCase {
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
         this.tenantOwnershipPolicy = tenantOwnershipPolicy;
+        this.revisionService = revisionService;
     }
 
     @Transactional
@@ -55,7 +56,7 @@ public class UpdateTenantRoleUseCase {
 
         tenantOwnershipPolicy.assertRoleIsCustom(existingRole);
 
-        String normalizedName = request.name().trim().toUpperCase();
+        String normalizedName = request.name().trim();
         List<String> normalizedPermissionCodes = normalizePermissionCodes(request.permissionCodes());
 
         tenantRoleRepository.findByName(normalizedName)
@@ -81,11 +82,15 @@ public class UpdateTenantRoleUseCase {
                 existingRole.systemRole(),
                 existingRole.active(),
                 existingRole.createdAt(),
-                existingRole.updatedAt()
+                existingRole.updatedAt(),
+                existingRole.roleType()
         );
 
         TenantRole savedRole = tenantRoleRepository.save(updatedRole);
         tenantRolePermissionRepository.replacePermissions(savedRole.id(), normalizedPermissionCodes);
+        if (!new java.util.HashSet<>(existingPermissionCodes).equals(new java.util.HashSet<>(normalizedPermissionCodes))) {
+            revisionService.incrementAuthorizationVersion();
+        }
 
         auditTrailService.recordTenantEvent(
                 AuditEventTypes.ROLE_UPDATED,

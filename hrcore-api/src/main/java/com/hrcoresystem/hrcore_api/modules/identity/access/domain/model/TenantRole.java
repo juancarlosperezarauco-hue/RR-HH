@@ -11,13 +11,16 @@ public record TenantRole(
     boolean systemRole,
     boolean active,
     Instant createdAt,
-    Instant updatedAt) {
+    Instant updatedAt,
+    TenantRoleType roleType) {
 
   public boolean isSystemRole() {
     return systemRole;
   }
 
   public boolean isOwnerAdmin() {
-    return systemRole && "OWNER_ADMIN".equals(code);
+    return roleType == TenantRoleType.ROOT
+        && systemRole
+        && "OWNER_ADMIN".equals(code);
   }
 }
