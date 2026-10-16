@@ -16,7 +16,8 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
         class="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl"
       ></div>
 
-      <div class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <!-- Vista cuando hay un empleado con saldo -->
+      <div *ngIf="employeeSelected" class="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         
         <!-- Left: Saldo Remanente Principal -->
         <div class="space-y-2">
@@ -28,10 +29,17 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
 
             <!-- Badge de Antigüedad -->
             <span
-              *ngIf="balance"
+              *ngIf="balance && balance.entitledDays > 0"
               class="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary border border-primary/20"
             >
               {{ balance.yearsOfService ?? 1 }} años de antigüedad (Escala {{ balance.entitledDays }}d)
+            </span>
+
+            <span
+              *ngIf="balance && balance.entitledDays === 0"
+              class="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 border border-amber-500/20"
+            >
+              Saldo no inicializado
             </span>
           </div>
 
@@ -45,9 +53,9 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
           </div>
 
           <!-- Barra de Progreso de Consumo -->
-          <div class="w-full max-w-md pt-1">
+          <div *ngIf="balance && balance.entitledDays > 0" class="w-full max-w-md pt-1">
             <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>Consumo del período</span>
+              <span>Consumo del período actual ({{ balance.year }})</span>
               <span class="font-mono font-bold">{{ usagePercentage }}% utilizado</span>
             </div>
             <div class="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -56,6 +64,18 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
                 [style.width.%]="usagePercentage"
               ></div>
             </div>
+          </div>
+
+          <!-- Botón de Inicializar si no tiene saldo -->
+          <div *ngIf="balance && balance.entitledDays === 0" class="pt-1">
+            <button
+              type="button"
+              (click)="initializeBalance.emit()"
+              class="inline-flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
+            >
+              <lucide-icon name="plus-circle" class="h-3.5 w-3.5"></lucide-icon>
+              <span>Inicializar Saldo Anual (15 días base LGT)</span>
+            </button>
           </div>
         </div>
 
@@ -86,20 +106,46 @@ import { LeaveBalanceResponse } from '../../../../entities/absence';
             class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all transform active:scale-95"
           >
             <lucide-icon name="plus" class="h-4 w-4"></lucide-icon>
-            Solicitar Ausencia
+            <span>Solicitar Ausencia</span>
           </button>
           <span class="mt-2 text-[11px] text-muted-foreground text-center md:text-right">
-            Cómputo automático de días hábiles
+            Cómputo en días hábiles
           </span>
         </div>
 
+      </div>
+
+      <!-- Vista cuando está en modo "Todos los trabajadores" -->
+      <div *ngIf="!employeeSelected" class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <lucide-icon name="users" class="h-4 w-4"></lucide-icon>
+            </div>
+            <h3 class="text-base font-bold text-foreground">Control General de Permisos y Ausencias</h3>
+          </div>
+          <p class="text-xs text-muted-foreground max-w-xl">
+            Mostrando el registro consolidado de permisos y ausencias de todos los trabajadores de la empresa. Para consultar el saldo legal de vacación individual, seleccione un colaborador específico.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          (click)="requestLeave.emit()"
+          class="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-all self-start sm:self-auto"
+        >
+          <lucide-icon name="plus" class="h-4 w-4"></lucide-icon>
+          <span>Nueva Solicitud de Ausencia</span>
+        </button>
       </div>
     </div>
   `
 })
 export class VacationBalanceCardComponent {
   @Input() balance: LeaveBalanceResponse | null = null;
+  @Input() employeeSelected = true;
   @Output() requestLeave = new EventEmitter<void>();
+  @Output() initializeBalance = new EventEmitter<void>();
 
   get usagePercentage(): number {
     if (!this.balance || this.balance.entitledDays === 0) return 0;

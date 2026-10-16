@@ -35,8 +35,8 @@ export interface CreateLeaveRequestInput {
   leaveTypeId: string;
   startDate: string;             // YYYY-MM-DD
   endDate: string;               // YYYY-MM-DD
-  startTime?: string;            // HH:mm:ss
-  endTime?: string;              // HH:mm:ss
+  startTime?: string | null;     // HH:mm:ss
+  endTime?: string | null;       // HH:mm:ss
   reason: string;
 }
 
@@ -45,6 +45,8 @@ export interface CreateLeaveRequestPayload {
   leaveTypeId: string;
   startDate: string;
   endDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
   reason: string;
   proofDocument?: File | null;
 }

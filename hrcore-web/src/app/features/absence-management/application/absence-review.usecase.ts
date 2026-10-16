@@ -27,21 +27,13 @@ export class AbsenceReviewUseCase {
 
     try {
       if (payload.approved) {
-        try {
-          await firstValueFrom(
-            this.absenceService.approveRequest(payload.requestId, payload.rejectionReason)
-          );
-        } catch {
-          await firstValueFrom(this.absenceService.reviewRequest(payload));
-        }
+        await firstValueFrom(
+          this.absenceService.approveRequest(payload.requestId, payload.rejectionReason)
+        );
       } else {
-        try {
-          await firstValueFrom(
-            this.absenceService.rejectRequest(payload.requestId, payload.rejectionReason)
-          );
-        } catch {
-          await firstValueFrom(this.absenceService.reviewRequest(payload));
-        }
+        await firstValueFrom(
+          this.absenceService.rejectRequest(payload.requestId, payload.rejectionReason)
+        );
       }
 
       const msg = payload.approved
@@ -50,9 +42,21 @@ export class AbsenceReviewUseCase {
       this.toastService.success(msg);
       return true;
     } catch (err: any) {
-      const msg = err?.error?.message || err?.message || 'Error al procesar la revisión de la solicitud';
-      this.error.set(msg);
-      this.toastService.error(msg);
+      let rawMsg = err?.error?.message || err?.message || 'Error al procesar la revisión de la solicitud';
+      let friendlyMsg = rawMsg;
+
+      if (rawMsg.includes('Requester cannot approve their own leave request')) {
+        friendlyMsg = 'No puede aprobar una solicitud registrada por usted mismo. Por normativa de auditoría laboral (LGT), la aprobación debe realizarla otro supervisor o revisor.';
+      } else if (rawMsg.includes('Only pending requests can be approved')) {
+        friendlyMsg = 'Solo las solicitudes en estado Pendiente pueden ser aprobadas.';
+      } else if (rawMsg.includes('Only pending requests can be rejected')) {
+        friendlyMsg = 'Solo las solicitudes en estado Pendiente pueden ser rechazadas.';
+      } else if (rawMsg.includes('Insufficient leave balance')) {
+        friendlyMsg = 'El colaborador no cuenta con saldo de vacación suficiente para aprobar esta solicitud.';
+      }
+
+      this.error.set(friendlyMsg);
+      this.toastService.error(friendlyMsg);
       return false;
     } finally {
       this.reviewing.set(false);
@@ -66,7 +70,23 @@ export class AbsenceReviewUseCase {
       this.toastService.success('Solicitud cancelada correctamente.');
       return true;
     } catch (err: any) {
-      this.toastService.error(err?.error?.message || 'Error al cancelar la solicitud');
+      const msg = err?.error?.message || 'Error al cancelar la solicitud';
+      this.toastService.error(msg);
+      return false;
+    } finally {
+      this.reviewing.set(false);
+    }
+  }
+
+  async uploadJustification(requestId: string, file: File): Promise<boolean> {
+    this.reviewing.set(true);
+    try {
+      await firstValueFrom(this.absenceService.uploadAttachment(requestId, file));
+      this.toastService.success('Documento de respaldo / justificativo adjuntado correctamente.');
+      return true;
+    } catch (err: any) {
+      const msg = err?.error?.message || 'Error al adjuntar el documento de respaldo';
+      this.toastService.error(msg);
       return false;
     } finally {
       this.reviewing.set(false);

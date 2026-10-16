@@ -1743,7 +1743,39 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
     })).pipe(delay(200));
   }
 
-  // 2. Balances get (GET)
+  // 2. Balances create (POST)
+  if (url.includes('/leaves/balances') && method === 'POST') {
+    const body = req.body as any;
+    const openingDays = Number(body?.openingDays) || 15;
+    const newBal: any = {
+      id: `bal-${Date.now()}`,
+      employeeId: body?.employeeId,
+      leaveTypeId: body?.leaveTypeId,
+      balanceYear: body?.balanceYear || 2026,
+      openingDays,
+      accruedDays: 0,
+      usedDays: 0,
+      adjustedDays: 0,
+      pendingDays: 0,
+      availableDays: openingDays,
+      remainingDays: openingDays,
+      entitledDays: openingDays,
+      year: body?.balanceYear || 2026,
+      updatedAt: now
+    };
+    MOCK_LEAVES.leaveBalances.push(newBal);
+    return of(new HttpResponse({
+      status: 200,
+      body: {
+        success: true,
+        message: 'Saldo de vacación inicializado correctamente',
+        data: newBal,
+        timestamp: now
+      }
+    })).pipe(delay(200));
+  }
+
+  // 3. Balances get (GET)
   if (url.includes('/leaves/balances') && method === 'GET') {
     const parts = url.split('/');
     const empId = parts[parts.length - 1].split('?')[0];

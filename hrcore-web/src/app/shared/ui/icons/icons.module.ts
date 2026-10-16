@@ -11,7 +11,7 @@ import {
   Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen,
   AlertCircle,
   Check, CircleCheck, CircleX, CircleAlert, LoaderCircle, FolderPlus,
-  Upload, User, Download, TriangleAlert
+  Upload, User, Download, TriangleAlert, Coffee, Paperclip
 } from 'lucide-angular';
 
 @NgModule({
@@ -25,7 +25,7 @@ import {
       Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen,
       AlertCircle,
       Check, CircleCheck, 'check-circle': CircleCheck, CircleX, CircleAlert, LoaderCircle, FolderPlus,
-      Upload, User, Download, TriangleAlert
+      Upload, User, Download, TriangleAlert, Coffee, Paperclip
     })
   ],
   exports: [LucideAngularModule]

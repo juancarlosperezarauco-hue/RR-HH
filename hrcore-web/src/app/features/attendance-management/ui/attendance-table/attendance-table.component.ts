@@ -48,7 +48,7 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
           <button
             type="button"
             (click)="refresh.emit()"
-            class="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            class="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors shadow-xs"
             title="Actualizar registros"
           >
             <lucide-icon name="refresh-ccw" class="h-4 w-4" [ngClass]="{ 'animate-spin': loading }"></lucide-icon>
@@ -62,19 +62,21 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
         <table class="w-full text-left text-sm">
           <thead class="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
             <tr>
-              <th scope="col" class="px-5 py-3 font-bold">Colaborador</th>
-              <th scope="col" class="px-5 py-3 font-bold">Fecha</th>
-              <th scope="col" class="px-5 py-3 font-bold">Entrada</th>
-              <th scope="col" class="px-5 py-3 font-bold">Salida</th>
-              <th scope="col" class="px-5 py-3 font-bold">Horas</th>
-              <th scope="col" class="px-5 py-3 font-bold">Estado</th>
-              <th scope="col" class="px-5 py-3 font-bold text-right">Acción</th>
+              <th scope="col" class="px-4 py-3 font-bold">Colaborador</th>
+              <th scope="col" class="px-3 py-3 font-bold">Fecha</th>
+              <th scope="col" class="px-3 py-3 font-bold">Turno Asignado</th>
+              <th scope="col" class="px-3 py-3 font-bold">Entrada Real</th>
+              <th scope="col" class="px-3 py-3 font-bold">Salida Real</th>
+              <th scope="col" class="px-3 py-3 font-bold">Horas Efectivas</th>
+              <th scope="col" class="px-3 py-3 font-bold">Puntualidad / Retraso</th>
+              <th scope="col" class="px-3 py-3 font-bold">Estado</th>
+              <th scope="col" class="px-4 py-3 font-bold text-right">Acción</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-border/60">
             <!-- Loading Skeleton -->
             <tr *ngIf="loading && records.length === 0">
-              <td colspan="7" class="px-5 py-12 text-center text-muted-foreground">
+              <td colspan="9" class="px-5 py-12 text-center text-muted-foreground">
                 <lucide-icon name="loader-circle" class="h-6 w-6 animate-spin mx-auto mb-2 text-primary"></lucide-icon>
                 Cargando registros de asistencia...
               </td>
@@ -82,7 +84,7 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
 
             <!-- Empty State -->
             <tr *ngIf="!loading && records.length === 0">
-              <td colspan="7" class="px-5 py-12 text-center text-muted-foreground">
+              <td colspan="9" class="px-5 py-12 text-center text-muted-foreground">
                 <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/50 mb-3">
                   <lucide-icon name="clipboard-list" class="h-6 w-6 text-muted-foreground"></lucide-icon>
                 </div>
@@ -97,8 +99,8 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
               class="hover:bg-accent/30 transition-colors"
             >
               <!-- Colaborador -->
-              <td class="px-5 py-3.5">
-                <div class="flex items-center gap-3">
+              <td class="px-4 py-3.5">
+                <div class="flex items-center gap-2.5">
                   <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs">
                     {{ getInitials(item.employeeFullName) }}
                   </div>
@@ -114,63 +116,93 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
               </td>
 
               <!-- Fecha -->
-              <td class="px-5 py-3.5 whitespace-nowrap text-xs font-medium text-foreground">
+              <td class="px-3 py-3.5 whitespace-nowrap text-xs font-medium text-foreground">
                 {{ item.workDate }}
               </td>
 
-              <!-- Entrada -->
-              <td class="px-5 py-3.5 whitespace-nowrap">
-                <div class="flex items-center gap-1.5 text-xs font-mono font-medium">
-                  <span [ngClass]="item.checkInTime ? 'text-foreground' : 'text-muted-foreground'">
+              <!-- Turno Asignado (Horario Esperado) -->
+              <td class="px-3 py-3.5 whitespace-nowrap">
+                <div *ngIf="item.expectedStartAt || item.expectedEndAt" class="text-xs font-mono font-medium text-foreground flex items-center gap-1">
+                  <span>{{ formatTime(item.expectedStartAt) }}</span>
+                  <span class="text-muted-foreground">-</span>
+                  <span>{{ formatTime(item.expectedEndAt) }}</span>
+                </div>
+                <div *ngIf="!item.expectedStartAt && !item.expectedEndAt" class="text-xs text-muted-foreground italic">
+                  Sin turno programado
+                </div>
+              </td>
+
+              <!-- Entrada Real -->
+              <td class="px-3 py-3.5 whitespace-nowrap">
+                <div class="flex items-center gap-1 text-xs font-mono font-medium">
+                  <span [ngClass]="item.checkInTime ? 'text-foreground font-semibold' : 'text-muted-foreground'">
                     {{ formatTime(item.checkInTime) }}
                   </span>
                   <span
                     *ngIf="item.source"
-                    class="rounded px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase bg-muted text-muted-foreground border border-border"
+                    class="rounded px-1.5 py-0.2 text-[9px] font-sans font-semibold uppercase bg-muted text-muted-foreground border border-border"
                   >
                     {{ item.source }}
                   </span>
                 </div>
               </td>
 
-              <!-- Salida -->
-              <td class="px-5 py-3.5 whitespace-nowrap">
-                <span class="text-xs font-mono font-medium" [ngClass]="item.checkOutTime ? 'text-foreground' : 'text-muted-foreground'">
+              <!-- Salida Real -->
+              <td class="px-3 py-3.5 whitespace-nowrap">
+                <span class="text-xs font-mono font-medium" [ngClass]="item.checkOutTime ? 'text-foreground font-semibold' : 'text-muted-foreground'">
                   {{ formatTime(item.checkOutTime) }}
                 </span>
               </td>
 
-              <!-- Horas Trabajadas y Retraso -->
-              <td class="px-5 py-3.5 whitespace-nowrap">
+              <!-- Horas Trabajadas -->
+              <td class="px-3 py-3.5 whitespace-nowrap">
                 <div class="text-xs font-semibold text-foreground">
                   {{ item.workedHours }}h
-                  <span *ngIf="item.overtimeHours && item.overtimeHours > 0" class="text-emerald-600 dark:text-emerald-400 font-mono">
+                  <span *ngIf="item.overtimeHours && item.overtimeHours > 0" class="text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
                     (+{{ item.overtimeHours }}h extra)
                   </span>
                 </div>
-                <div *ngIf="item.lateMinutes && item.lateMinutes > 0" class="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                  Retraso: {{ item.lateMinutes }} min
+                <div *ngIf="item.workedMinutes !== undefined" class="text-[11px] text-muted-foreground font-mono">
+                  {{ item.workedMinutes }} min
+                </div>
+              </td>
+
+              <!-- Puntualidad / Retraso -->
+              <td class="px-3 py-3.5 whitespace-nowrap">
+                <div *ngIf="item.lateMinutes && item.lateMinutes > 0" class="inline-flex items-center gap-1 rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                  <lucide-icon name="clock" class="h-3 w-3"></lucide-icon>
+                  <span>+{{ item.lateMinutes }} min retraso</span>
+                </div>
+                <div *ngIf="item.earlyDepartureMinutes && item.earlyDepartureMinutes > 0" class="text-[10px] text-rose-500 font-medium mt-0.5">
+                  Salida temprana: {{ item.earlyDepartureMinutes }}m
+                </div>
+                <div *ngIf="(!item.lateMinutes || item.lateMinutes === 0) && item.status === 'PRESENT'" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <lucide-icon name="check-circle" class="h-3 w-3"></lucide-icon>
+                  <span>Puntual</span>
+                </div>
+                <div *ngIf="item.status === 'ABSENT'" class="text-xs font-medium text-rose-600 dark:text-rose-400">
+                  Falta sin justificar
                 </div>
               </td>
 
               <!-- Estado -->
-              <td class="px-5 py-3.5 whitespace-nowrap">
+              <td class="px-3 py-3.5 whitespace-nowrap">
                 <app-attendance-status-badge
                   [status]="item.status"
                   [lateMinutes]="item.lateMinutes"
                 ></app-attendance-status-badge>
               </td>
 
-              <!-- Acción Regularizar -->
-              <td class="px-5 py-3.5 whitespace-nowrap text-right">
+              <!-- Acciones -->
+              <td class="px-4 py-3.5 whitespace-nowrap text-right">
                 <button
                   type="button"
                   (click)="regularize.emit(item)"
-                  class="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  title="Ajustar o regularizar marcación"
+                  class="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-bold text-foreground hover:bg-accent hover:text-accent-foreground transition-all shadow-xs"
+                  title="Ver detalle, historial de correcciones o regularizar"
                 >
                   <lucide-icon name="pencil" class="h-3.5 w-3.5"></lucide-icon>
-                  <span>Regularizar</span>
+                  <span>Regularizar / Historial</span>
                 </button>
               </td>
             </tr>
@@ -179,9 +211,9 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
       </div>
 
       <!-- Table Footer / Count -->
-      <div class="p-4 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Mostrando {{ records.length }} registros de asistencia</span>
-        <span>Jornadas reguladas por LGT Bolivia</span>
+      <div class="p-4 border-t border-border/60 bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Mostrando {{ records.length }} registros de jornada laboral</span>
+        <span>LGT Bolivia · Historial inmutable de auditoría</span>
       </div>
     </div>
   `

@@ -88,7 +88,7 @@ export class AttendanceService {
     employeeId?: string,
     status?: AttendanceStatus | 'ALL',
     page = 0,
-    size = 20,
+    size = 100,
     sort = 'workDate',
     direction = 'desc'
   ): Observable<ApiResponse<PageResponse<AttendanceRecordResponse>>> {
@@ -135,7 +135,7 @@ export class AttendanceService {
   }
 
   getTodayStatus(employeeId?: string): Observable<ApiResponse<AttendanceRecordResponse | null>> {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     let params = new HttpParams()
       .set('from', today)
       .set('to', today)
@@ -297,15 +297,20 @@ export class AttendanceService {
       canonicalType = 'BREAK_END';
     }
 
+    const customPunchTime = request.punchedAt || request.timestamp;
+    const hasCustomTime = !!customPunchTime;
+    const punchedAtIso = hasCustomTime ? new Date(customPunchTime).toISOString() : undefined;
+    const notesValue = request.notes?.trim() || (hasCustomTime ? 'Marcación manual administrativa' : undefined);
+
     const payload: CreatePunchInput = {
       employeeId: request.employeeId && request.employeeId.length > 20 && !request.employeeId.startsWith('mock')
         ? request.employeeId
         : undefined,
       punchType: canonicalType,
-      punchedAt: new Date().toISOString(),
+      punchedAt: punchedAtIso,
       latitude: request.latitude,
       longitude: request.longitude,
-      notes: request.notes
+      notes: notesValue
     };
 
     return this.createPunch(payload);

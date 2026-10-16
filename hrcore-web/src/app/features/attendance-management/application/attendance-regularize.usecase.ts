@@ -2,9 +2,11 @@ import { inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
   AttendanceService,
-  RegularizeAttendanceRequest,
   CreateAdjustmentRequest,
-  AttendanceAdjustmentResponse
+  AttendanceAdjustmentResponse,
+  AttendancePunchResponse,
+  AttendanceStatus,
+  PunchType
 } from '../../../entities/attendance';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 
@@ -14,39 +16,43 @@ export class AttendanceRegularizeUseCase {
   private readonly toastService = inject(ToastService);
 
   readonly submitting = signal<boolean>(false);
+  readonly loadingHistory = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
-  async regularize(request: RegularizeAttendanceRequest): Promise<boolean> {
-    const trimmedReason = (request.reason || '').trim();
-    if (trimmedReason.length < 10) {
-      const msg = 'La justificación es obligatoria y debe tener al menos 10 caracteres.';
-      this.error.set(msg);
-      this.toastService.warning(msg);
-      return false;
-    }
-
-    this.submitting.set(true);
-    this.error.set(null);
-
+  /**
+   * Carga el historial de correcciones/ajustes de una jornada específica
+   */
+  async loadAdjustments(recordId: string): Promise<AttendanceAdjustmentResponse[]> {
+    this.loadingHistory.set(true);
     try {
-      await firstValueFrom(
-        this.attendanceService.regularizeAttendance({
-          ...request,
-          reason: trimmedReason
-        })
+      const res = await firstValueFrom(
+        this.attendanceService.listAdjustments({ recordId, page: 0, size: 50, sort: 'createdAt', direction: 'desc' })
       );
-      this.toastService.success('Regularización enviada exitosamente con registro inmutable de auditoría.');
-      return true;
-    } catch (err: any) {
-      const msg = err?.error?.message || err?.message || 'Error al procesar la regularización.';
-      this.error.set(msg);
-      this.toastService.error(msg);
-      return false;
+      return res.data?.content || [];
+    } catch {
+      return [];
     } finally {
-      this.submitting.set(false);
+      this.loadingHistory.set(false);
     }
   }
 
+  /**
+   * Carga las marcaciones individuales asociadas a una jornada
+   */
+  async loadPunches(recordId: string): Promise<AttendancePunchResponse[]> {
+    try {
+      const res = await firstValueFrom(
+        this.attendanceService.listPunches({ recordId, page: 0, size: 50, sort: 'punchedAt', direction: 'asc' })
+      );
+      return res.data?.content || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Crea una solicitud justificada de ajuste
+   */
   async createAdjustment(request: CreateAdjustmentRequest): Promise<AttendanceAdjustmentResponse | null> {
     const trimmedReason = (request.reason || '').trim();
     if (trimmedReason.length < 10) {
@@ -66,7 +72,7 @@ export class AttendanceRegularizeUseCase {
           reason: trimmedReason
         })
       );
-      this.toastService.success('Ajuste de asistencia solicitado correctamente.');
+      this.toastService.success('Ajuste de asistencia solicitado y registrado en auditoría.');
       return res.data;
     } catch (err: any) {
       const msg = err?.error?.message || err?.message || 'Error al solicitar el ajuste.';
@@ -78,94 +84,93 @@ export class AttendanceRegularizeUseCase {
     }
   }
 
-  async regularizeTimes(
+  /**
+   * Corrección de horario sobre una marcación existente (TIME_CORRECTION)
+   */
+  async submitTimeCorrection(
     attendanceRecordId: string,
-    workDate: string,
-    correctedCheckIn: string | undefined,
-    correctedCheckOut: string | undefined,
+    punchId: string,
+    punchedAt: string,
     reason: string
   ): Promise<boolean> {
-    const trimmedReason = reason.trim();
-    if (trimmedReason.length < 10) {
-      this.toastService.warning('La justificación debe tener al menos 10 caracteres.');
-      return false;
-    }
-    if (!correctedCheckIn && !correctedCheckOut) {
-      this.toastService.warning('Ingrese al menos una hora corregida.');
-      return false;
-    }
-
-    this.submitting.set(true);
-    this.error.set(null);
-    try {
-      const punchesResponse = await firstValueFrom(
-        this.attendanceService.listPunches({ recordId: attendanceRecordId, page: 0, size: 100 })
-      );
-      const punches = punchesResponse.data?.content || [];
-      const firstIn = punches
-        .filter((punch) => punch.punchType === 'IN')
-        .sort((a, b) => a.punchedAt.localeCompare(b.punchedAt))[0];
-      const lastOut = punches
-        .filter((punch) => punch.punchType === 'OUT')
-        .sort((a, b) => b.punchedAt.localeCompare(a.punchedAt))[0];
-
-      const requests: CreateAdjustmentRequest[] = [];
-      if (correctedCheckIn) {
-        const punchedAt = this.toInstant(workDate, correctedCheckIn, false);
-        requests.push(firstIn ? {
-          attendanceRecordId,
-          adjustmentType: 'TIME_CORRECTION',
-          reason: trimmedReason,
-          requestedValues: { punchId: firstIn.id, punchedAt }
-        } : {
-          attendanceRecordId,
-          adjustmentType: 'MISSING_PUNCH',
-          reason: trimmedReason,
-          requestedValues: { punchType: 'IN', punchedAt }
-        });
+    const result = await this.createAdjustment({
+      attendanceRecordId,
+      adjustmentType: 'TIME_CORRECTION',
+      reason,
+      requestedValues: {
+        punchId,
+        punchedAt
       }
-      if (correctedCheckOut) {
-        const overnight = !!correctedCheckIn && correctedCheckOut <= correctedCheckIn;
-        const punchedAt = this.toInstant(workDate, correctedCheckOut, overnight);
-        requests.push(lastOut ? {
-          attendanceRecordId,
-          adjustmentType: 'TIME_CORRECTION',
-          reason: trimmedReason,
-          requestedValues: { punchId: lastOut.id, punchedAt }
-        } : {
-          attendanceRecordId,
-          adjustmentType: 'MISSING_PUNCH',
-          reason: trimmedReason,
-          requestedValues: { punchType: 'OUT', punchedAt }
-        });
-      }
-
-      for (const request of requests) {
-        await firstValueFrom(this.attendanceService.createAdjustment(request));
-      }
-      this.toastService.success('Regularización enviada para revisión con trazabilidad de auditoría.');
-      return true;
-    } catch (err: any) {
-      const message = err?.error?.message || err?.message || 'No se pudo solicitar la regularización.';
-      this.error.set(message);
-      this.toastService.error(message);
-      return false;
-    } finally {
-      this.submitting.set(false);
-    }
+    });
+    return !!result;
   }
 
-  private toInstant(workDate: string, time: string, followingDay: boolean): string {
-    const date = new Date(`${workDate}T${time}:00`);
-    if (followingDay) date.setDate(date.getDate() + 1);
-    return date.toISOString();
+  /**
+   * Registro de marcación omitida/olvidada (MISSING_PUNCH)
+   */
+  async submitMissingPunch(
+    attendanceRecordId: string,
+    punchType: PunchType,
+    punchedAt: string,
+    reason: string
+  ): Promise<boolean> {
+    const result = await this.createAdjustment({
+      attendanceRecordId,
+      adjustmentType: 'MISSING_PUNCH',
+      reason,
+      requestedValues: {
+        punchType,
+        punchedAt
+      }
+    });
+    return !!result;
   }
 
+  /**
+   * Corrección del estado de la jornada (STATUS_CORRECTION)
+   */
+  async submitStatusCorrection(
+    attendanceRecordId: string,
+    status: AttendanceStatus,
+    reason: string
+  ): Promise<boolean> {
+    const result = await this.createAdjustment({
+      attendanceRecordId,
+      adjustmentType: 'STATUS_CORRECTION',
+      reason,
+      requestedValues: {
+        status
+      }
+    });
+    return !!result;
+  }
+
+  /**
+   * Justificación por otro motivo legal / justificado (OTHER)
+   */
+  async submitOtherJustified(
+    attendanceRecordId: string,
+    reason: string
+  ): Promise<boolean> {
+    const result = await this.createAdjustment({
+      attendanceRecordId,
+      adjustmentType: 'OTHER',
+      reason,
+      requestedValues: {
+        status: 'JUSTIFIED'
+      }
+    });
+    return !!result;
+  }
+
+  /**
+   * Aprobación de ajuste por revisor/supervisor
+   */
   async approve(id: string, comment?: string): Promise<boolean> {
     this.submitting.set(true);
     try {
-      await firstValueFrom(this.attendanceService.approveAdjustment(id, { comment }));
-      this.toastService.success('Ajuste de asistencia aprobado correctamente.');
+      await firstValueFrom(this.attendanceService.approveAdjustment(id, { comment: comment?.trim() || undefined }));
+      this.toastService.success('Ajuste de asistencia aprobado y aplicado exitosamente.');
       return true;
     } catch (err: any) {
       this.toastService.error(err?.error?.message || 'Error al aprobar el ajuste');
@@ -175,18 +180,55 @@ export class AttendanceRegularizeUseCase {
     }
   }
 
-  async reject(id: string, comment?: string): Promise<boolean> {
+  /**
+   * Rechazo justificado de ajuste
+   */
+  async reject(id: string, comment: string): Promise<boolean> {
     if (!comment || comment.trim().length < 5) {
       this.toastService.warning('El motivo de rechazo debe contener al menos 5 caracteres.');
       return false;
     }
     this.submitting.set(true);
     try {
-      await firstValueFrom(this.attendanceService.rejectAdjustment(id, { comment }));
+      await firstValueFrom(this.attendanceService.rejectAdjustment(id, { comment: comment.trim() }));
       this.toastService.success('Ajuste de asistencia rechazado.');
       return true;
     } catch (err: any) {
       this.toastService.error(err?.error?.message || 'Error al rechazar el ajuste');
+      return false;
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  /**
+   * Cancelación de ajuste por el solicitante
+   */
+  async cancel(id: string): Promise<boolean> {
+    this.submitting.set(true);
+    try {
+      await firstValueFrom(this.attendanceService.cancelAdjustment(id));
+      this.toastService.success('Solicitud de ajuste cancelada.');
+      return true;
+    } catch (err: any) {
+      this.toastService.error(err?.error?.message || 'Error al cancelar la solicitud');
+      return false;
+    } finally {
+      this.submitting.set(false);
+    }
+  }
+
+  /**
+   * Recalcula la jornada contra los turnos asignados
+   */
+  async recalculateRecord(employeeId: string, workDate: string): Promise<boolean> {
+    this.submitting.set(true);
+    try {
+      await firstValueFrom(this.attendanceService.calculateRecord({ employeeId, workDate }));
+      this.toastService.success('Jornada recalculada con éxito según turnos asignados.');
+      return true;
+    } catch (err: any) {
+      this.toastService.error(err?.error?.message || 'Error al recalcular la jornada');
       return false;
     } finally {
       this.submitting.set(false);
