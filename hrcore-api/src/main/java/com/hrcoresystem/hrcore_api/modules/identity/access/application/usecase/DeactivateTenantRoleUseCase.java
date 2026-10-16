@@ -6,6 +6,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.TenantRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.TenantAuthorizationRevisionService;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
@@ -24,18 +25,21 @@ public class DeactivateTenantRoleUseCase {
     private final TenantRoleMapper tenantRoleMapper;
     private final AuditTrailService auditTrailService;
     private final TenantOwnershipPolicy tenantOwnershipPolicy;
+    private final TenantAuthorizationRevisionService revisionService;
 
     public DeactivateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
             TenantRoleMapper tenantRoleMapper,
-            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy
+            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy,
+            TenantAuthorizationRevisionService revisionService
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
         this.tenantRoleMapper = tenantRoleMapper;
         this.auditTrailService = auditTrailService;
         this.tenantOwnershipPolicy = tenantOwnershipPolicy;
+        this.revisionService = revisionService;
     }
 
     @Transactional
@@ -59,10 +63,14 @@ public class DeactivateTenantRoleUseCase {
                 existingRole.systemRole(),
                 false,
                 existingRole.createdAt(),
-                existingRole.updatedAt()
+                existingRole.updatedAt(),
+                existingRole.roleType()
         );
 
         TenantRole savedRole = tenantRoleRepository.save(updatedRole);
+        if (savedRole.active() != existingRole.active()) {
+            revisionService.incrementAuthorizationVersion();
+        }
 
         auditTrailService.recordTenantEvent(
                 AuditEventTypes.ROLE_DEACTIVATED,

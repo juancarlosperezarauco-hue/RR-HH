@@ -1,6 +1,7 @@
 package com.hrcoresystem.hrcore_api.modules.identity.access.infrastructure.persistence;
 
 import jakarta.persistence.*;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRoleType;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -21,6 +22,10 @@ public class TenantRoleEntity {
 
     @Column(length = 255)
     private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role_type", nullable = false, updatable = false)
+    private TenantRoleType roleType;
 
     @Column(nullable = false)
     private boolean systemRole;
@@ -76,6 +81,14 @@ public class TenantRoleEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public TenantRoleType getRoleType() {
+        return roleType;
+    }
+
+    public void setRoleType(TenantRoleType roleType) {
+        this.roleType = roleType;
     }
 
     public boolean isSystemRole() {

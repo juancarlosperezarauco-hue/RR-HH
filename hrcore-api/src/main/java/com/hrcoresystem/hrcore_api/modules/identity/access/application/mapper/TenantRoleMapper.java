@@ -15,6 +15,7 @@ public class TenantRoleMapper {
                 tenantRole.code(),
                 tenantRole.name(),
                 tenantRole.description(),
+                tenantRole.roleType(),
                 tenantRole.systemRole(),
                 tenantRole.active(),
                 tenantRole.createdAt(),
