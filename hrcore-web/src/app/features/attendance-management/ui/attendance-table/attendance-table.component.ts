@@ -176,7 +176,7 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
                 <div *ngIf="item.earlyDepartureMinutes && item.earlyDepartureMinutes > 0" class="text-[10px] text-rose-500 font-medium mt-0.5">
                   Salida temprana: {{ item.earlyDepartureMinutes }}m
                 </div>
-                <div *ngIf="(!item.lateMinutes || item.lateMinutes === 0) && item.status === 'PRESENT'" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <div *ngIf="(!item.lateMinutes || item.lateMinutes === 0) && (!item.earlyDepartureMinutes || item.earlyDepartureMinutes === 0) && item.status === 'PRESENT'" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <lucide-icon name="check-circle" class="h-3 w-3"></lucide-icon>
                   <span>Puntual</span>
                 </div>
@@ -190,6 +190,7 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
                 <app-attendance-status-badge
                   [status]="item.status"
                   [lateMinutes]="item.lateMinutes"
+                  [checkOutTime]="item.checkOutTime"
                 ></app-attendance-status-badge>
               </td>
 

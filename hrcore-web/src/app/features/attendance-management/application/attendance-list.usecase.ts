@@ -157,8 +157,14 @@ export class AttendanceListUseCase {
           if (existing.checkInTime && existing.checkOutTime && (!existing.workedHours || existing.workedHours === 0)) {
             const diffMs = new Date(existing.checkOutTime).getTime() - new Date(existing.checkInTime).getTime();
             existing.workedHours = Math.max(0, Math.round((diffMs / 3600000) * 10) / 10);
-            if (existing.status === 'INCOMPLETE' || existing.status === 'PENDING') {
-              existing.status = 'PRESENT';
+            if (existing.status === 'PENDING') {
+              if (existing.earlyDepartureMinutes && existing.earlyDepartureMinutes > 0) {
+                existing.status = 'INCOMPLETE';
+              } else if (existing.lateMinutes && existing.lateMinutes > 0) {
+                existing.status = 'LATE';
+              } else {
+                existing.status = 'PRESENT';
+              }
             }
           }
         } else {

@@ -17,6 +17,7 @@ export class AttendanceClockUseCase {
   readonly remainingDebounceSeconds = signal<number>(0);
   readonly lastPunchResult = signal<AttendanceRecordResponse | null>(null);
   readonly gpsAvailable = signal<boolean | null>(null);
+  readonly employeePunchState = signal<'NONE' | 'INSIDE' | 'ON_BREAK' | 'OUTSIDE'>('NONE');
 
   readonly isDebounced = computed(() => this.remainingDebounceSeconds() > 0);
 
@@ -231,7 +232,10 @@ export class AttendanceClockUseCase {
   }
 
   async fetchTodayRecord(employeeId: string): Promise<AttendanceRecordResponse | null> {
-    if (!employeeId) return null;
+    if (!employeeId) {
+      this.employeePunchState.set('NONE');
+      return null;
+    }
     const localToday = new Date().toLocaleDateString('en-CA');
     try {
       const [statusRes, punchesRes] = await Promise.all([
@@ -257,40 +261,55 @@ export class AttendanceClockUseCase {
         }
       });
 
+      let currentPunchState: 'NONE' | 'INSIDE' | 'ON_BREAK' | 'OUTSIDE' = 'NONE';
       if (todayPunches.length > 0) {
-        const inPunch = todayPunches.find((p) => p.punchType === 'IN');
-        const outPunch = [...todayPunches].reverse().find((p) => p.punchType === 'OUT');
+        const lastPunch = todayPunches[todayPunches.length - 1];
+        if (lastPunch.punchType === 'IN' || lastPunch.punchType === 'BREAK_END') {
+          currentPunchState = 'INSIDE';
+        } else if (lastPunch.punchType === 'BREAK_START') {
+          currentPunchState = 'ON_BREAK';
+        } else if (lastPunch.punchType === 'OUT') {
+          currentPunchState = 'OUTSIDE';
+        }
+
+        const firstIn = todayPunches.find((p) => p.punchType === 'IN');
+        const lastOut = [...todayPunches].reverse().find((p) => p.punchType === 'OUT');
 
         if (record) {
-          if (!record.checkInTime && inPunch) {
-            record.checkInTime = inPunch.punchedAt;
-            record.actualFirstInAt = inPunch.punchedAt;
+          if (!record.checkInTime && firstIn) {
+            record.checkInTime = firstIn.punchedAt;
+            record.actualFirstInAt = firstIn.punchedAt;
           }
-          if (!record.checkOutTime && outPunch) {
-            record.checkOutTime = outPunch.punchedAt;
-            record.actualLastOutAt = outPunch.punchedAt;
+          // Si el colaborador re-ingresó (su último marcaje fue IN o BREAK), la salida de la sesión actual está pendiente
+          if (currentPunchState === 'INSIDE' || currentPunchState === 'ON_BREAK') {
+            record.checkOutTime = null;
+          } else if (currentPunchState === 'OUTSIDE' && lastOut) {
+            record.checkOutTime = lastOut.punchedAt;
+            record.actualLastOutAt = lastOut.punchedAt;
           }
         } else {
           record = {
-            id: inPunch?.attendanceRecordId || inPunch?.id || `punch-${Date.now()}`,
+            id: firstIn?.attendanceRecordId || firstIn?.id || `punch-${Date.now()}`,
             employeeId,
             workDate: localToday,
-            checkInTime: inPunch ? inPunch.punchedAt : null,
-            checkOutTime: outPunch ? outPunch.punchedAt : null,
-            actualFirstInAt: inPunch ? inPunch.punchedAt : null,
-            actualLastOutAt: outPunch ? outPunch.punchedAt : null,
+            checkInTime: firstIn ? firstIn.punchedAt : null,
+            checkOutTime: currentPunchState === 'OUTSIDE' ? (lastOut ? lastOut.punchedAt : null) : null,
+            actualFirstInAt: firstIn ? firstIn.punchedAt : null,
+            actualLastOutAt: lastOut ? lastOut.punchedAt : null,
             workedHours: 0,
             lateMinutes: 0,
             earlyDepartureMinutes: 0,
-            status: inPunch ? 'PRESENT' : 'INCOMPLETE',
-            source: inPunch?.source || 'WEB',
-            createdAt: inPunch?.punchedAt || new Date().toISOString()
+            status: currentPunchState === 'OUTSIDE' ? 'PRESENT' : (firstIn ? 'INCOMPLETE' : 'PENDING'),
+            source: firstIn?.source || 'WEB',
+            createdAt: firstIn?.punchedAt || new Date().toISOString()
           };
         }
       }
 
+      this.employeePunchState.set(currentPunchState);
       return record;
     } catch {
+      this.employeePunchState.set('NONE');
       return null;
     }
   }

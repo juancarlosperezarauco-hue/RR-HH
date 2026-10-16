@@ -95,18 +95,28 @@ export interface ClockEmployeeOption {
               </select>
               
               <!-- Estado del día del colaborador -->
-              <div *ngIf="todayRecord() && (todayRecord()?.checkInTime || todayRecord()?.checkOutTime)" class="mt-1.5 text-xs flex items-center gap-1.5 text-muted-foreground">
-                <span class="inline-block w-2 h-2 rounded-full" [ngClass]="todayRecord()?.checkOutTime ? 'bg-indigo-500' : 'bg-emerald-500'"></span>
-                <span>
-                  Entrada: <strong>{{ formatTime(todayRecord()?.checkInTime) }}</strong>
-                  <ng-container *ngIf="todayRecord()?.checkOutTime">
-                    | Salida: <strong>{{ formatTime(todayRecord()?.checkOutTime) }}</strong>
-                  </ng-container>
+              <div class="mt-1.5 text-xs flex items-center gap-1.5 text-muted-foreground">
+                <span
+                  class="inline-block w-2 h-2 rounded-full"
+                  [ngClass]="{
+                    'bg-slate-400': clockUseCase.employeePunchState() === 'NONE',
+                    'bg-emerald-500 animate-pulse': clockUseCase.employeePunchState() === 'INSIDE',
+                    'bg-amber-500': clockUseCase.employeePunchState() === 'ON_BREAK',
+                    'bg-indigo-500': clockUseCase.employeePunchState() === 'OUTSIDE'
+                  }"
+                ></span>
+                <span *ngIf="clockUseCase.employeePunchState() === 'NONE'" class="italic">
+                  Sin marcaciones registradas hoy
                 </span>
-              </div>
-              <div *ngIf="!todayRecord() || (!todayRecord()?.checkInTime && !todayRecord()?.checkOutTime)" class="mt-1.5 text-xs text-muted-foreground italic flex items-center gap-1.5">
-                <span class="inline-block w-2 h-2 rounded-full bg-slate-400"></span>
-                <span>Sin marcaciones registradas hoy</span>
+                <span *ngIf="clockUseCase.employeePunchState() === 'INSIDE'">
+                  Activo en turno · Entrada: <strong>{{ formatTime(todayRecord()?.checkInTime) }}</strong>
+                </span>
+                <span *ngIf="clockUseCase.employeePunchState() === 'ON_BREAK'" class="text-amber-600 dark:text-amber-400 font-medium">
+                  En pausa / refrigerio
+                </span>
+                <span *ngIf="clockUseCase.employeePunchState() === 'OUTSIDE'">
+                  Salida registrada: <strong>{{ formatTime(todayRecord()?.checkOutTime) }}</strong> · Fuera de turno
+                </span>
               </div>
             </div>
 
@@ -130,9 +140,9 @@ export interface ClockEmployeeOption {
             <!-- Botón Entrada -->
             <button
               (click)="punch('IN')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || clockUseCase.employeePunchState() === 'INSIDE' || clockUseCase.employeePunchState() === 'ON_BREAK'"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              title="Registrar inicio de jornada laboral"
+              [title]="clockUseCase.employeePunchState() === 'INSIDE' ? 'El colaborador ya se encuentra en turno' : (clockUseCase.employeePunchState() === 'ON_BREAK' ? 'Actualmente en pausa' : 'Registrar inicio de jornada laboral')"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-in" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -142,9 +152,9 @@ export interface ClockEmployeeOption {
             <!-- Botón Pausa -->
             <button
               (click)="punch('BREAK_START')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || !hasEntryToday()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || clockUseCase.employeePunchState() !== 'INSIDE'"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:from-amber-500 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              [title]="hasEntryToday() ? 'Registrar inicio de pausa o almuerzo' : 'Debe registrar primero la entrada antes de iniciar una pausa'"
+              [title]="clockUseCase.employeePunchState() === 'INSIDE' ? 'Registrar inicio de pausa o almuerzo' : (clockUseCase.employeePunchState() === 'ON_BREAK' ? 'Ya se encuentra en pausa' : 'Debe marcar primero su entrada antes de iniciar una pausa')"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="coffee" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -154,9 +164,9 @@ export interface ClockEmployeeOption {
             <!-- Botón Retorno -->
             <button
               (click)="punch('BREAK_END')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || !hasEntryToday()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || clockUseCase.employeePunchState() !== 'ON_BREAK'"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              [title]="hasEntryToday() ? 'Registrar fin de pausa y retorno' : 'Debe registrar primero la entrada'"
+              [title]="clockUseCase.employeePunchState() === 'ON_BREAK' ? 'Registrar fin de pausa y retorno al trabajo' : 'Solo disponible si se encuentra en pausa'"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="play" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -166,9 +176,9 @@ export interface ClockEmployeeOption {
             <!-- Botón Salida -->
             <button
               (click)="punch('OUT')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || !hasEntryToday() || hasExitToday()"
+              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced() || clockUseCase.employeePunchState() !== 'INSIDE'"
               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-xs font-bold text-white shadow-sm hover:from-rose-500 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              [title]="!hasEntryToday() ? 'Debe registrar primero la entrada antes de marcar la salida' : (hasExitToday() ? 'Salida ya registrada hoy' : 'Registrar cierre de jornada laboral')"
+              [title]="clockUseCase.employeePunchState() === 'INSIDE' ? 'Registrar salida de jornada laboral' : (clockUseCase.employeePunchState() === 'ON_BREAK' ? 'Debe finalizar primero la pausa (Retorno) antes de marcar la salida' : 'Este usuario no tiene una entrada registrada. Debe marcar primero su entrada antes de registrar la salida.')"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-out" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -368,13 +378,11 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
   }
 
   hasEntryToday(): boolean {
-    const rec = this.todayRecord();
-    return !!(rec && (rec.checkInTime || rec.actualFirstInAt));
+    return this.clockUseCase.employeePunchState() !== 'NONE';
   }
 
   hasExitToday(): boolean {
-    const rec = this.todayRecord();
-    return !!(rec && (rec.checkOutTime || rec.actualLastOutAt));
+    return this.clockUseCase.employeePunchState() === 'OUTSIDE';
   }
 
   async onEmployeeChange(): Promise<void> {
@@ -393,15 +401,29 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (type !== 'IN' && !this.hasEntryToday()) {
-      this.toastService.warning(
-        'Este usuario no tiene una entrada registrada. Debe marcar primero su entrada antes de registrar la salida.'
-      );
+    const state = this.clockUseCase.employeePunchState();
+
+    if (type === 'IN' && (state === 'INSIDE' || state === 'ON_BREAK')) {
+      this.toastService.warning('El colaborador ya se encuentra en turno activo.');
       return;
     }
 
-    if (type === 'OUT' && this.hasExitToday()) {
-      this.toastService.warning('Este usuario ya registró su salida del día.');
+    if (type === 'BREAK_START' && state !== 'INSIDE') {
+      this.toastService.warning('Debe registrar una entrada antes de iniciar una pausa.');
+      return;
+    }
+
+    if (type === 'BREAK_END' && state !== 'ON_BREAK') {
+      this.toastService.warning('Solo puede marcar retorno si se encuentra en pausa.');
+      return;
+    }
+
+    if (type === 'OUT' && state !== 'INSIDE') {
+      if (state === 'ON_BREAK') {
+        this.toastService.warning('Debe finalizar la pausa (marcar Retorno) antes de registrar la salida.');
+      } else {
+        this.toastService.warning('Debe marcar primero su entrada antes de registrar la salida.');
+      }
       return;
     }
 
@@ -416,13 +438,6 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
 
   async submitManualPunch(): Promise<void> {
     if (!this.selectedEmployeeId) return;
-
-    if (this.manualType !== 'IN' && !this.hasEntryToday()) {
-      this.toastService.warning(
-        'Este usuario no tiene una entrada registrada. Debe marcar primero su entrada antes de registrar la salida.'
-      );
-      return;
-    }
 
     if (this.manualNotes.trim().length < 5) return;
     const time = this.manualTime.length === 5 ? `${this.manualTime}:00` : this.manualTime;

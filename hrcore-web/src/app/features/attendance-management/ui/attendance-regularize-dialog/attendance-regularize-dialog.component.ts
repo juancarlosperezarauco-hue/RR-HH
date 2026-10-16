@@ -72,6 +72,7 @@ import { AttendanceStatusBadgeComponent } from '../attendance-status-badge/atten
               <app-attendance-status-badge
                 [status]="record.status"
                 [lateMinutes]="record.lateMinutes"
+                [checkOutTime]="record.checkOutTime"
               ></app-attendance-status-badge>
 
               <button
