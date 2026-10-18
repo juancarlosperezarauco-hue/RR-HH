@@ -25,8 +25,11 @@ public class RestorePlatformBackupUseCase {
     public BackupJobResponse execute(UUID backupId, String confirmationText, String reason) {
         String normalizedConfirmation = confirmationText == null ? "" : confirmationText.trim();
 
-        if (!CONFIRMATION_TENANT.equals(normalizedConfirmation) && !CONFIRMATION_FULL.equals(normalizedConfirmation)) {
-            throw new BackupOperationNotAllowedException("Invalid confirmation text. Expected: " + CONFIRMATION_TENANT + " or " + CONFIRMATION_FULL);
+        var source = backupApplicationService.getPlatformBackupById(backupId);
+        String expected = source.scope() == com.hrcoresystem.hrcore_api.modules.governance.backups.domain.model.BackupScope.FULL_DATABASE
+                ? CONFIRMATION_FULL : CONFIRMATION_TENANT;
+        if (!expected.equals(normalizedConfirmation)) {
+            throw new BackupOperationNotAllowedException("Confirmación inválida. Se esperaba: " + expected);
         }
 
         return backupJobMapper.toResponse(backupApplicationService.createPlatformRestoreJob(backupId, reason));
