@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AttendanceMapper {
     public AttendanceResponses.Record toResponse(AttendanceRecord v) {
-        return new AttendanceResponses.Record(v.id(), v.employeeId(), v.shiftAssignmentId(), v.workDate(),
+        return new AttendanceResponses.Record(v.id(), v.employeeId(), v.employmentPeriodId(), v.shiftAssignmentId(), v.workDate(),
                 v.expectedStartAt(), v.expectedEndAt(), v.actualFirstInAt(), v.actualLastOutAt(),
                 v.workedMinutes(), v.lateMinutes(), v.earlyDepartureMinutes(), v.status(),
                 v.calculationDetails(), v.calculatedAt(), v.createdAt(), v.updatedAt());
@@ -23,7 +23,7 @@ public class AttendanceMapper {
     }
     public AttendanceResponses.Overtime toResponse(AttendanceOvertime v) {
         return new AttendanceResponses.Overtime(v.id(), v.attendanceRecordId(), v.requestedMinutes(),
-                v.approvedMinutes(), v.reason(), v.status(), v.approvedBy(), v.approvedAt(),
+                v.approvedMinutes(), v.reason(), v.status(), v.approvedBy(), v.approvedAt(), v.requestedBy(),
                 v.createdAt(), v.updatedAt());
     }
 }

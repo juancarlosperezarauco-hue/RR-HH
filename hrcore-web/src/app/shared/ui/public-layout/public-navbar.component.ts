@@ -129,7 +129,8 @@ export class PublicNavbarComponent {
     { label: 'Beneficios', routerLink: '/', fragment: 'beneficios' },
     // { label: 'Tutoriales', routerLink: '/', fragment: 'tutoriales' },
     // { label: 'Plataforma', routerLink: '/', fragment: 'plataforma-web' },
-    // { label: 'App móvil', routerLink: '/', fragment: 'app-movil' },
+    { label: 'App móvil', routerLink: '/', fragment: 'app-movil' },
+    { label: 'Manual', routerLink: '/manual' },
     { label: 'Precios', routerLink: '/', fragment: 'precios' },
   ];
 

@@ -1,22 +1,27 @@
 package com.hrcoresystem.hrcore_api.modules.governance.backups.application.service;
 
-import com.hrcoresystem.hrcore_api.common.tenancy.maintenance.TenantMaintenanceService;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContext;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContextHolder;
+import com.hrcoresystem.hrcore_api.common.tenancy.maintenance.TenantMaintenanceService;
+import com.hrcoresystem.hrcore_api.common.tenancy.migration.TenantSchemaMigrationService;
+import com.hrcoresystem.hrcore_api.common.tenancy.validation.TenantSchemaReadinessService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.backups.domain.exception.BackupNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.governance.backups.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.governance.backups.domain.repository.BackupJobRepository;
 import com.hrcoresystem.hrcore_api.modules.governance.backups.infrastructure.engine.BackupEngine;
 import com.hrcoresystem.hrcore_api.modules.governance.backups.infrastructure.storage.BackupStorage;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.jdbc.core.JdbcTemplate;
+import com.hrcoresystem.hrcore_api.modules.governance.backups.infrastructure.storage.ChecksumService;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.OwnerPermissionSynchronizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
 import javax.sql.DataSource;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Map;
 import java.util.List;
@@ -31,21 +36,33 @@ public class BackupJobAsyncExecutor {
     private final BackupStorage storage;
     private final AuditTrailService audit;
     private final TenantMaintenanceService maintenance;
+    private final ChecksumService checksums;
+    private final TenantSchemaMigrationService migrations;
+    private final OwnerPermissionSynchronizer ownerPermissions;
+    private final TenantSchemaReadinessService readiness;
     private final JdbcTemplate jdbcTemplate;
 
     public BackupJobAsyncExecutor(
             BackupJobRepository repo,
             BackupEngine engine,
             BackupStorage storage,
+            ChecksumService checksums,
             AuditTrailService audit,
             TenantMaintenanceService maintenance,
+            TenantSchemaMigrationService migrations,
+            OwnerPermissionSynchronizer ownerPermissions,
+            TenantSchemaReadinessService readiness,
             @Qualifier("targetDataSource") DataSource targetDataSource
     ) {
         this.repo = repo;
         this.engine = engine;
         this.storage = storage;
+        this.checksums = checksums;
         this.audit = audit;
         this.maintenance = maintenance;
+        this.migrations = migrations;
+        this.ownerPermissions = ownerPermissions;
+        this.readiness = readiness;
         this.jdbcTemplate = new JdbcTemplate(targetDataSource);
     }
 
@@ -73,66 +90,57 @@ public class BackupJobAsyncExecutor {
         BackupJob restore = null;
         try {
             restore = get(id);
-            BackupJob source = restore.sourceBackupId() != null
-                    ? repo.findById(restore.sourceBackupId())
-                        .orElseThrow(() -> new BackupNotFoundException("Source backup not found"))
-                    : restore;
-
+            BackupJob source = restore.sourceBackupId() == null
+                    ? restore
+                    : repo.findById(restore.sourceBackupId()).orElseThrow(() -> new BackupNotFoundException("Backup original no encontrado"));
             BackupJob running = status(restore, BackupStatus.RESTORING, null, Instant.now(), null);
             record(running, BackupAuditEventTypes.RESTORE_STARTED, null);
-            Path src = storage.resolvePath(source.storagePath());
-            String restoreOutput = null;
-            Exception postRestoreIssue = null;
-
-            if (running.scope() == BackupScope.TENANT_SCHEMA) {
-                maintenance.enableMaintenance(running.tenantSlug(), "Restoring backup " + source.id());
-                try {
-                    restoreOutput = engine.restoreSchema(running.schemaName(), src);
-                } finally {
-                    try {
-                        maintenance.disableMaintenance(running.tenantSlug());
-                    } catch (Exception maintenanceError) {
-                        log.warn(
-                                "Tenant restore applied, but maintenance disable failed. tenantSlug={}, error={}",
-                                running.tenantSlug(),
-                                maintenanceError.getMessage(),
-                                maintenanceError
-                        );
-                        postRestoreIssue = maintenanceError;
-                    }
-                }
-
-            } else {
-                prepareForFullDatabaseRestore();
-                restoreOutput = engine.restoreFullDatabase(src);
-
+            Path file = storage.resolvePath(source.storagePath());
+            if (!Files.isRegularFile(file)) throw new com.hrcoresystem.hrcore_api.modules.governance.backups.domain.exception.BackupExecutionException("El archivo del respaldo no existe");
+            if (source.checksumSha256() != null && !source.checksumSha256().isBlank()) {
+                String actualHash = checksums.sha256(file);
+                if (!source.checksumSha256().equalsIgnoreCase(actualHash)) throw new com.hrcoresystem.hrcore_api.modules.governance.backups.domain.exception.BackupExecutionException("Checksum SHA-256 del respaldo no coincide");
             }
-
-            boolean hasWarnings = restoreOutput != null || postRestoreIssue != null;
-            String warningMessage = buildWarningMessage(restoreOutput, postRestoreIssue);
-
-            BackupJob done = status(
-                    get(id),
-                    hasWarnings ? BackupStatus.RESTORED_WITH_WARNINGS : BackupStatus.RESTORED,
-                    warningMessage,
-                    null,
-                    Instant.now()
-            );
-            record(done, BackupAuditEventTypes.RESTORE_COMPLETED, warningMessage);
+            engine.validateArchive(file, running.scope(), running.schemaName());
+            if (running.scope() == BackupScope.TENANT_SCHEMA) restoreTenant(running, file);
+            else {
+                // Los tenants mantienen FKs hacia public.system_permissions. Deben
+                // retirarse antes de que pg_restore --clean limpie el esquema public.
+                dropTenantSchemasBeforeFullRestore();
+                engine.restoreFullDatabase(file);
+            }
+            BackupJob done = status(get(id), BackupStatus.RESTORED, null, null, Instant.now());
+            record(done, BackupAuditEventTypes.RESTORE_COMPLETED, null);
+            log.info("[RESTORE_UPLOAD] restore completed jobId={}, scope={}, fileName={}", done.id(), done.scope(), done.fileName());
         } catch (Exception e) {
             log.error("Restore job failed: {}", id, e);
-            if (restore != null && restore.tenantSlug() != null) {
-                try {
-                    maintenance.disableMaintenance(restore.tenantSlug());
-                } catch (Exception maintenanceError) {
-                    log.warn("Unable to disable maintenance after restore failure for tenant '{}': {}", restore.tenantSlug(), maintenanceError.getMessage(), maintenanceError);
-                }
-            }
             repo.findById(id).ifPresent(job -> {
                 String failureReason = safeMessage(e);
                 BackupJob failed = status(job, BackupStatus.RESTORE_FAILED, failureReason, null, Instant.now());
                 record(failed, BackupAuditEventTypes.RESTORE_FAILED, failureReason);
             });
+        }
+    }
+
+    private void restoreTenant(BackupJob running, Path file) {
+        maintenance.enableMaintenance(running.tenantSlug(), "Restaurando backup " + running.id());
+        engine.restoreSchema(running.schemaName(), file);
+        migrations.migrateSchema(running.schemaName());
+        ownerPermissions.synchronizeTenant(running.schemaName());
+        readiness.assertTenantOperational(running.schemaName(), running.tenantSlug());
+        maintenance.disableMaintenance(running.tenantSlug());
+    }
+
+    private void dropTenantSchemasBeforeFullRestore() {
+        List<String> schemas = jdbcTemplate.queryForList(
+                "SELECT schema_name FROM information_schema.schemata "
+                        + "WHERE schema_name LIKE 'tenant\\_%' ESCAPE '\\'",
+                String.class
+        );
+        for (String schema : schemas) {
+            if (schema != null && schema.matches("^[a-zA-Z0-9_]+$")) {
+                jdbcTemplate.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
+            }
         }
     }
 
@@ -169,74 +177,6 @@ public class BackupJobAsyncExecutor {
                 TenantContextHolder.set(previous);
             }
         }
-    }
-
-    private void prepareForFullDatabaseRestore() {
-        dropBackupJobsTenantForeignKey();
-
-        List<String> tenantSchemas = jdbcTemplate.queryForList(
-                """
-                SELECT schema_name
-                FROM public.platform_tenants
-                WHERE schema_name IS NOT NULL
-                  AND schema_name LIKE 'tenant\\_%' ESCAPE '\\'
-                """,
-                String.class
-        );
-
-        for (String schemaName : tenantSchemas) {
-            dropSchema(schemaName);
-        }
-    }
-
-    private void dropBackupJobsTenantForeignKey() {
-        jdbcTemplate.execute(
-                """
-                ALTER TABLE public.backup_jobs
-                    DROP CONSTRAINT IF EXISTS backup_jobs_tenant_id_fkey
-                """
-        );
-    }
-
-    private void dropSchema(String schemaName) {
-        if (schemaName == null || !schemaName.matches("^[a-zA-Z0-9_]+$")) {
-            log.warn("Skipping invalid tenant schema name during full restore cleanup: {}", schemaName);
-            return;
-        }
-
-        jdbcTemplate.execute("DROP SCHEMA IF EXISTS " + schemaName + " CASCADE");
-    }
-
-    private String buildWarningMessage(String restoreOutput, Exception postRestoreIssue) {
-        StringBuilder builder = new StringBuilder();
-
-        if (restoreOutput != null) {
-            builder.append("Restore completed with pg_restore warnings.");
-
-            if (!restoreOutput.isBlank()) {
-                builder.append(" Output: ").append(restoreOutput);
-            }
-        }
-
-        if (postRestoreIssue != null) {
-            if (builder.length() > 0) {
-                builder.append(" | ");
-            }
-
-            builder.append("Post-restore task warning: ")
-                    .append(safeMessage(postRestoreIssue));
-        }
-
-        if (builder.length() == 0) {
-            return null;
-        }
-
-        String value = builder.toString();
-        if (value.length() <= 3500) {
-            return value;
-        }
-
-        return value.substring(0, 3500) + "... [truncated]";
     }
 
     private String safeMessage(Exception exception) {

@@ -29,10 +29,14 @@ class ShiftControllerPermissionsTest {
                 Map.entry("createBreak", "shifts.breaks.create"), Map.entry("listBreaks", "shifts.breaks.list"),
                 Map.entry("detailBreak", "shifts.breaks.detail"), Map.entry("updateBreak", "shifts.breaks.update"),
                 Map.entry("deleteBreak", "shifts.breaks.delete")));
-        assertProtected(ShiftAssignmentController.class, Map.of(
-                "create", "shifts.assignments.create", "list", "shifts.assignments.list",
-                "detail", "shifts.assignments.detail", "update", "shifts.assignments.update",
-                "cancel", "shifts.assignments.cancel", "close", "shifts.assignments.close"));
+        assertProtected(ShiftAssignmentController.class, Map.ofEntries(
+                Map.entry("create", "shifts.assignments.create"),
+                Map.entry("createBatch", "shifts.assignments.create"),
+                Map.entry("list", "shifts.assignments.list"),
+                Map.entry("detail", "shifts.assignments.detail"),
+                Map.entry("update", "shifts.assignments.update"),
+                Map.entry("cancel", "shifts.assignments.cancel"),
+                Map.entry("close", "shifts.assignments.close")));
         assertProtected(WorkCalendarExceptionController.class, Map.of(
                 "create", "shifts.calendar.create", "list", "shifts.calendar.list",
                 "detail", "shifts.calendar.detail", "update", "shifts.calendar.update",

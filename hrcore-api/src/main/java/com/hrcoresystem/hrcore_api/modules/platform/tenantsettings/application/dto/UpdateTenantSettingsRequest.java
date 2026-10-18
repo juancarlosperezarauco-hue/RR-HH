@@ -25,6 +25,9 @@ public record UpdateTenantSettingsRequest(
         String contactEmail,
 
         @Size(max = 50)
-        String contactPhone
+        String contactPhone,
+        @Size(max = 2) String country,
+        @Size(max = 500) String address,
+        @Size(max = 50) String taxIdentifier
 ) {
 }

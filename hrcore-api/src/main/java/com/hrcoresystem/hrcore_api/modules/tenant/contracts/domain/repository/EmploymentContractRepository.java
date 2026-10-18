@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 public interface EmploymentContractRepository {
     EmploymentContract save(EmploymentContract contract);
@@ -15,4 +16,6 @@ public interface EmploymentContractRepository {
     boolean existsContractNumberOtherThan(String number, UUID id);
     boolean existsOverlappingActive(UUID employeeId, UUID exceptId, LocalDate startDate, LocalDate endDate);
     boolean existsRenewal(UUID sourceContractId);
+    List<EmploymentContract> findExpiredBatchForUpdate(LocalDate today);
+    List<EmploymentContract> findAllByEmployeeIdForUpdate(UUID employeeId);
 }

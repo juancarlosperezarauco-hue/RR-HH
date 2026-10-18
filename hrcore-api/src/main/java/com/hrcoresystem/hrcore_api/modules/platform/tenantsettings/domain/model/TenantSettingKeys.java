@@ -8,6 +8,17 @@ public final class TenantSettingKeys {
     public static final String COMPANY_CURRENCY = "company.currency";
     public static final String COMPANY_CONTACT_EMAIL = "company.contact_email";
     public static final String COMPANY_CONTACT_PHONE = "company.contact_phone";
+    public static final String COMPANY_COUNTRY = "company.country";
+    public static final String COMPANY_ADDRESS = "company.address";
+    public static final String COMPANY_TAX_IDENTIFIER = "company.tax_identifier";
+    public static final String HR_SETUP_COMPLETED = "hr.setup_completed";
+    public static final String ATTENDANCE_EMPLOYEE_WEB_PUNCH_ENABLED = "attendance.employee_web_punch_enabled";
+    public static final String ATTENDANCE_GEOLOCATION_REQUIRED = "attendance.geolocation_required";
+    public static final String ATTENDANCE_BREAK_PUNCH_REQUIRED = "attendance.break_punch_required";
+    public static final String ATTENDANCE_DAILY_PROCESSING_ENABLED = "attendance.daily_processing_enabled";
+    public static final String ATTENDANCE_ADJUSTMENT_APPROVAL_REQUIRED = "attendance.adjustment_approval_required";
+    public static final String LEAVE_SELF_SERVICE_ENABLED = "leave.self_service_enabled";
+    public static final String LEAVE_SUPERVISOR_APPROVAL_ENABLED = "leave.supervisor_approval_enabled";
 
     private TenantSettingKeys() {
     }

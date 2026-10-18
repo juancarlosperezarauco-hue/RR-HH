@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface NotificationJpaRepository extends JpaRepository<NotificationEntity, UUID> {
+    boolean existsByUserIdAndActionUrl(UUID userId, String actionUrl);
 
     @Query(value = """
             SELECT *

@@ -6,12 +6,20 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import org.springframework.data.domain.Pageable;
 
 public interface EmploymentContractJpaRepository extends JpaRepository<EmploymentContractEntity, UUID>,
         JpaSpecificationExecutor<EmploymentContractEntity> {
     boolean existsByContractNumber(String contractNumber);
     boolean existsByContractNumberAndIdNot(String contractNumber, UUID id);
     boolean existsByRenewedFromContractId(UUID renewedFromContractId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from EmploymentContractEntity c where c.status = com.hrcoresystem.hrcore_api.modules.tenant.contracts.domain.model.ContractStatus.ACTIVE and c.endDate is not null and c.endDate < :today order by c.id")
+    List<EmploymentContractEntity> findExpiredBatch(@Param("today") LocalDate today, Pageable pageable);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from EmploymentContractEntity c where c.employeeId=:employeeId order by c.id")
+    List<EmploymentContractEntity> findAllByEmployeeIdForUpdate(@Param("employeeId") UUID employeeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from EmploymentContractEntity c where c.id = :id")

@@ -55,7 +55,6 @@ export interface ShiftResponse {
  * POST /api/shifts & PUT /api/shifts/{id}
  */
 export interface WorkShiftRequest {
-  code: string;
   name: string;
   description?: string;
   startTime: string;
@@ -69,7 +68,6 @@ export interface WorkShiftRequest {
  * Request compatible con los formularios y modales actuales de UI
  */
 export interface CreateShiftRequest {
-  code: string;
   name: string;
   description?: string;
   startTime: string;
@@ -85,5 +83,5 @@ export interface CreateShiftRequest {
   breakMinutes: number;
   gracePeriodMinutes: number;
   isOvernight: boolean;
-  workDays: number[]; // [1, 2, 3, 4, 5]
+  workDays?: number[]; // Se define al asignar el turno a un empleado.
 }

@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS employee_incidents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     employee_id UUID NOT NULL,
+    employment_period_id UUID NOT NULL,
 
     incident_number VARCHAR(80) NOT NULL,
 
@@ -62,6 +63,10 @@ CREATE TABLE IF NOT EXISTS employee_incidents (
         FOREIGN KEY (employee_id)
         REFERENCES employees(id)
         ON DELETE RESTRICT,
+
+    CONSTRAINT fk_employee_incidents_period_employee
+        FOREIGN KEY (employment_period_id,employee_id)
+        REFERENCES employment_periods(id,employee_id) ON DELETE RESTRICT,
 
     CONSTRAINT fk_employee_incidents_reported_by
         FOREIGN KEY (reported_by)
@@ -282,3 +287,33 @@ CREATE TABLE IF NOT EXISTS incident_history (
 CREATE INDEX IF NOT EXISTS idx_incident_history_incident
     ON incident_history(incident_id, created_at DESC);
 
+
+
+
+-- El instante del incidente se interpreta en la zona IANA de la empresa.
+CREATE FUNCTION bind_incident_employment_period()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE company_zone TEXT; incident_day DATE; inferred_period UUID;
+BEGIN
+    SELECT setting_value INTO company_zone FROM tenant_settings
+     WHERE setting_key='company.timezone';
+    IF company_zone IS NULL OR BTRIM(company_zone)='' THEN
+        RAISE EXCEPTION 'Company timezone is required for incidents' USING ERRCODE='23514';
+    END IF;
+    incident_day := (NEW.occurred_at AT TIME ZONE company_zone)::DATE;
+    SELECT id INTO inferred_period FROM employment_periods
+      WHERE employee_id=NEW.employee_id AND start_date <= incident_day
+        AND (end_date IS NULL OR end_date >= incident_day);
+    IF inferred_period IS NULL THEN
+        RAISE EXCEPTION 'Incident date is outside employment periods' USING ERRCODE='23514';
+    END IF;
+    IF NEW.employment_period_id IS NOT NULL AND NEW.employment_period_id<>inferred_period THEN
+        RAISE EXCEPTION 'Incident belongs to a different employment period' USING ERRCODE='23514';
+    END IF;
+    NEW.employment_period_id:=inferred_period;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_bind_incident_period
+BEFORE INSERT OR UPDATE OF employee_id, employment_period_id, occurred_at ON employee_incidents
+FOR EACH ROW EXECUTE FUNCTION bind_incident_employment_period();
+CREATE INDEX idx_employee_incidents_period ON employee_incidents(employment_period_id);

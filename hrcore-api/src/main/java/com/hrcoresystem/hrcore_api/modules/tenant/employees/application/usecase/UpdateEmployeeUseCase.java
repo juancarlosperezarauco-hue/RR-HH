@@ -22,7 +22,7 @@ public class UpdateEmployeeUseCase {
     public EmployeeResponse execute(UUID id, EmployeeRequest request) {
         policy.assertOperational();
         Employee before = policy.requireForUpdate(id);
-        Employee after = policy.normalized(id, request, before, policy.actorId());
+        Employee after = policy.normalized(id, before.employeeNumber(), request, before, policy.actorId());
         List<String> changed = policy.changedFields(before, after);
         if (changed.isEmpty()) return mapper.toResponse(before);
         Employee saved = employees.save(after);

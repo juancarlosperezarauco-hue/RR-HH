@@ -9,6 +9,7 @@ import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.model.TenantSetting;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.model.TenantSettingKeys;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.repository.TenantSettingRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -16,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class TenantShiftClockTest {
     private final TenantSettingRepository settings = mock(TenantSettingRepository.class);
-    private final TenantShiftClock clock = new TenantShiftClock(settings);
+    private final TenantShiftClock clock = new TenantShiftClock(new TenantTimezoneService(settings));
 
     @Test
     void requiresConfiguredIanaZone() {

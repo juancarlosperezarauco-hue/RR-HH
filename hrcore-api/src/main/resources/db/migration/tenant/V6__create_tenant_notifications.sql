@@ -1,4 +1,3 @@
-
 -- ============================================================
 -- V6__create_tenant_notifications.sql
 -- HRCore - Sistema de notificaciones por tenant
@@ -263,3 +262,4 @@ CREATE TABLE IF NOT EXISTS tenant_notification_templates (
 
 CREATE INDEX IF NOT EXISTS idx_tenant_notification_templates_type
     ON tenant_notification_templates(type);
+

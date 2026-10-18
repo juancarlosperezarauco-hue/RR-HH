@@ -12,6 +12,7 @@ import lombok.Setter;
 public class LeaveRequestEntity {
     @Id private UUID id;
     @Column(name = "employee_id", nullable = false) private UUID employeeId;
+    @Column(name = "employment_period_id", nullable = false, updatable = false) private UUID employmentPeriodId;
     @Column(name = "leave_type_id", nullable = false) private UUID leaveTypeId;
     @Column(name = "start_date", nullable = false) private LocalDate startDate;
     @Column(name = "end_date", nullable = false) private LocalDate endDate;

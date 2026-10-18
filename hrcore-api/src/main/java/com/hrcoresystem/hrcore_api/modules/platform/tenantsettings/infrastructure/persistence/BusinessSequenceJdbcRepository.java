@@ -1,0 +1,3 @@
+package com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.infrastructure.persistence;
+import org.springframework.jdbc.core.JdbcTemplate; import org.springframework.stereotype.Repository;
+@Repository public class BusinessSequenceJdbcRepository { private final JdbcTemplate jdbc; public BusinessSequenceJdbcRepository(JdbcTemplate jdbc){this.jdbc=jdbc;} public long nextValue(String key){Long value=jdbc.queryForObject("INSERT INTO business_sequences(sequence_key,last_value,updated_at) VALUES (?,1,NOW()) ON CONFLICT(sequence_key) DO UPDATE SET last_value=business_sequences.last_value+1,updated_at=NOW() RETURNING last_value",Long.class,key); if(value==null) throw new IllegalStateException("No se pudo reservar la secuencia"); return value;} }

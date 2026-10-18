@@ -1,6 +1,7 @@
 export type DepartmentStatus = 'ACTIVE' | 'INACTIVE';
 export interface DepartmentRequest {
-  code: string;
+  /** Deprecated: el backend genera el código automáticamente. */
+  code?: string;
   name: string;
   description: string | null;
   parentDepartmentId: string | null;
@@ -8,13 +9,23 @@ export interface DepartmentRequest {
   costCenterCode: string | null;
   reason: string | null;
 }
-export interface Department extends Omit<DepartmentRequest, 'reason'> {
+export interface Department extends Omit<DepartmentRequest, 'reason' | 'code'> {
   id: string;
+  code: string;
   status: DepartmentStatus;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+}
+export interface DepartmentTreeNode {
+  id: string;
+  code: string;
+  name: string;
+  status: DepartmentStatus;
+  parentDepartmentId: string | null;
+  managerEmployeeId: string | null;
+  children: DepartmentTreeNode[];
 }
 export interface DepartmentHistory {
   id: string;

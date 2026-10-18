@@ -24,6 +24,7 @@ public class EmployeeDepartmentAtDateRepositoryAdapter implements EmployeeDepart
                 FROM employee_assignments
                 WHERE employee_id = ? AND start_date <= ?
                   AND (end_date IS NULL OR end_date >= ?)
+                  AND assignment_status = 'ACTIVE'
                 """, (rs, rowNum) -> new Placement(
                 rs.getObject("department_id", UUID.class),
                 "PRIMARY".equals(rs.getString("assignment_type"))), employeeId, date, date);

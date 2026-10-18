@@ -6,6 +6,10 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.usecase.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.*;
+import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.repository.EmployeeFileRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.application.service.EmployeeFileProvisioningService;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -30,9 +34,11 @@ class EmployeeUseCasesTest {
         Employee e = employee(EmploymentStatus.ACTIVE);
         EmployeeRequest request = request();
         when(employees.actorId()).thenReturn(UUID.randomUUID());
-        when(employees.normalized(eq(null), eq(request), eq(null), any())).thenReturn(e);
+        when(employees.normalized(eq(null), anyString(), eq(request), eq(null), any())).thenReturn(e);
         when(repository.save(e)).thenReturn(e);
-        assertEquals(e.id(), new CreateEmployeeUseCase(repository, employees, audit, mapper).execute(request).id());
+        BusinessSequenceService sequences = mock(BusinessSequenceService.class);
+        when(sequences.nextCode("employee")).thenReturn("EMP-000001");
+        assertEquals(e.id(), new CreateEmployeeUseCase(repository, employees, audit, mapper, sequences, mock(EmployeeFileProvisioningService.class)).execute(request).id());
         verify(audit).record("EMPLOYEE", "CREATED", e.id(), List.of());
         var page = PageRequest.of(1, 5);
         var filter = new EmployeeFilter("Ana", null, null, null, null);
@@ -45,7 +51,7 @@ class EmployeeUseCasesTest {
         Employee e = employee(EmploymentStatus.ACTIVE);
         when(employees.requireForUpdate(e.id())).thenReturn(e);
         when(employees.actorId()).thenReturn(UUID.randomUUID());
-        when(employees.normalized(eq(e.id()), eq(request()), eq(e), any())).thenReturn(e);
+        when(employees.normalized(eq(e.id()), eq(e.employeeNumber()), eq(request()), eq(e), any())).thenReturn(e);
         when(employees.changedFields(e, e)).thenReturn(List.of());
         new UpdateEmployeeUseCase(repository, employees, audit, mapper).execute(e.id(), request());
         new ChangeEmployeeStatusUseCase(repository, employees, audit, mapper).execute(e.id(), EmploymentStatus.ACTIVE);
@@ -72,6 +78,34 @@ class EmployeeUseCasesTest {
         new DeleteEmployeeContactUseCase(contacts, employees, contactPolicy, audit).execute(e.id(), contactId);
         verify(contacts).delete(contact);
         verify(audit).record("EMPLOYEE_CONTACT", "DELETED", contactId, List.of());
+    }
+
+    @Test void onboardingCreatesEmployeeAndItsInitialAssignmentAsOneUseCase() {
+        CreateEmployeeUseCase createEmployee = mock(CreateEmployeeUseCase.class);
+        CreateEmployeeAssignmentUseCase createAssignment = mock(CreateEmployeeAssignmentUseCase.class);
+        EmployeeFileRepository files = mock(EmployeeFileRepository.class);
+        EmployeeRequest employeeRequest = request();
+        EmployeeAssignmentRequest assignmentRequest = new EmployeeAssignmentRequest(
+                UUID.randomUUID(), UUID.randomUUID(), null, employeeRequest.hireDate(), null,
+                AssignmentType.PRIMARY, "Initial assignment");
+        UUID employeeId = UUID.randomUUID();
+        EmployeeResponse employeeResponse = new EmployeeResponse(employeeId, null, "E-1", "Ana", null,
+                "Rojas", null, "CI", "123", null, null, null, null, null, null, null,
+                null, employeeRequest.hireDate(), null, EmploymentStatus.ACTIVE, null, null);
+        EmployeeAssignmentResponse assignmentResponse = new EmployeeAssignmentResponse(UUID.randomUUID(),
+                employeeId, assignmentRequest.departmentId(), assignmentRequest.positionId(), null,
+                assignmentRequest.startDate(), null, AssignmentType.PRIMARY, "Initial assignment", null, null);
+        when(createEmployee.execute(employeeRequest)).thenReturn(employeeResponse);
+        when(createAssignment.execute(employeeId, assignmentRequest)).thenReturn(assignmentResponse);
+
+        when(files.findByEmployeeId(employeeId)).thenReturn(Optional.of(mock(com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.model.EmployeeFile.class)));
+        var result = new CreateEmployeeWithAssignmentUseCase(createEmployee, createAssignment, files)
+                .execute(new EmployeeOnboardingRequest(employeeRequest, assignmentRequest));
+
+        assertEquals(employeeId, result.employee().id());
+        assertEquals(employeeId, result.assignment().employeeId());
+        verify(createEmployee).execute(employeeRequest);
+        verify(createAssignment).execute(employeeId, assignmentRequest);
     }
 
     private EmployeeRequest request() {

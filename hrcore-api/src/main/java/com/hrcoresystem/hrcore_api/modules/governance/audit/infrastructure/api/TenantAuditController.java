@@ -24,7 +24,7 @@ public class TenantAuditController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('audit.events.read')")
+    @PreAuthorize("hasAuthority('audit.events.read') and @tenantOwnershipGuard.isCurrentOwner()")
     public ApiResponse<Page<AuditEventResponse>> listTenantAuditEvents(
             @ParameterObject @PageableDefault(size = 50) Pageable pageable
     ) {

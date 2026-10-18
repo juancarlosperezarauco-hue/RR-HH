@@ -7,6 +7,7 @@ import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.model.TenantSetting;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.model.TenantSettingKeys;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.repository.TenantSettingRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import java.time.*;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,7 @@ class AttendanceZoneTest {
     @Test
     void requiresIanaZoneAndRejectsDstGapsAndOverlaps() {
         TenantSettingRepository settings = mock(TenantSettingRepository.class);
-        AttendanceZone zone = new AttendanceZone(settings);
+        AttendanceZone zone = new AttendanceZone(new TenantTimezoneService(settings));
         assertThrows(BusinessException.class, zone::required);
         when(settings.findByKey(TenantSettingKeys.COMPANY_TIMEZONE)).thenReturn(Optional.of(
                 new TenantSetting(null, TenantSettingKeys.COMPANY_TIMEZONE, "America/New_York", null, null)));

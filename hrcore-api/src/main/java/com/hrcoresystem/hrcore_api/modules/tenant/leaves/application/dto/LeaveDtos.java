@@ -18,9 +18,14 @@ public final class LeaveDtos {
             TypeStatus status, Instant createdAt, Instant updatedAt) { }
 
     public record BalanceInput(@NotNull UUID employeeId, @NotNull UUID leaveTypeId,
-            @NotNull Integer balanceYear, @NotNull BigDecimal openingDays) { }
+            @NotNull Integer balanceYear, @NotNull BigDecimal openingDays,
+            @NotNull UUID employmentPeriodId) {
+        public BalanceInput(UUID employeeId, UUID leaveTypeId, Integer balanceYear, BigDecimal openingDays) {
+            this(employeeId, leaveTypeId, balanceYear, openingDays, null);
+        }
+    }
     public record BalanceAdjustment(@NotNull BigDecimal deltaDays, @NotBlank String reason) { }
-    public record BalanceResponse(UUID id, UUID employeeId, UUID leaveTypeId, int balanceYear,
+    public record BalanceResponse(UUID id, UUID employeeId, UUID employmentPeriodId, UUID leaveTypeId, int balanceYear,
             BigDecimal openingDays, BigDecimal accruedDays, BigDecimal usedDays,
             BigDecimal adjustedDays, BigDecimal pendingDays, BigDecimal availableDays,
             Instant updatedAt) { }
@@ -28,7 +33,9 @@ public final class LeaveDtos {
     public record RequestInput(@NotNull UUID employeeId, @NotNull UUID leaveTypeId,
             @NotNull LocalDate startDate, @NotNull LocalDate endDate,
             LocalTime startTime, LocalTime endTime, @NotBlank String reason) { }
-    public record RequestResponse(UUID id, UUID employeeId, UUID leaveTypeId,
+    public record SelfRequestInput(@NotNull UUID leaveTypeId, @NotNull LocalDate startDate,
+            @NotNull LocalDate endDate, LocalTime startTime, LocalTime endTime, @NotBlank String reason) { }
+    public record RequestResponse(UUID id, UUID employeeId, UUID employmentPeriodId, UUID leaveTypeId,
             LocalDate startDate, LocalDate endDate, LocalTime startTime, LocalTime endTime,
             BigDecimal requestedDays, String reason, RequestStatus status, UUID requestedBy,
             Instant submittedAt, UUID reviewedBy, Instant reviewedAt, String reviewComment,

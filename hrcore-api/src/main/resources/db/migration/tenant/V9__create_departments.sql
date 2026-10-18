@@ -127,3 +127,55 @@ CREATE TABLE IF NOT EXISTS department_history (
 CREATE INDEX IF NOT EXISTS idx_department_history_department
     ON department_history(department_id, created_at DESC);
 
+
+
+
+-- Prohíbe ciclos de varios niveles. Se serializan las ediciones jerárquicas
+-- incluso si dos sesiones modifican distintos departamentos en paralelo.
+CREATE FUNCTION reject_department_parent_cycle()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE cycle_found BOOLEAN;
+BEGIN
+    IF NEW.parent_department_id IS NULL THEN RETURN NEW; END IF;
+    PERFORM pg_advisory_xact_lock(hashtext(TG_TABLE_SCHEMA), 9142026);
+    WITH RECURSIVE ancestors(id, parent_department_id, visited) AS (
+        SELECT d.id, d.parent_department_id, ARRAY[d.id]
+          FROM departments d WHERE d.id = NEW.parent_department_id
+        UNION ALL
+        SELECT d.id, d.parent_department_id, a.visited || d.id
+          FROM departments d JOIN ancestors a ON d.id = a.parent_department_id
+         WHERE NOT (d.id = ANY(a.visited))
+    )
+    SELECT EXISTS(SELECT 1 FROM ancestors WHERE id = NEW.id) INTO cycle_found;
+    IF cycle_found THEN
+        RAISE EXCEPTION 'Department hierarchy would contain a cycle' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_reject_department_parent_cycle
+BEFORE INSERT OR UPDATE OF parent_department_id ON departments
+FOR EACH ROW EXECUTE FUNCTION reject_department_parent_cycle();
+
+CREATE FUNCTION validate_department_hierarchy_status()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE parent_status VARCHAR(20);
+BEGIN
+    PERFORM pg_advisory_xact_lock(hashtext(TG_TABLE_SCHEMA), 9142026);
+    IF NEW.status='ACTIVE' AND NEW.parent_department_id IS NOT NULL THEN
+        SELECT status INTO parent_status FROM departments WHERE id=NEW.parent_department_id;
+        IF parent_status IS DISTINCT FROM 'ACTIVE' THEN
+            RAISE EXCEPTION 'Active department requires active parent' USING ERRCODE='23514';
+        END IF;
+    END IF;
+    IF NEW.status='INACTIVE' AND EXISTS (
+        SELECT 1 FROM departments child WHERE child.parent_department_id=NEW.id AND child.status='ACTIVE'
+    ) THEN
+        RAISE EXCEPTION 'Department with active children cannot be deactivated' USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_validate_department_hierarchy_status
+BEFORE INSERT OR UPDATE OF status,parent_department_id ON departments
+FOR EACH ROW EXECUTE FUNCTION validate_department_hierarchy_status();
+
+

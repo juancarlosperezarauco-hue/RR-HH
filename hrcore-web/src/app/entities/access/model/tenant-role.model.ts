@@ -1,8 +1,11 @@
+export type TenantRoleType = 'ROOT' | 'INTERNAL';
+
 export interface TenantRoleResponse {
   id: string;
   code: string;
   name: string;
   description: string | null;
+  roleType: TenantRoleType;
   systemRole: boolean;
   active: boolean;
   createdAt: string;
@@ -11,7 +14,6 @@ export interface TenantRoleResponse {
 }
 
 export interface CreateTenantRoleRequest {
-  code: string;
   name: string;
   description?: string | null;
   permissionCodes: string[];

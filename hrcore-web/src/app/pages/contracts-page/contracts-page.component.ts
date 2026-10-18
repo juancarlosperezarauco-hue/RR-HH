@@ -81,7 +81,7 @@ export class ContractsPageComponent implements OnInit {
   openRenew(contract: EmploymentContract): void {
     this.formMode.set('renew'); this.selected.set(contract);
     const nextStart = contract.endDate ? this.addDay(contract.endDate) : '';
-    this.form = { ...this.fromContract(contract), contractNumber: `${contract.contractNumber}-R1`, startDate: nextStart, endDate: null };
+    this.form = { ...this.fromContract(contract), startDate: nextStart, endDate: null };
     this.renewalReason = 'Continuidad de la relación laboral';
     this.loadAssignments(contract.employeeId, contract.employeeAssignmentId);
     this.showForm.set(true);
@@ -104,8 +104,8 @@ export class ContractsPageComponent implements OnInit {
   }
 
   save(): void {
-    if (!this.form.employeeId || !this.form.employeeAssignmentId || !this.form.contractNumber || !this.form.startDate) {
-      this.toast.warning('Complete empleado, asignación, número y fecha de inicio.'); return;
+    if (!this.form.employeeId || !this.form.employeeAssignmentId || !this.form.startDate) {
+      this.toast.warning('Complete empleado, asignación y fecha de inicio.'); return;
     }
     if (this.form.contractType !== 'INDEFINITE' && !this.form.endDate) {
       this.toast.warning('Este tipo de contrato requiere fecha de finalización.'); return;
@@ -141,8 +141,8 @@ export class ContractsPageComponent implements OnInit {
     if (target === 'TERMINATED') {
       reason = window.prompt('Motivo de terminación del contrato:')?.trim() || null;
       if (!reason) return;
-      effectiveDate = window.prompt('Fecha efectiva (AAAA-MM-DD):', new Date().toISOString().slice(0, 10)) || null;
-      if (!effectiveDate) return;
+      // El backend solo permite terminar en la fecha empresarial actual.
+      effectiveDate = new Date().toISOString().slice(0, 10);
     }
     const label = this.statusLabel(target);
     if (!window.confirm(`¿Confirmar cambio del contrato ${contract.contractNumber} a ${label}?`)) return;
@@ -204,14 +204,14 @@ export class ContractsPageComponent implements OnInit {
     return ({ ACTIVE: 'bg-emerald-100 text-emerald-800', PENDING_SIGNATURE: 'bg-amber-100 text-amber-800', DRAFT: 'bg-slate-100 text-slate-700', EXPIRED: 'bg-orange-100 text-orange-800', TERMINATED: 'bg-red-100 text-red-800', CANCELLED: 'bg-zinc-100 text-zinc-600' })[status];
   }
   private emptyForm(): ContractRequest {
-    return { employeeId: '', employeeAssignmentId: '', contractNumber: '', contractType: 'FIXED_TERM',
+    return { employeeId: '', employeeAssignmentId: '', contractType: 'FIXED_TERM',
       contractForm: 'WRITTEN', workSchedule: 'FULL_TIME', workModality: 'ONSITE', startDate: '', endDate: null,
       baseSalary: 0, currency: 'BOB', paymentFrequency: 'MONTHLY', weeklyHours: 48,
       probationEndDate: null, terms: null };
   }
   private fromContract(c: EmploymentContract): ContractRequest {
     return { employeeId: c.employeeId, employeeAssignmentId: c.employeeAssignmentId,
-      contractNumber: c.contractNumber, contractType: c.contractType, contractForm: c.contractForm,
+      contractType: c.contractType, contractForm: c.contractForm,
       workSchedule: c.workSchedule, workModality: c.workModality, startDate: c.startDate,
       endDate: c.endDate, baseSalary: c.baseSalary, currency: c.currency,
       paymentFrequency: c.paymentFrequency, weeklyHours: c.weeklyHours,
@@ -219,8 +219,8 @@ export class ContractsPageComponent implements OnInit {
   }
   private addDay(date: string): string { const d = new Date(`${date}T12:00:00`); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
   private handleError(error: unknown, fallback: string): void {
-    const message = error instanceof HttpErrorResponse
-      ? (error.error?.message || error.error?.error || fallback) : fallback;
+    const body = error instanceof HttpErrorResponse ? error.error : null;
+    const message = body?.errors?.[0] || body?.message || body?.error || fallback;
     this.toast.error(String(message));
   }
 }

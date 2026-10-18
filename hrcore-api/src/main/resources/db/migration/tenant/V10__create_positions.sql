@@ -82,8 +82,8 @@ CREATE TABLE IF NOT EXISTS positions (
 
     CONSTRAINT chk_positions_currency
         CHECK (
-            currency IS NULL
-            OR currency ~ '^[A-Z]{3}$'
+            (currency IS NULL AND salary_min IS NULL AND salary_max IS NULL)
+            OR (currency IS NOT NULL AND currency ~ '^[A-Z]{3}$')
         ),
 
     CONSTRAINT chk_positions_code_not_blank

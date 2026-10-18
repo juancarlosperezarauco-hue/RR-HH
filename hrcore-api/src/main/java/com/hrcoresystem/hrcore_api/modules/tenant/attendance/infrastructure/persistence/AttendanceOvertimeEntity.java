@@ -19,6 +19,7 @@ public class AttendanceOvertimeEntity {
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private ReviewStatus status;
     @Column(name = "approved_by") private UUID approvedBy;
     @Column(name = "approved_at") private Instant approvedAt;
+    @Column(name = "requested_by") private UUID requestedBy;
     @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt;
     @Column(name = "updated_at", nullable = false) private Instant updatedAt;
 

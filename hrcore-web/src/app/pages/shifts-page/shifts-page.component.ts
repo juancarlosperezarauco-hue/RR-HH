@@ -8,7 +8,8 @@ import {
   ShiftCardComponent,
   ShiftFormModalComponent,
   ShiftAssignModalComponent,
-  ShiftAssignmentsTableComponent
+  ShiftAssignmentsTableComponent,
+  ShiftBreaksModalComponent
 } from '../../features/shift-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 import { ShiftResponse } from '../../entities/shift';
@@ -24,7 +25,8 @@ import { ShiftResponse } from '../../entities/shift';
     ShiftCardComponent,
     ShiftFormModalComponent,
     ShiftAssignModalComponent,
-    ShiftAssignmentsTableComponent
+    ShiftAssignmentsTableComponent,
+    ShiftBreaksModalComponent
   ],
   template: `
     <div class="space-y-6 relative">
@@ -208,6 +210,7 @@ import { ShiftResponse } from '../../entities/shift';
             [shift]="s"
             (assign)="openAssignModal($event)"
             (edit)="openEditModal($event)"
+            (manageBreaks)="openBreaksModal($event)"
             (toggleStatus)="shiftListUseCase.toggleStatus($event)">
           </app-shift-card>
         </div>
@@ -256,6 +259,13 @@ import { ShiftResponse } from '../../entities/shift';
         (closeModal)="isAssignOpen = false"
         (assigned)="onShiftAssigned()">
       </app-shift-assign-modal>
+
+      <app-shift-breaks-modal
+        [isOpen]="isBreaksOpen"
+        [shift]="selectedShiftForBreaks"
+        (closeModal)="isBreaksOpen = false"
+        (changed)="shiftListUseCase.loadShifts()">
+      </app-shift-breaks-modal>
     </div>
   `
 })
@@ -266,8 +276,10 @@ export class ShiftsPageComponent implements OnInit {
   activeView: 'CATALOG' | 'ASSIGNMENTS' = 'CATALOG';
   isFormOpen = false;
   isAssignOpen = false;
+  isBreaksOpen = false;
   selectedShiftToEdit: ShiftResponse | null = null;
   selectedShiftToAssign: ShiftResponse | null = null;
+  selectedShiftForBreaks: ShiftResponse | null = null;
 
   get assignments() {
     return this.shiftAssignmentUseCase.assignments();
@@ -296,6 +308,11 @@ export class ShiftsPageComponent implements OnInit {
   openAssignModal(shift: ShiftResponse): void {
     this.selectedShiftToAssign = shift;
     this.isAssignOpen = true;
+  }
+
+  openBreaksModal(shift: ShiftResponse): void {
+    this.selectedShiftForBreaks = shift;
+    this.isBreaksOpen = true;
   }
 
   onShiftSaved(): void {

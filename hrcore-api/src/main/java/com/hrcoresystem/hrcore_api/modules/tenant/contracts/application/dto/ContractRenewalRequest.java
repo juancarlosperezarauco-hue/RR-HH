@@ -6,9 +6,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = false)
 public record ContractRenewalRequest(
         @NotNull UUID employeeAssignmentId,
-        @NotBlank @Size(max = 80) String contractNumber,
         @NotNull ContractType contractType,
         @NotNull ContractForm contractForm,
         @NotNull WorkSchedule workSchedule,
@@ -22,4 +22,13 @@ public record ContractRenewalRequest(
         LocalDate probationEndDate,
         @Size(max = 10000) String terms,
         @Size(max = 2000) String reason
-) { }
+) {
+    public ContractRenewalRequest(UUID employeeAssignmentId, String ignoredContractNumber, ContractType contractType,
+                                 ContractForm contractForm, WorkSchedule workSchedule, WorkModality workModality,
+                                 LocalDate startDate, LocalDate endDate, BigDecimal baseSalary, String currency,
+                                 PaymentFrequency paymentFrequency, BigDecimal weeklyHours, LocalDate probationEndDate,
+                                 String terms, String reason) {
+        this(employeeAssignmentId, contractType, contractForm, workSchedule, workModality, startDate, endDate,
+                baseSalary, currency, paymentFrequency, weeklyHours, probationEndDate, terms, reason);
+    }
+}

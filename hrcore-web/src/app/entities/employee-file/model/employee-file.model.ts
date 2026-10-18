@@ -12,12 +12,10 @@ export interface EmployeeFileResponse {
 
 export interface CreateFileRequest {
   employeeId: string;
-  fileNumber: string;
   notes?: string;
 }
 
 export interface UpdateFileRequest {
-  fileNumber: string;
   notes?: string;
   status: FileStatus;
 }

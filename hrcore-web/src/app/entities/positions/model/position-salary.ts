@@ -21,7 +21,7 @@ export function compareSalaries(min: string, max: string): number {
 
 /** HttpClient accepts a serialized JSON body; only validated decimal tokens are unquoted. */
 export function serializePosition(request: PositionRequest): string {
-  const { salaryMin, salaryMax, ...fields } = request;
+  const { salaryMin, salaryMax, code: _generatedCode, ...fields } = request;
   const json = JSON.stringify(fields);
   return `${json.slice(0, -1)},"salaryMin":${normalizeSalary(salaryMin) ?? 'null'},"salaryMax":${normalizeSalary(salaryMax) ?? 'null'}}`;
 }

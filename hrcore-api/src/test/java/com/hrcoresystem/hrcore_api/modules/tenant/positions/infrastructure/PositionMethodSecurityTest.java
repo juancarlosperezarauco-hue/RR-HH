@@ -47,7 +47,8 @@ class PositionMethodSecurityTest {
                     mock(GetPositionUseCase.class), mock(UpdatePositionUseCase.class),
                     mock(ActivatePositionUseCase.class), mock(DeactivatePositionUseCase.class),
                     mock(ListPositionRequirementsUseCase.class), mock(CreatePositionRequirementUseCase.class),
-                    mock(UpdatePositionRequirementUseCase.class), mock(DeletePositionRequirementUseCase.class));
+                    mock(UpdatePositionRequirementUseCase.class), mock(DeletePositionRequirementUseCase.class),
+                    mock(ListPositionEmployeesUseCase.class));
         }
     }
 }

@@ -203,3 +203,37 @@ CREATE TABLE IF NOT EXISTS employee_document_versions (
 CREATE INDEX IF NOT EXISTS idx_employee_document_versions_document
     ON employee_document_versions(document_id, version_number DESC);
 
+
+
+
+-- FK separadas no impiden asociar el contrato de otra persona al expediente.
+-- Se evita sin añadir un campo redundante a los DTO/documentos actuales.
+CREATE FUNCTION ensure_document_contract_owner()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE file_owner UUID; contract_owner UUID;
+BEGIN
+    IF NEW.contract_id IS NULL THEN RETURN NEW; END IF;
+    SELECT employee_id INTO file_owner FROM employee_files WHERE id=NEW.employee_file_id;
+    SELECT employee_id INTO contract_owner FROM employment_contracts WHERE id=NEW.contract_id;
+    IF file_owner IS NULL OR contract_owner IS NULL OR file_owner <> contract_owner THEN
+        RAISE EXCEPTION 'Document contract and employee file must belong to the same employee'
+            USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_document_contract_owner
+BEFORE INSERT OR UPDATE OF employee_file_id, contract_id ON employee_documents
+FOR EACH ROW EXECUTE FUNCTION ensure_document_contract_owner();
+
+CREATE FUNCTION protect_employee_file_owner()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.employee_id IS DISTINCT FROM OLD.employee_id THEN
+        RAISE EXCEPTION 'Employee file owner is immutable' USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_protect_employee_file_owner
+BEFORE UPDATE OF employee_id ON employee_files
+FOR EACH ROW EXECUTE FUNCTION protect_employee_file_owner();
+

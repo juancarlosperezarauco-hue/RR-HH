@@ -10,3 +10,4 @@ export * from './ui/shift-card/shift-card.component';
 export * from './ui/shift-form-modal/shift-form-modal.component';
 export * from './ui/shift-assign-modal/shift-assign-modal.component';
 export * from './ui/shift-assignments-table/shift-assignments-table.component';
+export * from './ui/shift-breaks-modal/shift-breaks-modal.component';

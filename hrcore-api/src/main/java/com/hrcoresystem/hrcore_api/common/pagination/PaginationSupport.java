@@ -21,12 +21,12 @@ public final class PaginationSupport {
 
     int page = safePageable.getPageNumber();
     int size = safePageable.getPageSize();
-    int fromIndex = Math.min(page * size, safeItems.size());
+    int fromIndex = (int)Math.min(safePageable.getOffset(), safeItems.size());
     int toIndex = Math.min(fromIndex + size, safeItems.size());
 
     return new PageImpl<>(
         safeItems.subList(fromIndex, toIndex),
-        PageRequest.of(page, size, safePageable.getSort()),
+        safePageable,
         safeItems.size());
   }
 
@@ -35,6 +35,7 @@ public final class PaginationSupport {
       return PageRequest.of(0, DEFAULT_PAGE_SIZE);
     }
 
+    if (pageable instanceof OffsetPageable) return pageable;
     int page = Math.max(pageable.getPageNumber(), 0);
     int size = pageable.getPageSize() > 0 ? pageable.getPageSize() : DEFAULT_PAGE_SIZE;
     return PageRequest.of(page, size, pageable.getSort());

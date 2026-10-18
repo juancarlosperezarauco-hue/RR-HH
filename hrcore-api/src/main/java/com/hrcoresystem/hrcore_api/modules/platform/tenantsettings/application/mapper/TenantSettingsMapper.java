@@ -7,18 +7,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 public class TenantSettingsMapper {
 
     public TenantSettingsResponse toResponse(List<TenantSetting> settings) {
-        Map<String, String> settingsByKey = settings.stream()
-                .collect(Collectors.toMap(
-                        TenantSetting::settingKey,
-                        TenantSetting::settingValue,
-                        (first, second) -> second
-                ));
+        Map<String, String> settingsByKey = new java.util.HashMap<>();
+        settings.forEach(setting -> settingsByKey.put(setting.settingKey(), setting.settingValue()));
 
         return new TenantSettingsResponse(
                 settingsByKey.get(TenantSettingKeys.COMPANY_NAME),
@@ -26,7 +21,10 @@ public class TenantSettingsMapper {
                 settingsByKey.get(TenantSettingKeys.COMPANY_TIMEZONE),
                 settingsByKey.get(TenantSettingKeys.COMPANY_CURRENCY),
                 settingsByKey.get(TenantSettingKeys.COMPANY_CONTACT_EMAIL),
-                settingsByKey.get(TenantSettingKeys.COMPANY_CONTACT_PHONE)
+                settingsByKey.get(TenantSettingKeys.COMPANY_CONTACT_PHONE),
+                settingsByKey.get(TenantSettingKeys.COMPANY_COUNTRY),
+                settingsByKey.get(TenantSettingKeys.COMPANY_ADDRESS),
+                settingsByKey.get(TenantSettingKeys.COMPANY_TAX_IDENTIFIER)
         );
     }
 }

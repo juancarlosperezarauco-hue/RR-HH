@@ -1,6 +1,7 @@
 export interface LeaveBalanceResponse {
   id: string;                    // UUID
   employeeId: string;            // UUID
+  employmentPeriodId?: string | null;
   leaveTypeId: string;           // UUID
   balanceYear?: number;          // Ej: 2026 (canonical backend)
   openingDays?: number;          // Días base/iniciales
@@ -19,6 +20,7 @@ export interface LeaveBalanceResponse {
   yearsOfService?: number;
   entitledDays: number;          // Requerido por componentes UI (LGT: 15, 20 o 30)
   remainingDays: number;         // Requerido por componentes UI
+  persisted?: boolean;           // Indica si existe un saldo real en la base de datos.
 }
 
 export interface CreateLeaveBalanceInput {
@@ -26,6 +28,7 @@ export interface CreateLeaveBalanceInput {
   leaveTypeId: string;
   balanceYear: number;
   openingDays: number;
+  employmentPeriodId: string;
 }
 
 export interface AdjustLeaveBalanceInput {

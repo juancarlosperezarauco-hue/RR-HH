@@ -32,8 +32,8 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
         ApiErrorResponse body = ApiErrorResponse.of(
-                "You do not have permission to access this resource",
-                List.of(accessDeniedException.getMessage())
+                "No tiene permisos para acceder a este recurso",
+                List.of()
         );
 
         objectMapper.writeValue(response.getOutputStream(), body);

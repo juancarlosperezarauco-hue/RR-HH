@@ -9,6 +9,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
 
 @Service
 public class ContractManagementService {
@@ -17,17 +18,21 @@ public class ContractManagementService {
     private final ContractPolicy policy;
     private final ContractMapper mapper;
     private final AuditTrailService audit;
+    private final BusinessSequenceService sequences;
 
     public ContractManagementService(EmploymentContractRepository contracts, ContractHistoryRepository history,
-                                     ContractPolicy policy, ContractMapper mapper, AuditTrailService audit) {
+                                     ContractPolicy policy, ContractMapper mapper, AuditTrailService audit,
+                                     BusinessSequenceService sequences) {
         this.contracts = contracts; this.history = history; this.policy = policy;
         this.mapper = mapper; this.audit = audit;
+        this.sequences = sequences;
     }
 
     @Transactional
     public ContractResponse create(ContractRequest request) {
+        policy.requireEmployeeForUpdate(request.employeeId());
         UUID actor = policy.actorId();
-        EmploymentContract saved = contracts.save(policy.normalized(null, request, null, actor));
+        EmploymentContract saved = contracts.save(policy.normalized(null, sequences.nextCode("employment_contract"), request, null, actor));
         record(saved.id(), ContractHistoryAction.CREATED, null, saved.status(),
                 Map.of("contractNumber", saved.contractNumber(), "employeeId", saved.employeeId().toString()), null, actor);
         audit.recordTenantEvent("CONTRACT_CREATED", "EMPLOYMENT_CONTRACT", saved.id().toString(),
@@ -48,8 +53,10 @@ public class ContractManagementService {
     @Transactional
     public ContractResponse update(UUID id, ContractRequest request) {
         UUID actor = policy.actorId();
+        EmploymentContract current = policy.require(id);
+        policy.requireEmployeeForUpdate(current.employeeId());
         EmploymentContract before = policy.requireForUpdate(id);
-        EmploymentContract saved = contracts.save(policy.normalized(id, request, before, actor));
+        EmploymentContract saved = contracts.save(policy.normalized(id, before.contractNumber(), request, before, actor));
         record(id, ContractHistoryAction.UPDATED, before.status(), saved.status(),
                 Map.of("contractNumber", saved.contractNumber()), null, actor);
         audit.recordTenantEvent("CONTRACT_UPDATED", "EMPLOYMENT_CONTRACT", id.toString(),
@@ -61,6 +68,8 @@ public class ContractManagementService {
     public ContractResponse changeStatus(UUID id, ContractStatusRequest request) {
         policy.assertOperational();
         UUID actor = policy.actorId();
+        EmploymentContract current = policy.require(id);
+        policy.requireEmployeeForUpdate(current.employeeId());
         EmploymentContract before = policy.requireForUpdate(id);
         EmploymentContract saved = contracts.save(policy.changeStatus(before, request.status(),
                 request.effectiveDate(), request.reason(), actor));
@@ -80,8 +89,10 @@ public class ContractManagementService {
     @Transactional
     public ContractResponse renew(UUID id, ContractRenewalRequest request) {
         UUID actor = policy.actorId();
+        EmploymentContract current = policy.require(id);
+        policy.requireEmployeeForUpdate(current.employeeId());
         EmploymentContract source = policy.requireForUpdate(id);
-        EmploymentContract renewal = contracts.save(policy.renewal(source, request, actor));
+        EmploymentContract renewal = contracts.save(policy.renewal(source, sequences.nextCode("employment_contract"), request, actor));
         String reason = request.reason() == null || request.reason().isBlank() ? "Contract renewal" : request.reason().trim();
         record(source.id(), ContractHistoryAction.RENEWED, source.status(), source.status(),
                 Map.of("renewalContractId", renewal.id().toString(), "renewalContractNumber", renewal.contractNumber()), reason, actor);

@@ -25,12 +25,19 @@ interface LeaveBalanceJpaRepository extends JpaRepository<LeaveBalanceEntity, UU
     @Query(value = "select b.id, coalesce(sum(r.requested_days), 0) from leave_balances b " +
             "join leave_types t on t.id=b.leave_type_id " +
             "left join leave_requests r on r.employee_id=b.employee_id and r.leave_type_id=b.leave_type_id " +
-            "and r.status='PENDING' and extract(year from r.start_date)=b.balance_year " +
+            "and r.employment_period_id=b.employment_period_id and r.status='PENDING' and extract(year from r.start_date)=b.balance_year " +
             "where b.id in (:ids) and t.deducts_balance=true group by b.id", nativeQuery = true)
     List<Object[]> pendingForBalances(@Param("ids") List<UUID> ids);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from LeaveBalanceEntity b where b.id=:id")
+    Optional<LeaveBalanceEntity> lockById(@Param("id") UUID id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from LeaveBalanceEntity b where b.employeeId=:employee and b.leaveTypeId=:type and b.balanceYear=:year")
     Optional<LeaveBalanceEntity> lock(@Param("employee") UUID employee, @Param("type") UUID type, @Param("year") int year);
+    boolean existsByEmploymentPeriodIdAndLeaveTypeIdAndBalanceYear(UUID period, UUID type, int year);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from LeaveBalanceEntity b where b.employmentPeriodId=:period and b.leaveTypeId=:type and b.balanceYear=:year")
+    Optional<LeaveBalanceEntity> lockByPeriod(@Param("period") UUID period, @Param("type") UUID type, @Param("year") int year);
 }
 
 interface LeaveRequestJpaRepository extends JpaRepository<LeaveRequestEntity, UUID>, JpaSpecificationExecutor<LeaveRequestEntity> {
@@ -40,6 +47,9 @@ interface LeaveRequestJpaRepository extends JpaRepository<LeaveRequestEntity, UU
     Optional<LeaveRequestEntity> lock(@Param("id") UUID id);
     @Query("select coalesce(sum(r.requestedDays), 0) from LeaveRequestEntity r, LeaveTypeEntity t where t.id=r.leaveTypeId and t.deductsBalance=true and r.employeeId=:employee and r.leaveTypeId=:type and r.status=:status and r.startDate between :from and :to")
     BigDecimal pending(@Param("employee") UUID employee, @Param("type") UUID type,
+            @Param("from") LocalDate from, @Param("to") LocalDate to, @Param("status") RequestStatus status);
+    @Query("select coalesce(sum(r.requestedDays), 0) from LeaveRequestEntity r, LeaveTypeEntity t where t.id=r.leaveTypeId and t.deductsBalance=true and r.employmentPeriodId=:period and r.leaveTypeId=:type and r.status=:status and r.startDate between :from and :to")
+    BigDecimal pendingByPeriod(@Param("period") UUID period, @Param("type") UUID type,
             @Param("from") LocalDate from, @Param("to") LocalDate to, @Param("status") RequestStatus status);
     @Query("select r from LeaveRequestEntity r where r.employeeId=:employee and r.startDate<=:to and r.endDate>=:from and r.status in :statuses and r.id<>:exceptId")
     List<LeaveRequestEntity> candidates(@Param("employee") UUID employee, @Param("from") LocalDate from,

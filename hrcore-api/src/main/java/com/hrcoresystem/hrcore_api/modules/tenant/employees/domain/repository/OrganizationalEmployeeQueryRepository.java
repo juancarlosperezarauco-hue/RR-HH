@@ -1,0 +1,3 @@
+package com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository;
+import com.hrcoresystem.hrcore_api.modules.tenant.departments.application.dto.OrganizationalEmployeeSummaryResponse; import org.springframework.data.domain.*; import java.time.LocalDate; import java.util.UUID;
+public interface OrganizationalEmployeeQueryRepository { Page<OrganizationalEmployeeSummaryResponse> findByDepartment(UUID id,LocalDate date,Pageable page); Page<OrganizationalEmployeeSummaryResponse> findByPosition(UUID id,LocalDate date,Pageable page); Page<OrganizationalEmployeeSummaryResponse> findBySupervisor(UUID supervisorId,LocalDate date,Pageable page); }

@@ -5,6 +5,7 @@ import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.WorkShiftRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.WorkShiftResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.ShiftStatus;
@@ -13,6 +14,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.WorkShiftF
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.ShiftAssignmentRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkShiftRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,16 +34,27 @@ public class WorkShiftService {
     private final TenantShiftClock clock;
     private final SecurityContextFacade security;
     private final AuditTrailService audit;
+    private final BusinessSequenceService sequences;
 
+    @Autowired
     public WorkShiftService(WorkShiftRepository shifts, ShiftAssignmentRepository assignments,
                             TenantPlanEnforcementService plans, TenantShiftClock clock,
-                            SecurityContextFacade security, AuditTrailService audit) {
+                            SecurityContextFacade security, AuditTrailService audit,
+                            BusinessSequenceService sequences) {
         this.shifts = shifts;
         this.assignments = assignments;
         this.plans = plans;
         this.clock = clock;
         this.security = security;
         this.audit = audit;
+        this.sequences = sequences;
+    }
+
+    @Deprecated
+    public WorkShiftService(WorkShiftRepository shifts, ShiftAssignmentRepository assignments,
+                            TenantPlanEnforcementService plans, TenantShiftClock clock,
+                            SecurityContextFacade security, AuditTrailService audit) {
+        this(shifts, assignments, plans, clock, security, audit, null);
     }
 
     @Transactional
@@ -122,10 +135,12 @@ public class WorkShiftService {
             throw new BusinessException("Shift times, crossing flag and tolerances are required");
         }
         ShiftTimeRules.validateShift(request.startTime(), request.endTime(), request.crossesMidnight());
-        if (request.lateToleranceMinutes() < 0 || request.earlyDepartureToleranceMinutes() < 0) {
-            throw new BusinessException("Shift tolerances must be nonnegative");
-        }
-        return new WorkShift(id, required(request.code(), 50, "code"),
+        ShiftTimeRules.validateTolerances(request.startTime(), request.endTime(), request.crossesMidnight(),
+                request.lateToleranceMinutes(), request.earlyDepartureToleranceMinutes());
+        String code = before == null
+                ? (sequences == null ? "TUR-000000" : sequences.nextCode("work_shift"))
+                : before.code();
+        return new WorkShift(id, code,
                 required(request.name(), 150, "name"), optional(request.description()),
                 request.startTime(), request.endTime(), request.crossesMidnight(),
                 request.lateToleranceMinutes(), request.earlyDepartureToleranceMinutes(),

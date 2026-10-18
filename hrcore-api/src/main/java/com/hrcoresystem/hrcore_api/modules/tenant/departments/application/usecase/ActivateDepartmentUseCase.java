@@ -28,12 +28,14 @@ public class ActivateDepartmentUseCase {
         Department before = policy.require(id);
         if (before.status() == DepartmentStatus.ACTIVE) return mapper.toResponse(before);
         policy.validateReferences(id, before.parentDepartmentId(), before.managerEmployeeId());
+        String requiredReason = policy.requiredReason(reason);
         UUID actor = policy.actorId();
         Department saved = departments.save(new Department(id, before.code(), before.name(), before.description(),
                 before.parentDepartmentId(), before.managerEmployeeId(), before.costCenterCode(),
                 DepartmentStatus.ACTIVE, before.createdBy(), actor, before.createdAt(), before.updatedAt()));
+        policy.validateReportingAfterChange();
         recorder.record(before, saved, DepartmentHistoryAction.ACTIVATED,
-                policy.optional(reason, 0, "reason"), actor);
+                requiredReason, actor);
         return mapper.toResponse(saved);
     }
 }

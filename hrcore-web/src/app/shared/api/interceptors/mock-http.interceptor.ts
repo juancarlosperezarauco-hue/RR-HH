@@ -924,7 +924,7 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
     const parts = url.split('/');
     const asgId = parts[parts.indexOf('close') - 1];
     const asg = MOCK_SHIFTS.employeeShiftAssignments.find(a => a.id === asgId);
-    if (asg) asg.status = 'CLOSED';
+    if (asg) asg.status = 'INACTIVE';
     return of(new HttpResponse({
       status: 200,
       body: {
@@ -1119,7 +1119,7 @@ export const mockHttpInterceptor: HttpInterceptorFn = (req, next) => {
     const newShift = {
       id: 'shift-' + Date.now(),
       tenantId: 'e2a1b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-      code: body?.code || 'TUR_NUEVO',
+      code: `TUR-${String(MOCK_SHIFTS.shifts.length + 1).padStart(6, '0')}`,
       name: body?.name || 'Turno Nuevo',
       shiftType: body?.shiftType || 'CONTINUOUS',
       startTime: body?.startTime || '08:00:00',

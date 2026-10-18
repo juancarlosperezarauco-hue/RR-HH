@@ -12,6 +12,10 @@ import java.util.UUID;
 
 public interface ShiftAssignmentJpaRepository extends JpaRepository<ShiftAssignmentEntity, UUID>,
         JpaSpecificationExecutor<ShiftAssignmentEntity> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from ShiftAssignmentEntity a where a.employeeId=:employeeId order by a.id")
+    List<ShiftAssignmentEntity> findAllByEmployeeIdForUpdate(@Param("employeeId") UUID employeeId);
+    List<ShiftAssignmentEntity> findByEmploymentPeriodId(UUID employmentPeriodId);
     boolean existsByShiftId(UUID shiftId);
 
     @Query("SELECT a.employeeId FROM ShiftAssignmentEntity a WHERE a.id = :id")
@@ -29,7 +33,7 @@ public interface ShiftAssignmentJpaRepository extends JpaRepository<ShiftAssignm
     @Query(value = """
             SELECT * FROM employee_shift_assignments
              WHERE employee_id = :employeeId
-               AND status <> 'CANCELLED'
+               AND status = 'ACTIVE'
                AND start_date <= :date
                AND (end_date IS NULL OR end_date >= :date)
                AND CAST(:weekday AS SMALLINT) = ANY(weekdays)

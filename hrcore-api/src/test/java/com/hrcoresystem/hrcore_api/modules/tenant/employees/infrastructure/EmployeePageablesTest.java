@@ -14,7 +14,11 @@ class EmployeePageablesTest {
     @Test void rejectsUnsupportedSortAndExcessivePageSize() {
         EmployeeController controller = new EmployeeController(mock(CreateEmployeeUseCase.class),
                 mock(ListEmployeesUseCase.class), mock(GetEmployeeUseCase.class),
-                mock(UpdateEmployeeUseCase.class), mock(ChangeEmployeeStatusUseCase.class));
+                mock(UpdateEmployeeUseCase.class), mock(ChangeEmployeeStatusUseCase.class),
+                mock(CreateEmployeeWithAssignmentUseCase.class), mock(TransferEmployeeUseCase.class),
+                mock(TerminateEmployeeUseCase.class), mock(GetEmployeeTerminationUseCase.class),
+                mock(ListEmployeePeriodsUseCase.class), mock(GetEmployeePeriodUseCase.class),
+                mock(RehireEmployeeUseCase.class), mock(ListEmployeeTerminationsUseCase.class));
         assertThrows(BusinessException.class, () -> controller.list(null, null, null, null, null,
                 PageRequest.of(0, 10, Sort.by("documentNumber"))));
         assertThrows(BusinessException.class, () -> controller.list(null, null, null, null, null,

@@ -28,6 +28,7 @@ export class AbsenceService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/api/leaves`;
   private readonly legacyBaseUrl = `${environment.apiUrl}/api/v1`;
+  private readonly calendarUrl = `${environment.apiUrl}/api/shifts/calendar-exceptions`;
 
   // ==========================================
   // HU18 - 1. LEAVE TYPES (Catálogo de Tipos)
@@ -70,15 +71,18 @@ export class AbsenceService {
    * Consulta saldo canónico desde Spring Boot:
    * GET /api/leaves/balances?employeeId={id}&year={year}
    */
-  getEmployeeBalance(employeeId: string, year = 2026): Observable<ApiResponse<LeaveBalanceResponse>> {
-    let params = new HttpParams().set('year', year.toString()).set('size', '1');
-    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
+  getEmployeeBalance(employeeId: string, year = new Date().getFullYear(), employmentPeriodId?: string): Observable<ApiResponse<LeaveBalanceResponse>> {
+    let params = new HttpParams().set('year', year.toString()).set('size', '100');
+    if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
 
     return this.http.get<ApiResponse<PageResponse<any>>>(`${this.baseUrl}/balances`, { params }).pipe(
       map((res) => {
-        const item = res.data?.content?.[0];
+        const balances = res.data?.content ?? [];
+        const item = employmentPeriodId
+          ? balances.find((candidate: LeaveBalanceResponse) => candidate?.employmentPeriodId === employmentPeriodId)
+          : balances[0];
         const entitled = item?.openingDays != null ? Number(item.openingDays) : 0;
         const used = item?.usedDays != null ? Number(item.usedDays) : 0;
         const pending = item?.pendingDays != null ? Number(item.pendingDays) : 0;
@@ -87,6 +91,7 @@ export class AbsenceService {
         const mapped: LeaveBalanceResponse = {
           id: item?.id || `bal-${employeeId}`,
           employeeId: item?.employeeId || employeeId,
+          employmentPeriodId: item?.employmentPeriodId ?? null,
           leaveTypeId: item?.leaveTypeId || '',
           leaveTypeName: 'Vacación Anual LGT',
           balanceYear: item?.balanceYear || year,
@@ -99,6 +104,7 @@ export class AbsenceService {
           availableDays: available,
           entitledDays: entitled,
           remainingDays: available,
+          persisted: !!item,
           updatedAt: item?.updatedAt
         };
 
@@ -110,6 +116,34 @@ export class AbsenceService {
         };
       })
     );
+  }
+
+  /** Autoservicio: el backend determina el empleado desde la sesión. */
+  getMyBalances(year = new Date().getFullYear(), page = 0, size = 25): Observable<ApiResponse<PageResponse<LeaveBalanceResponse>>> {
+    const params = new HttpParams().set('year', year.toString()).set('page', page.toString()).set('size', size.toString());
+    return this.http.get<ApiResponse<PageResponse<LeaveBalanceResponse>>>(`${environment.apiUrl}/api/me/leaves/balances`, { params });
+  }
+
+  listMyRequests(status?: LeaveStatus | 'ALL', page = 0, size = 25): Observable<ApiResponse<PageResponse<LeaveRequestResponse>>> {
+    let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+    if (status && status !== 'ALL') params = params.set('status', status);
+    return this.http.get<ApiResponse<PageResponse<LeaveRequestResponse>>>(`${environment.apiUrl}/api/me/leaves/requests`, { params });
+  }
+
+  createMyRequest(input: Omit<CreateLeaveRequestInput, 'employeeId'>): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.post<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests`, input);
+  }
+
+  updateMyRequest(id: string, input: Omit<CreateLeaveRequestInput, 'employeeId'>): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.put<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests/${id}`, input);
+  }
+
+  submitMyRequest(id: string): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.patch<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests/${id}/submit`, {});
+  }
+
+  cancelMyRequest(id: string, comment?: string): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.patch<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests/${id}/cancel`, { comment: comment ?? null });
   }
 
   listBalances(filters?: {
@@ -303,6 +337,27 @@ export class AbsenceService {
   }
 
   getHolidays(): Observable<ApiResponse<HolidayResponse[]>> {
-    return this.http.get<ApiResponse<HolidayResponse[]>>(`${this.legacyBaseUrl}/holidays`);
+    const params = new HttpParams()
+      .set('exceptionType', 'HOLIDAY')
+      .set('workRequired', 'false')
+      .set('organizationOnly', 'true')
+      .set('page', '0')
+      .set('size', '100')
+      .set('sort', 'exceptionDate,asc');
+    return this.http.get<ApiResponse<PageResponse<{
+      id: string;
+      exceptionDate: string;
+      description?: string | null;
+    }>>>(this.calendarUrl, { params }).pipe(map((res) => ({
+      ...res,
+      data: (res.data?.content || []).map((item) => ({
+        id: item.id,
+        tenantId: '',
+        name: item.description || 'Feriado',
+        holidayDate: item.exceptionDate,
+        isRecurring: false,
+        scope: 'NATIONAL' as const
+      }))
+    })));
   }
 }

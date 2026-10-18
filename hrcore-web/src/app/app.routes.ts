@@ -5,6 +5,7 @@ import { tenantRoleGuard } from './shared/api/guards/tenant-role.guard';
 import { TENANT_ROUTE_PERMISSIONS } from './shared/lib/navigation/tenant-route-permissions';
 import { LandingPageComponent } from './pages/landing-page/landing-page.component';
 import { PlatformLayoutComponent } from './shared/ui/layouts/platform-layout.component';
+import { tenantSetupGuard } from './shared/api/guards/tenant-setup.guard';
 
 export const routes: Routes = [
   // ============================================================
@@ -16,6 +17,10 @@ export const routes: Routes = [
   {
     path: 'prices',
     loadComponent: () => import('./pages/prices-page/prices-page.component').then(m => m.PricesPageComponent)
+  },
+  {
+    path: 'manual',
+    loadComponent: () => import('./pages/manual-page/manual-page.component').then(m => m.ManualPageComponent)
   },
   
   // Login de tenant
@@ -50,10 +55,19 @@ export const routes: Routes = [
   // ============================================================
   {
     path: 'dashboard',
-    canActivate: [authGuard],
+    canActivate: [authGuard, tenantSetupGuard],
     loadComponent: () => import('./pages/dashboard-page/dashboard-page.component').then(m => m.DashboardPageComponent),
     children: [
       { path: 'home', loadComponent: () => import('./pages/tenant-home-page/tenant-home-page.component').then(m => m.TenantHomePageComponent) },
+      { path: 'company-setup', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/company-setup-page/company-setup-page.component').then(m => m.CompanySetupPageComponent) },
+      { path: 'company-settings', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/company-settings-page/company-settings-page.component').then(m => m.CompanySettingsPageComponent) },
+      {
+        path: 'audit',
+        canActivate: [tenantRoleGuard('OWNER_ADMIN', '/dashboard/access-denied'), permissionGuard(TENANT_ROUTE_PERMISSIONS.audit)],
+        loadComponent: () => import('./pages/tenant-audit-page/tenant-audit-page.component').then(m => m.TenantAuditPageComponent)
+      },
+      { path: 'organization-chart', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/organization-chart-page/organization-chart-page.component').then(m => m.OrganizationChartPageComponent) },
+      { path: 'my-team', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/my-team-page/my-team-page.component').then(m => m.MyTeamPageComponent) },
       { path: 'access-denied', loadComponent: () => import('./pages/tenant-access-denied-page/tenant-access-denied-page.component').then(m => m.TenantAccessDeniedPageComponent) },
       {
         path: 'users',
@@ -90,6 +104,11 @@ export const routes: Routes = [
         canActivate: [permissionGuard(TENANT_ROUTE_PERMISSIONS.absences)],
         loadComponent: () => import('./pages/absences-page/absences-page.component').then(m => m.AbsencesPageComponent)
       },
+      {
+        path: 'incidents',
+        canActivate: [permissionGuard(TENANT_ROUTE_PERMISSIONS.incidents)],
+        loadComponent: () => import('./pages/incidents-page/incidents-page.component').then(m => m.IncidentsPageComponent)
+      },
       { path: 'settings', loadComponent: () => import('./pages/settings-page/settings-page.component').then(m => m.SettingsPageComponent) },
       {
         path: 'subscription',
@@ -107,6 +126,8 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/subscription-upgrade-cancel-page/subscription-upgrade-cancel-page.component').then(m => m.SubscriptionUpgradeCancelPageComponent)
       },
       { path: 'profile', loadComponent: () => import('./pages/profile-page/profile-page.component').then(m => m.ProfilePageComponent) },
+      { path: 'my-employment', loadComponent: () => import('./pages/my-employment-page/my-employment-page.component').then(m => m.MyEmploymentPageComponent) },
+      { path: 'hr-reports', canActivate: [permissionGuard(TENANT_ROUTE_PERMISSIONS.reportsEmployees)], loadComponent: () => import('./pages/hr-reports-page/hr-reports-page.component').then(m => m.HrReportsPageComponent) },
       { path: 'security', loadComponent: () => import('./pages/tenant-security-page/tenant-security-page.component').then(m => m.TenantSecurityPageComponent) },
       {
         path: 'backups',

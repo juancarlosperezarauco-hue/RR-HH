@@ -231,6 +231,32 @@ export class AttendanceClockUseCase {
     }
   }
 
+  async registerSelfClock(
+    punchType: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END', notes?: string
+  ): Promise<boolean> {
+    if (this.isDebounced()) {
+      this.toastService.warning(`Espere ${this.remainingDebounceSeconds()}s antes de volver a marcar.`);
+      return false;
+    }
+    this.clocking.set(true);
+    this.error.set(null);
+    try {
+      const coords = await this.captureCoordinates();
+      await firstValueFrom(this.attendanceService.createSelfPunch({ punchType, ...coords, notes }));
+      localStorage.setItem(this.DEBOUNCE_KEY, Date.now().toString());
+      this.checkDebounceTimer();
+      this.toastService.success('Marcación registrada correctamente.');
+      return true;
+    } catch (err: any) {
+      const message = err?.error?.message || err?.message || 'No se pudo registrar la marcación.';
+      this.error.set(message);
+      this.toastService.error(message);
+      return false;
+    } finally {
+      this.clocking.set(false);
+    }
+  }
+
   async fetchTodayRecord(employeeId: string): Promise<AttendanceRecordResponse | null> {
     if (!employeeId) {
       this.employeePunchState.set('NONE');

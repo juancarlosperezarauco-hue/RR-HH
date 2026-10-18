@@ -11,7 +11,7 @@ public class ContractMapper {
                 c.contractType(), c.status(), c.contractForm(), c.workSchedule(), c.workModality(),
                 c.startDate(), c.endDate(), c.signedAt(), c.baseSalary(), c.currency(),
                 c.paymentFrequency(), c.weeklyHours(), c.probationEndDate(), c.terminationDate(),
-                c.terminationReason(), c.terms(), c.renewedFromContractId(), c.createdAt(), c.updatedAt());
+                c.terminationReason(), c.terms(), c.renewedFromContractId(), c.createdAt(), c.updatedAt(), c.employmentPeriodId());
     }
     public ContractHistoryResponse toResponse(ContractHistory h) {
         return new ContractHistoryResponse(h.id(), h.contractId(), h.action(), h.previousStatus(),

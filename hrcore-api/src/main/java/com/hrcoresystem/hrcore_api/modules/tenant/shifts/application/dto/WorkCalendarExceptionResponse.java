@@ -9,4 +9,5 @@ import java.util.UUID;
 public record WorkCalendarExceptionResponse(UUID id, UUID employeeId, UUID departmentId,
                                             LocalDate exceptionDate, CalendarExceptionType exceptionType,
                                             String description, boolean workRequired,
+                                            UUID overrideShiftId,
                                             Instant createdAt) { }

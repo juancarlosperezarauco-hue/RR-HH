@@ -33,3 +33,4 @@ CREATE INDEX IF NOT EXISTS idx_tenant_audit_events_tenant_slug
 
 CREATE INDEX IF NOT EXISTS idx_tenant_audit_events_request_id
     ON tenant_audit_events(request_id);
+

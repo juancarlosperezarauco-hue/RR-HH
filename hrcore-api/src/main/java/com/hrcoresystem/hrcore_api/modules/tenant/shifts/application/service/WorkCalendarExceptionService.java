@@ -13,8 +13,11 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.CalendarEx
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.WorkCalendarException;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.WorkCalendarExceptionFilter;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkCalendarExceptionRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkShiftRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.ShiftStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,11 +37,14 @@ public class WorkCalendarExceptionService {
     private final TenantShiftClock clock;
     private final SecurityContextFacade security;
     private final AuditTrailService audit;
+    private final WorkShiftRepository shifts;
 
+    @Autowired
     public WorkCalendarExceptionService(WorkCalendarExceptionRepository exceptions,
                                         EmployeeRepository employees, DepartmentRepository departments,
                                         TenantPlanEnforcementService plans, TenantShiftClock clock,
-                                        SecurityContextFacade security, AuditTrailService audit) {
+                                        SecurityContextFacade security, AuditTrailService audit,
+                                        WorkShiftRepository shifts) {
         this.exceptions = exceptions;
         this.employees = employees;
         this.departments = departments;
@@ -46,6 +52,15 @@ public class WorkCalendarExceptionService {
         this.clock = clock;
         this.security = security;
         this.audit = audit;
+        this.shifts = shifts;
+    }
+
+    @Deprecated
+    public WorkCalendarExceptionService(WorkCalendarExceptionRepository exceptions,
+                                        EmployeeRepository employees, DepartmentRepository departments,
+                                        TenantPlanEnforcementService plans, TenantShiftClock clock,
+                                        SecurityContextFacade security, AuditTrailService audit) {
+        this(exceptions, employees, departments, plans, clock, security, audit, null);
     }
 
     @Transactional
@@ -57,7 +72,7 @@ public class WorkCalendarExceptionService {
         assertAvailable(request.employeeId(), request.departmentId(), request.exceptionDate(), null);
         WorkCalendarException saved = exceptions.save(new WorkCalendarException(null, request.employeeId(),
                 request.departmentId(), request.exceptionDate(), request.exceptionType(),
-                normalizeDescription(request.description()), request.workRequired(), actor(), null));
+                normalizeDescription(request.description()), request.workRequired(), request.overrideShiftId(), actor(), null));
         record("CREATED", saved.id(), List.of("employeeId", "departmentId", "exceptionDate",
                 "exceptionType", "description", "workRequired"));
         return response(saved);
@@ -95,7 +110,7 @@ public class WorkCalendarExceptionService {
         assertAvailable(request.employeeId(), request.departmentId(), request.exceptionDate(), id);
         WorkCalendarException after = new WorkCalendarException(id, request.employeeId(), request.departmentId(),
                 request.exceptionDate(), request.exceptionType(), normalizeDescription(request.description()),
-                request.workRequired(), before.createdBy(), before.createdAt());
+                request.workRequired(), request.overrideShiftId(), before.createdBy(), before.createdAt());
         List<String> changed = changes(before, after);
         if (changed.isEmpty()) return response(before);
         WorkCalendarException saved = exceptions.save(after);
@@ -142,6 +157,20 @@ public class WorkCalendarExceptionService {
         if (request.exceptionType() == CalendarExceptionType.SPECIAL_WORKING_DAY
                 && !request.workRequired())
             throw new BusinessException("SPECIAL_WORKING_DAY requires workRequired=true");
+        if ((request.exceptionType() == CalendarExceptionType.HOLIDAY
+                || request.exceptionType() == CalendarExceptionType.NON_WORKING_DAY
+                || request.exceptionType() == CalendarExceptionType.OTHER)
+                && request.overrideShiftId() != null)
+            throw new BusinessException("This exception type cannot define an override shift");
+        if (request.exceptionType() == CalendarExceptionType.SCHEDULE_CHANGE
+                && (request.overrideShiftId() == null || !request.workRequired()))
+            throw new BusinessException("SCHEDULE_CHANGE requires workRequired=true and an override shift");
+        if (request.overrideShiftId() != null) {
+            var shift = shifts == null ? null : shifts.findById(request.overrideShiftId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Override shift not found"));
+            if (shift != null && shift.status() != ShiftStatus.ACTIVE)
+                throw new BusinessException("Override shift must be active");
+        }
         if (request.employeeId() != null && employees.findById(request.employeeId()).isEmpty())
             throw new BusinessException("Employee does not exist in this tenant");
         if (request.departmentId() != null && departments.findById(request.departmentId()).isEmpty())
@@ -200,6 +229,7 @@ public class WorkCalendarExceptionService {
         if (a.exceptionType() != b.exceptionType()) changed.add("exceptionType");
         if (!Objects.equals(a.description(), b.description())) changed.add("description");
         if (a.workRequired() != b.workRequired()) changed.add("workRequired");
+        if (!Objects.equals(a.overrideShiftId(), b.overrideShiftId())) changed.add("overrideShiftId");
         return changed;
     }
 
@@ -211,6 +241,6 @@ public class WorkCalendarExceptionService {
     private WorkCalendarExceptionResponse response(WorkCalendarException value) {
         return new WorkCalendarExceptionResponse(value.id(), value.employeeId(), value.departmentId(),
                 value.exceptionDate(), value.exceptionType(), value.description(),
-                value.workRequired(), value.createdAt());
+                value.workRequired(), value.overrideShiftId(), value.createdAt());
     }
 }

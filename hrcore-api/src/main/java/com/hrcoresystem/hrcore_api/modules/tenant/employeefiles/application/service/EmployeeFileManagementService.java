@@ -5,6 +5,8 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.application.dto.
 import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.repository.EmployeeFileRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.util.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -15,12 +17,19 @@ public class EmployeeFileManagementService {
   private final EmployeeFileRepository files;
   private final EmployeeRepository employees;
   private final EmployeeFilePolicy policy;
+  private final BusinessSequenceService sequences;
 
+  @Autowired
   public EmployeeFileManagementService(
-      EmployeeFileRepository files, EmployeeRepository employees, EmployeeFilePolicy policy) {
+      EmployeeFileRepository files, EmployeeRepository employees, EmployeeFilePolicy policy,
+      BusinessSequenceService sequences) {
     this.files = files;
     this.employees = employees;
     this.policy = policy;
+    this.sequences = sequences;
+  }
+  public EmployeeFileManagementService(EmployeeFileRepository files, EmployeeRepository employees, EmployeeFilePolicy policy) {
+    this(files, employees, policy, null);
   }
 
   @Transactional
@@ -30,9 +39,7 @@ public class EmployeeFileManagementService {
       throw new ResourceNotFoundException("Employee not found");
     if (files.findByEmployeeId(r.employeeId()).isPresent())
       throw new BusinessException("Employee already has a file");
-    String number = policy.required(r.fileNumber(), 80, "fileNumber");
-    if (files.existsByFileNumberOtherThan(number, null))
-      throw new BusinessException("File number already exists");
+    String number = sequences == null ? "EXP-000000" : sequences.nextCode("employee_file");
     var f =
         files.save(
             new EmployeeFile(
@@ -74,15 +81,11 @@ public class EmployeeFileManagementService {
   public FileResponse update(UUID id, UpdateFileRequest r) {
     policy.operational();
     var before = policy.lockedFile(id);
-    String number = policy.required(r.fileNumber(), 80, "fileNumber");
-    if (files.existsByFileNumberOtherThan(number, id))
-      throw new BusinessException("File number already exists");
+    String number = before.fileNumber();
     String notes = r.notes();
-    if (before.status() == FileStatus.ARCHIVED
-        && (!before.fileNumber().equals(number) || !Objects.equals(before.notes(), notes)))
+    if (before.status() == FileStatus.ARCHIVED && !Objects.equals(before.notes(), notes))
       throw new BusinessException("Archived file can only be reactivated");
     var changed = new ArrayList<String>();
-    if (!before.fileNumber().equals(number)) changed.add("fileNumber");
     if (!Objects.equals(before.notes(), notes)) changed.add("notes");
     if (before.status() != r.status()) changed.add("status");
     if (changed.isEmpty()) return map(before);

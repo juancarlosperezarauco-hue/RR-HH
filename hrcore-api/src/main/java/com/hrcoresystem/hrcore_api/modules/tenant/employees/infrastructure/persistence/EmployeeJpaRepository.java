@@ -13,6 +13,7 @@ public interface EmployeeJpaRepository extends JpaRepository<EmployeeEntity, UUI
     boolean existsByDocumentTypeAndDocumentNumberAndIdNot(String type, String number, UUID id);
     boolean existsByTenantUserId(UUID tenantUserId);
     boolean existsByTenantUserIdAndIdNot(UUID tenantUserId, UUID id);
+    Optional<EmployeeEntity> findByTenantUserId(UUID tenantUserId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from EmployeeEntity e where e.id = :id")

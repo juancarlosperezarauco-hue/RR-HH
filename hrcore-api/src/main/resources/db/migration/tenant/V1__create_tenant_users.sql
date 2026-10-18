@@ -13,5 +13,8 @@ CREATE TABLE tenant_users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     CONSTRAINT ck_tenant_users_security_version
-        CHECK (security_version > 0)
+        CHECK (security_version > 0),
+    CONSTRAINT ck_tenant_users_status
+        CHECK (status IN ('ACTIVE', 'INACTIVE', 'PENDING'))
 );
+

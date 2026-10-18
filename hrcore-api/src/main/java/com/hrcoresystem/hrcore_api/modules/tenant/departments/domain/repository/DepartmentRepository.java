@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 public interface DepartmentRepository {
     Department save(Department department);
@@ -14,6 +15,7 @@ public interface DepartmentRepository {
     Page<Department> findAll(DepartmentFilter filter, Pageable pageable);
     boolean existsActiveEmployee(UUID employeeId);
     boolean hasActiveChildren(UUID departmentId);
-    boolean hasCurrentAssignments(UUID departmentId);
     void lockHierarchy();
+    List<Department> findAllForTree(boolean includeInactive);
+    boolean hasCurrentOrFutureAssignments(UUID departmentId, java.time.LocalDate asOfDate);
 }

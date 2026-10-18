@@ -13,8 +13,14 @@ public final class AttendanceRequests {
     private AttendanceRequests() { }
 
     public record Calculate(@NotNull UUID employeeId, @NotNull LocalDate workDate) { }
+    public record CalculateRange(@NotNull UUID employeeId, @NotNull LocalDate from, @NotNull LocalDate to) { }
 
     public record Punch(UUID employeeId, @NotNull PunchType punchType, Instant punchedAt,
+            @DecimalMin("-90.0") @DecimalMax("90.0") BigDecimal latitude,
+            @DecimalMin("-180.0") @DecimalMax("180.0") BigDecimal longitude,
+            @Size(max = 2000) String notes) { }
+
+    public record SelfAttendancePunchRequest(@NotNull PunchType punchType,
             @DecimalMin("-90.0") @DecimalMax("90.0") BigDecimal latitude,
             @DecimalMin("-180.0") @DecimalMax("180.0") BigDecimal longitude,
             @Size(max = 2000) String notes) { }

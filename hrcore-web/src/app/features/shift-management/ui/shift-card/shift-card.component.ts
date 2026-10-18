@@ -66,21 +66,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
           </span>
         </div>
 
-        <!-- Días Laborales -->
-        <div class="pt-1">
-          <span class="text-[11px] text-muted-foreground block mb-1">Días de aplicación:</span>
-          <div class="flex gap-1">
-            <span
-              *ngFor="let d of weekDays"
-              [class.bg-primary]="isWorkDay(d.id)"
-              [class.text-primary-foreground]="isWorkDay(d.id)"
-              [class.bg-muted]="!isWorkDay(d.id)"
-              [class.text-muted-foreground]="!isWorkDay(d.id)"
-              class="flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold">
-              {{ d.label }}
-            </span>
-          </div>
-        </div>
+        <p class="pt-1 text-[11px] text-muted-foreground">Los días laborales se definen en cada asignación de empleado.</p>
       </div>
 
       <!-- Acciones Inferiores -->
@@ -103,6 +89,14 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
 
         <button
           type="button"
+          (click)="manageBreaks.emit(shift)"
+          class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          title="Gestionar descansos">
+          <lucide-icon name="coffee" [size]="14"></lucide-icon>
+        </button>
+
+        <button
+          type="button"
           (click)="toggleStatus.emit(shift)"
           [title]="shift.status === 'ACTIVE' ? 'Desactivar turno' : 'Activar turno'"
           class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -117,18 +111,9 @@ export class ShiftCardComponent {
   @Output() edit = new EventEmitter<ShiftResponse>();
   @Output() assign = new EventEmitter<ShiftResponse>();
   @Output() toggleStatus = new EventEmitter<ShiftResponse>();
+  @Output() manageBreaks = new EventEmitter<ShiftResponse>();
 
   private readonly formUseCase = inject(ShiftFormUseCase);
-
-  readonly weekDays = [
-    { id: 1, label: 'L' },
-    { id: 2, label: 'M' },
-    { id: 3, label: 'M' },
-    { id: 4, label: 'J' },
-    { id: 5, label: 'V' },
-    { id: 6, label: 'S' },
-    { id: 7, label: 'D' }
-  ];
 
   get effectiveHours(): number {
     return this.formUseCase.calculateEffectiveHours(
@@ -136,11 +121,6 @@ export class ShiftCardComponent {
       this.shift.endTime,
       this.shift.breakMinutes
     ).hours;
-  }
-
-  isWorkDay(dayOfWeek: number): boolean {
-    if (!this.shift.days) return dayOfWeek <= 5;
-    return this.shift.days.some((d) => d.dayOfWeek === dayOfWeek && d.isWorkDay);
   }
 
   formatTime(timeStr: string): string {

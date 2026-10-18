@@ -11,6 +11,7 @@ import lombok.Setter;
 public class LeaveBalanceEntity {
     @Id private UUID id;
     @Column(name = "employee_id", nullable = false, updatable = false) private UUID employeeId;
+    @Column(name = "employment_period_id", nullable = false, updatable = false) private UUID employmentPeriodId;
     @Column(name = "leave_type_id", nullable = false, updatable = false) private UUID leaveTypeId;
     @Column(name = "balance_year", nullable = false, updatable = false) private int balanceYear;
     @Column(name = "opening_days", nullable = false, precision = 8, scale = 2) private BigDecimal openingDays;

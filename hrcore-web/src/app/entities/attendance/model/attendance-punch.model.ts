@@ -29,3 +29,10 @@ export interface CreatePunchInput {
   longitude?: number;
   notes?: string;
 }
+
+export interface SelfAttendancePunchRequest {
+  punchType: Exclude<PunchType, 'BREAK_IN' | 'BREAK_OUT'>;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+}

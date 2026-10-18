@@ -10,6 +10,11 @@ export const TENANT_ROUTE_PERMISSIONS = {
   shifts: 'shifts.list',
   attendance: 'attendance.records.list',
   absences: 'leaves.requests.list',
+  incidents: 'incidents.list',
+  reportsEmployees: 'hr.reports.employees.read',
   departments: 'departments.list',
   positions: 'positions.list',
+  team: 'employees.team.read',
+  companySettings: 'tenant-settings.read',
+  audit: 'audit.events.read',
 } as const;

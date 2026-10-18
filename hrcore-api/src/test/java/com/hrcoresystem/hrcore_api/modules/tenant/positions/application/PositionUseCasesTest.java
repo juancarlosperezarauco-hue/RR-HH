@@ -15,6 +15,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 
 class PositionUseCasesTest {
     private final PositionRepository positions = mock(PositionRepository.class);
@@ -22,15 +24,17 @@ class PositionUseCasesTest {
     private final PositionPolicy policy = mock(PositionPolicy.class);
     private final PositionAudit audit = mock(PositionAudit.class);
     private final PositionMapper mapper = new PositionMapper();
+    private final BusinessSequenceService sequences = mock(BusinessSequenceService.class);
 
     @Test
     void createsPositionAndAuditsIt() {
         PositionRequest request = new PositionRequest("P1", "Analyst", null, null, null, null, null, null);
         Position created = position(PositionStatus.ACTIVE);
-        when(policy.normalizedPosition(eq(null), eq(request), eq(null), any())).thenReturn(created);
+        when(sequences.nextCode("position")).thenReturn("P1");
+        when(policy.normalizedPosition(eq(null), eq("P1"), eq(request), eq(null), any())).thenReturn(created);
         when(policy.actorId()).thenReturn(UUID.randomUUID());
         when(positions.save(created)).thenReturn(created);
-        PositionResponse response = new CreatePositionUseCase(positions, policy, audit, mapper).execute(request);
+        PositionResponse response = new CreatePositionUseCase(positions, policy, audit, mapper, sequences).execute(request);
         assertEquals(created.id(), response.id());
         verify(audit).position("CREATED", null, created);
         verify(policy).assertOperational();
@@ -42,7 +46,7 @@ class PositionUseCasesTest {
         PositionRequest request = new PositionRequest("P1", "Analyst", null, null, null, null, null, null);
         when(policy.requirePositionForUpdate(before.id())).thenReturn(before);
         when(policy.actorId()).thenReturn(UUID.randomUUID());
-        when(policy.normalizedPosition(eq(before.id()), eq(request), eq(before), any())).thenReturn(before);
+        when(policy.normalizedPosition(eq(before.id()), eq(before.code()), eq(request), eq(before), any())).thenReturn(before);
         when(policy.sameContent(before, before)).thenReturn(true);
         assertEquals(before.id(), new UpdatePositionUseCase(positions, policy, audit, mapper)
                 .execute(before.id(), request).id());
@@ -59,7 +63,7 @@ class PositionUseCasesTest {
         PositionRequest request = new PositionRequest("P1", "Senior Analyst", null, null, null, null, null, null);
         when(policy.requirePositionForUpdate(before.id())).thenReturn(before);
         when(policy.actorId()).thenReturn(UUID.randomUUID());
-        when(policy.normalizedPosition(eq(before.id()), eq(request), eq(before), any())).thenReturn(after);
+        when(policy.normalizedPosition(eq(before.id()), eq(before.code()), eq(request), eq(before), any())).thenReturn(after);
         when(positions.save(after)).thenReturn(after);
         assertEquals("Senior Analyst", new UpdatePositionUseCase(positions, policy, audit, mapper)
                 .execute(before.id(), request).name());
@@ -70,9 +74,9 @@ class PositionUseCasesTest {
     void deactivationBlocksCurrentAssignments() {
         Position before = position(PositionStatus.ACTIVE);
         when(policy.requirePositionForUpdate(before.id())).thenReturn(before);
-        when(positions.hasCurrentAssignments(before.id())).thenReturn(true);
+        when(positions.hasCurrentOrFutureAssignments(eq(before.id()), any())).thenReturn(true);
         assertThrows(BusinessException.class,
-                () -> new DeactivatePositionUseCase(positions, policy, audit, mapper).execute(before.id()));
+                () -> new DeactivatePositionUseCase(positions, policy, audit, mapper, mock(TenantTimezoneService.class)).execute(before.id()));
         verify(positions, never()).save(any());
         verifyNoInteractions(audit);
     }
@@ -92,7 +96,7 @@ class PositionUseCasesTest {
         when(policy.requirePositionForUpdate(before.id())).thenReturn(before);
         when(policy.actorId()).thenReturn(UUID.randomUUID());
         when(positions.save(any(Position.class))).thenAnswer(call -> call.getArgument(0));
-        PositionResponse response = new DeactivatePositionUseCase(positions, policy, audit, mapper).execute(before.id());
+        PositionResponse response = new DeactivatePositionUseCase(positions, policy, audit, mapper, mock(TenantTimezoneService.class)).execute(before.id());
         assertEquals(PositionStatus.INACTIVE, response.status());
         verify(audit).position(eq("DEACTIVATED"), eq(before), any(Position.class));
     }

@@ -10,6 +10,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.Att
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.repository.AttendanceStore;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.EmploymentPeriodService;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleDetermination;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.EffectiveScheduleService;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.ShiftTimeRules;
@@ -19,6 +20,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkS
 import java.time.*;
 import java.util.*;
 import org.springframework.data.domain.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,16 +40,31 @@ public class AttendancePunchService {
     private final AttendanceMapper mapper;
     private final TenantPlanEnforcementService plans;
     private final AuditTrailService audit;
+    private final EmploymentPeriodService periods;
+    private final AttendancePolicyService policies;
 
+    @Autowired
+    public AttendancePunchService(AttendanceStore store, EmployeeRepository employees,
+            AttendanceCalculationService calculations, EffectiveScheduleService schedules,
+            ShiftAssignmentRepository assignments, WorkShiftRepository shifts, ShiftBreakRepository breaks,
+            AttendanceZone zones, AttendanceActor actor, AttendanceMapper mapper,
+            TenantPlanEnforcementService plans, AuditTrailService audit, EmploymentPeriodService periods,
+            AttendancePolicyService policies) {
+        this.store = store; this.employees = employees; this.calculations = calculations;
+        this.schedules = schedules; this.assignments = assignments; this.shifts = shifts;
+        this.breaks = breaks; this.zones = zones; this.actor = actor;
+        this.mapper = mapper; this.plans = plans; this.audit = audit;
+        this.periods = periods; this.policies = policies;
+    }
+
+    /** Constructor de compatibilidad para pruebas aisladas del módulo. */
     public AttendancePunchService(AttendanceStore store, EmployeeRepository employees,
             AttendanceCalculationService calculations, EffectiveScheduleService schedules,
             ShiftAssignmentRepository assignments, WorkShiftRepository shifts, ShiftBreakRepository breaks,
             AttendanceZone zones, AttendanceActor actor, AttendanceMapper mapper,
             TenantPlanEnforcementService plans, AuditTrailService audit) {
-        this.store = store; this.employees = employees; this.calculations = calculations;
-        this.schedules = schedules; this.assignments = assignments; this.shifts = shifts;
-        this.breaks = breaks; this.zones = zones; this.actor = actor;
-        this.mapper = mapper; this.plans = plans; this.audit = audit;
+        this(store, employees, calculations, schedules, assignments, shifts, breaks, zones, actor, mapper,
+                plans, audit, null, null);
     }
 
     @Transactional
@@ -59,6 +76,8 @@ public class AttendancePunchService {
                 new BusinessException("employeeId is required when the tenant user is not linked to an employee"))
                 : request.employeeId();
         boolean own = linkedEmployee.filter(employeeId::equals).isPresent();
+        if (own && request.punchedAt() == null && policies != null)
+            policies.validateWebPunch(request.latitude(), request.longitude());
         boolean administrative = request.punchedAt() != null || !own;
         if (administrative && !actor.has("attendance.punches.manage"))
             throw new AccessDeniedException("Administrative punch permission is required");
@@ -87,7 +106,11 @@ public class AttendancePunchService {
         if (!PunchTimeline.validSequencePrefix(sequence)) throw new BusinessException("Invalid punch sequence");
 
         Optional<LocalDate> workDate = workDateFor(employeeId, request.punchType(), at, nearby, zone);
-        AttendanceRecord record = workDate.map(date -> store.lockOrCreate(employeeId, date)).orElse(null);
+        LocalDate resolvedDate = workDate.orElseThrow(() -> new BusinessException(
+                "No se pudo asociar la marcación a una jornada laboral inequívoca"));
+        AttendanceRecord record = periods == null
+                ? store.lockOrCreate(employeeId, resolvedDate)
+                : store.lockOrCreate(employeeId, resolvedDate, periods.requireForDate(employeeId, resolvedDate).id());
         AttendancePunch saved = store.save(new AttendancePunch(null, employeeId,
                 record == null ? null : record.id(), request.punchType(), at,
                 administrative ? PunchSource.MANUAL : PunchSource.WEB, null,
@@ -142,7 +165,7 @@ public class AttendancePunchService {
         if (schedule.determination() != ScheduleDetermination.EXACT || schedule.intervals().size() != 1)
             return false;
         var effective = assignments.findEffectiveOn(employeeId, date);
-        if (effective.size() != 1 || !effective.getFirst().shiftId().equals(schedule.intervals().getFirst().shiftId()))
+        if (effective.size() != 1)
             return false;
         var shift = shifts.findById(effective.getFirst().shiftId());
         if (shift.isEmpty()) return false;

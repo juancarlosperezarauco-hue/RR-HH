@@ -42,6 +42,7 @@ public class WorkCalendarExceptionRepositoryAdapter implements WorkCalendarExcep
         entity.setExceptionType(value.exceptionType());
         entity.setDescription(value.description());
         entity.setWorkRequired(value.workRequired());
+        entity.setOverrideShiftId(value.overrideShiftId());
         if (value.id() == null) entity.setCreatedBy(value.createdBy());
         return toDomain(jpa.saveAndFlush(entity));
     }
@@ -112,6 +113,6 @@ public class WorkCalendarExceptionRepositoryAdapter implements WorkCalendarExcep
     private WorkCalendarException toDomain(WorkCalendarExceptionEntity e) {
         return new WorkCalendarException(e.getId(), e.getEmployeeId(), e.getDepartmentId(),
                 e.getExceptionDate(), e.getExceptionType(), e.getDescription(),
-                e.isWorkRequired(), e.getCreatedBy(), e.getCreatedAt());
+                e.isWorkRequired(), e.getOverrideShiftId(), e.getCreatedBy(), e.getCreatedAt());
     }
 }

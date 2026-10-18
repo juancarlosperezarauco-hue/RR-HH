@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import com.hrcoresystem.hrcore_api.common.exception.InvalidBusinessStateException;
 
 @Repository
 public class TenantSettingRepositoryAdapter implements TenantSettingRepository {
@@ -30,8 +31,19 @@ public class TenantSettingRepositoryAdapter implements TenantSettingRepository {
     }
 
     @Override
+    public TenantSetting requireForUpdate(String settingKey) {
+        return jpaRepository.findBySettingKeyForUpdate(settingKey).map(this::toDomain)
+                .orElseThrow(() -> new InvalidBusinessStateException("No existe la configuración " + settingKey));
+    }
+
+    @Override
     public TenantSetting save(TenantSetting tenantSetting) {
-        TenantSettingEntity entity = toEntity(tenantSetting);
+        TenantSettingEntity entity = tenantSetting.id() == null
+                ? new TenantSettingEntity()
+                : jpaRepository.findById(tenantSetting.id()).orElseGet(TenantSettingEntity::new);
+        entity.setId(tenantSetting.id());
+        entity.setSettingKey(tenantSetting.settingKey());
+        entity.setSettingValue(tenantSetting.settingValue());
         TenantSettingEntity saved = jpaRepository.save(entity);
         return toDomain(saved);
     }

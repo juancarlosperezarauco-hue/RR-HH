@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 import javax.sql.DataSource;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException;
 
 @Repository
 public class DepartmentRepositoryAdapter implements DepartmentRepository {
@@ -24,8 +26,10 @@ public class DepartmentRepositoryAdapter implements DepartmentRepository {
 
     @Override
     public Department save(Department d) {
-        DepartmentEntity e = new DepartmentEntity();
-        e.setId(d.id());
+        DepartmentEntity e;
+        if (d.id() == null) e = new DepartmentEntity();
+        else e = jpa.findById(d.id()).orElseThrow(() -> new com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException("Departamento no encontrado"));
+        if (d.id() != null && !java.util.Objects.equals(e.getCode(), d.code())) throw new BusinessConflictException("El código del departamento no puede modificarse");
         e.setCode(d.code());
         e.setName(d.name());
         e.setDescription(d.description());
@@ -33,10 +37,9 @@ public class DepartmentRepositoryAdapter implements DepartmentRepository {
         e.setManagerEmployeeId(d.managerEmployeeId());
         e.setCostCenterCode(d.costCenterCode());
         e.setStatus(d.status());
-        e.setCreatedBy(d.createdBy());
+        if (d.id() == null) e.setCreatedBy(d.createdBy());
         e.setUpdatedBy(d.updatedBy());
-        e.setCreatedAt(d.createdAt());
-        e.setUpdatedAt(d.updatedAt());
+        if (d.id() == null) e.setCreatedAt(d.createdAt());
         return toDomain(jpa.saveAndFlush(e));
     }
 
@@ -82,15 +85,11 @@ public class DepartmentRepositoryAdapter implements DepartmentRepository {
         return jpa.existsByParentDepartmentIdAndStatus(departmentId, DepartmentStatus.ACTIVE);
     }
 
-    @Override
-    public boolean hasCurrentAssignments(UUID departmentId) {
-        Boolean found = jdbc.queryForObject("""
-                SELECT EXISTS (SELECT 1 FROM employee_assignments
-                 WHERE department_id = ? AND start_date <= CURRENT_DATE
-                   AND (end_date IS NULL OR end_date >= CURRENT_DATE))
-                """, Boolean.class, departmentId);
+    @Override public boolean hasCurrentOrFutureAssignments(UUID departmentId, java.time.LocalDate date) {
+        Boolean found = jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee_assignments WHERE department_id = ? AND assignment_status = 'ACTIVE' AND (end_date IS NULL OR end_date >= ?))", Boolean.class, departmentId, date);
         return Boolean.TRUE.equals(found);
     }
+    @Override public List<Department> findAllForTree(boolean includeInactive) { return jpa.findAll().stream().map(this::toDomain).toList(); }
 
     @Override
     public void lockHierarchy() {

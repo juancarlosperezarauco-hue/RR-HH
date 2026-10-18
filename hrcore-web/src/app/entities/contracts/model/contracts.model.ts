@@ -10,7 +10,6 @@ export type PaymentFrequency = 'MONTHLY' | 'BIWEEKLY' | 'WEEKLY' | 'DAILY';
 export interface ContractRequest {
   employeeId: string;
   employeeAssignmentId: string;
-  contractNumber: string;
   contractType: ContractType;
   contractForm: ContractForm;
   workSchedule: WorkSchedule;
@@ -29,6 +28,7 @@ export interface ContractRenewalRequest extends Omit<ContractRequest, 'employeeI
 
 export interface EmploymentContract extends ContractRequest {
   id: string;
+  contractNumber: string;
   status: ContractStatus;
   signedAt: string | null;
   terminationDate: string | null;

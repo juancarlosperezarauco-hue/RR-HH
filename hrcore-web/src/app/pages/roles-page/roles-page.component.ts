@@ -304,7 +304,7 @@ export class RolesPageComponent implements OnInit {
   }
 
   openRoleModal(role: TenantRoleResponse | null = null): void {
-    if (role && (role.systemRole || role.code === 'OWNER_ADMIN' || !this.canEditRole)) return;
+    if (role && (role.roleType === 'ROOT' || !this.canEditRole)) return;
     if (!role && !this.canCreateRole) {
       return;
     }

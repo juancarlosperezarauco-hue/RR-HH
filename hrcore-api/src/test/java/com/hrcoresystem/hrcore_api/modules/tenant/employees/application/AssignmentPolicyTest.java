@@ -10,6 +10,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.dto.Empl
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.*;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -24,11 +25,13 @@ class AssignmentPolicyTest {
     private final DepartmentRepository departments = mock(DepartmentRepository.class);
     private final PositionRepository positions = mock(PositionRepository.class);
     private final EmployeePolicy employeePolicy = mock(EmployeePolicy.class);
-    private final AssignmentPolicy policy = new AssignmentPolicy(assignments, employees, departments, positions, employeePolicy);
+    private final TenantTimezoneService timezone = mock(TenantTimezoneService.class);
+    private final AssignmentPolicy policy = new AssignmentPolicy(assignments, employees, departments, positions, employeePolicy, timezone);
     private final UUID departmentId = UUID.randomUUID();
     private final UUID positionId = UUID.randomUUID();
 
     @Test void validatesReferencesAndSerializesAgainstDeactivation() {
+        when(timezone.today()).thenReturn(LocalDate.now());
         Employee e = employee();
         EmployeeAssignmentRequest request = request(LocalDate.now(), null);
         assertThrows(BusinessException.class, () -> policy.normalized(e, request, null, UUID.randomUUID()));
@@ -41,6 +44,7 @@ class AssignmentPolicyTest {
         verify(positions, atLeastOnce()).findByIdForUpdate(positionId);
     }
     @Test void rejectsOverlappingPrimaryAssignment() {
+        when(timezone.today()).thenReturn(LocalDate.now());
         Employee e = employee();
         when(departments.findById(departmentId)).thenReturn(Optional.of(department(DepartmentStatus.ACTIVE)));
         when(positions.findByIdForUpdate(positionId)).thenReturn(Optional.of(position(PositionStatus.ACTIVE)));
@@ -49,6 +53,7 @@ class AssignmentPolicyTest {
                 () -> policy.normalized(e, request(LocalDate.now(), null), null, UUID.randomUUID()));
     }
     @Test void startedAndClosedAssignmentsCannotBeEdited() {
+        when(timezone.today()).thenReturn(LocalDate.now());
         Employee e = employee();
         EmployeeAssignment started = assignment(e.id(), LocalDate.now(), null);
         assertThrows(BusinessException.class,
@@ -58,6 +63,7 @@ class AssignmentPolicyTest {
                 () -> policy.normalized(e, request(LocalDate.now().plusDays(2), null), closed, UUID.randomUUID()));
     }
     @Test void closeRequiresStartedOpenAssignmentAndValidDate() {
+        when(timezone.today()).thenReturn(LocalDate.now());
         EmployeeAssignment future = assignment(UUID.randomUUID(), LocalDate.now().plusDays(1), null);
         assertThrows(BusinessException.class, () -> policy.closed(future, LocalDate.now()));
         EmployeeAssignment started = assignment(UUID.randomUUID(), LocalDate.now().minusDays(2), null);

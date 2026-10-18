@@ -56,8 +56,8 @@ services:
       MINIO_APP_USER: ${MINIO_APP_USER}
       MINIO_APP_PASSWORD: ${MINIO_APP_PASSWORD}
     volumes:
-      - ./docker/minio-app-policy.json:/policy/minio-app-policy.json:ro
-      - ./docker/minio-init.sh:/policy/minio-init.sh:ro
+      - ./minio/minio-app-policy.json:/policy/minio-app-policy.json:ro
+      - ./minio/minio-init.sh:/policy/minio-init.sh:ro
     networks:
       - hrcore-net
 
@@ -80,7 +80,7 @@ services:
       PG_DUMP_PATH: /usr/lib/postgresql/16/bin/pg_dump
       PG_RESTORE_PATH: /usr/lib/postgresql/16/bin/pg_restore
       PSQL_PATH: /usr/lib/postgresql/16/bin/psql
-      DOCUMENT_S3_ENDPOINT: http://minio:9000
+      DOCUMENT_S3_ENDPOINT: ${DOCUMENT_S3_ENDPOINT}
       DOCUMENT_S3_ACCESS_KEY: ${MINIO_APP_USER}
       DOCUMENT_S3_SECRET_KEY: ${MINIO_APP_PASSWORD}
     ports:

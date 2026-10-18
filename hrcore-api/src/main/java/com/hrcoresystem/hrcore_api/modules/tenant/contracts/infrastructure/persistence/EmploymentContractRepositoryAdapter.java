@@ -18,6 +18,7 @@ public class EmploymentContractRepositoryAdapter implements EmploymentContractRe
         EmploymentContractEntity e = c.id() == null ? new EmploymentContractEntity()
                 : jpa.findById(c.id()).orElseThrow();
         e.setEmployeeId(c.employeeId()); e.setEmployeeAssignmentId(c.employeeAssignmentId());
+        e.setEmploymentPeriodId(c.employmentPeriodId());
         e.setContractNumber(c.contractNumber()); e.setContractType(c.contractType()); e.setStatus(c.status());
         e.setContractForm(c.contractForm()); e.setWorkSchedule(c.workSchedule()); e.setWorkModality(c.workModality());
         e.setStartDate(c.startDate()); e.setEndDate(c.endDate()); e.setSignedAt(c.signedAt());
@@ -37,6 +38,8 @@ public class EmploymentContractRepositoryAdapter implements EmploymentContractRe
         return jpa.existsOverlappingActive(employeeId, exceptId, start, end);
     }
     @Override public boolean existsRenewal(UUID sourceContractId) { return jpa.existsByRenewedFromContractId(sourceContractId); }
+    @Override public List<EmploymentContract> findExpiredBatchForUpdate(LocalDate today) { return jpa.findExpiredBatch(today,PageRequest.of(0,500)).stream().map(this::toDomain).toList(); }
+    @Override public List<EmploymentContract> findAllByEmployeeIdForUpdate(UUID employeeId) { return jpa.findAllByEmployeeIdForUpdate(employeeId).stream().map(this::toDomain).toList(); }
     @Override public Page<EmploymentContract> findAll(ContractFilter filter, Pageable pageable) {
         Specification<EmploymentContractEntity> spec = (root, query, cb) -> {
             List<Predicate> p = new ArrayList<>();
@@ -61,6 +64,6 @@ public class EmploymentContractRepositoryAdapter implements EmploymentContractRe
                 e.getWorkSchedule(), e.getWorkModality(), e.getStartDate(), e.getEndDate(), e.getSignedAt(),
                 e.getBaseSalary(), e.getCurrency(), e.getPaymentFrequency(), e.getWeeklyHours(),
                 e.getProbationEndDate(), e.getTerminationDate(), e.getTerminationReason(), e.getTerms(),
-                e.getRenewedFromContractId(), e.getCreatedBy(), e.getUpdatedBy(), e.getCreatedAt(), e.getUpdatedAt());
+                e.getRenewedFromContractId(), e.getCreatedBy(), e.getUpdatedBy(), e.getCreatedAt(), e.getUpdatedAt(), e.getEmploymentPeriodId());
     }
 }

@@ -23,7 +23,7 @@ import {
   UploadEmployeeDocumentRequest,
   SignedUrlResponse
 } from '../model/employee-document.model';
-import { EmployeeDocumentAuditResponse } from '../model/document-audit.model';
+import { EmployeeDocumentAuditResponse, TenantAuditEventResponse } from '../model/document-audit.model';
 
 @Injectable({ providedIn: 'root' })
 export class EmployeeFileService {
@@ -245,6 +245,17 @@ export class EmployeeFileService {
     return this.http.get(
       `${this.filesUrl}/${fileId}/documents/${documentId}/versions/${versionId}/download`,
       { responseType: 'blob' }
+    );
+  }
+
+  listAuditEvents(page = 0, size = 100): Observable<ApiResponse<PageResponse<TenantAuditEventResponse>>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', Math.min(Math.max(1, size), 100).toString())
+      .set('sort', 'createdAt,desc');
+    return this.http.get<ApiResponse<PageResponse<TenantAuditEventResponse>>>(
+      `${environment.apiUrl}/api/audit/events`,
+      { params }
     );
   }
 

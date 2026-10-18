@@ -21,4 +21,6 @@ public interface ShiftAssignmentRepository {
     List<EmployeeShiftAssignment> findEffectiveOn(UUID employeeId, LocalDate date);
     boolean existsAnyByShiftId(UUID shiftId);
     boolean existsActiveCurrentOrFutureByShiftId(UUID shiftId, LocalDate today);
+    List<EmployeeShiftAssignment> findAllByEmployeeIdForUpdate(UUID employeeId);
+    List<EmployeeShiftAssignment> findByEmploymentPeriodId(UUID employmentPeriodId);
 }

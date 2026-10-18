@@ -3,6 +3,7 @@ export type LeaveStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCE
 export interface LeaveRequestResponse {
   id: string;                    // UUID
   employeeId: string;            // UUID
+  employmentPeriodId?: string | null;
   leaveTypeId: string;           // UUID
   startDate: string;             // YYYY-MM-DD
   endDate: string;               // YYYY-MM-DD
@@ -31,7 +32,7 @@ export interface LeaveRequestResponse {
 }
 
 export interface CreateLeaveRequestInput {
-  employeeId: string;
+  employeeId?: string;
   leaveTypeId: string;
   startDate: string;             // YYYY-MM-DD
   endDate: string;               // YYYY-MM-DD

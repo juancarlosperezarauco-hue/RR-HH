@@ -6,6 +6,9 @@ public record TenantSettingsResponse(
         String timezone,
         String currency,
         String contactEmail,
-        String contactPhone
+        String contactPhone,
+        String country,
+        String address,
+        String taxIdentifier
 ) {
 }

@@ -7,10 +7,12 @@ import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.AttendanceResponses;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.repository.AttendanceStore;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.EmploymentPeriodService;
 import com.hrcoresystem.hrcore_api.modules.tenant.leaves.application.service.ApprovedLeaveLookup;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleDetermination;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleResponse;
@@ -42,8 +44,10 @@ public class AttendanceCalculationService {
     private final AttendanceMapper mapper;
     private final ObjectMapper json;
     private final ApprovedLeaveLookup approvedLeaves;
+    private EmploymentPeriodService periods;
+    private TenantTimezoneService timezone;
+    private AttendancePolicyService policies;
 
-    @Autowired
     public AttendanceCalculationService(AttendanceStore store, EmployeeRepository employees,
             EffectiveScheduleService schedules, ShiftAssignmentRepository assignments,
             WorkShiftRepository shifts, ShiftBreakRepository breaks, AttendanceZone zones,
@@ -53,7 +57,25 @@ public class AttendanceCalculationService {
         this.assignments = assignments; this.shifts = shifts; this.breaks = breaks;
         this.zones = zones; this.plans = plans; this.audit = audit; this.mapper = mapper; this.json = json;
         this.approvedLeaves = approvedLeaves;
+        this.periods = null;
+        this.timezone = null;
     }
+
+    @Autowired
+    public AttendanceCalculationService(AttendanceStore store, EmployeeRepository employees,
+            EffectiveScheduleService schedules, ShiftAssignmentRepository assignments,
+            WorkShiftRepository shifts, ShiftBreakRepository breaks, AttendanceZone zones,
+            TenantPlanEnforcementService plans, AuditTrailService audit, AttendanceMapper mapper,
+            ObjectMapper json, ApprovedLeaveLookup approvedLeaves, EmploymentPeriodService periods) {
+        this(store, employees, schedules, assignments, shifts, breaks, zones, plans, audit, mapper, json, approvedLeaves);
+        this.periods = periods;
+    }
+
+    @Autowired
+    public void setTenantTimezoneService(TenantTimezoneService timezone) { this.timezone = timezone; }
+
+    @Autowired
+    public void setAttendancePolicyService(AttendancePolicyService policies) { this.policies = policies; }
 
     /** Constructor de compatibilidad para pruebas unitarias aisladas del módulo HU17. */
     public AttendanceCalculationService(AttendanceStore store, EmployeeRepository employees,
@@ -88,8 +110,22 @@ public class AttendanceCalculationService {
         zones.required();
         employees.findByIdForUpdate(employeeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found: " + employeeId));
-        AttendanceRecord record = store.lockOrCreate(employeeId, workDate);
+        if (periods == null) throw new BusinessException("Employment period service is required");
+        var period = periods.requireForDate(employeeId, workDate);
+        AttendanceRecord record = store.lockOrCreate(employeeId, workDate, period.id());
         return mapper.toResponse(recalculateLocked(record));
+    }
+
+    @Transactional
+    public List<AttendanceResponses.Record> calculateRange(UUID employeeId, LocalDate from, LocalDate to) {
+        if (employeeId == null || from == null || to == null || to.isBefore(from))
+            throw new BusinessException("employeeId, from y to son obligatorios y válidos");
+        if (from.plusDays(31).isBefore(to)) throw new BusinessException("El rango máximo es de 31 días");
+        LocalDate today = timezone == null ? LocalDate.now() : timezone.today();
+        if (to.isAfter(today)) throw new BusinessException("No se puede calcular una fecha futura");
+        List<AttendanceResponses.Record> result = new ArrayList<>();
+        for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) result.add(calculate(employeeId, date));
+        return result;
     }
 
     /** Caller holds the employee row lock and an open transaction. */
@@ -153,8 +189,10 @@ public class AttendanceCalculationService {
             } else {
                 var assignment = effective.getFirst();
                 assignmentId = assignment.id();
-                shift = shifts.findById(assignment.shiftId());
-                if (shift.isEmpty() || !schedule.intervals().getFirst().shiftId().equals(assignment.shiftId())) {
+                // El horario efectivo es la única fuente de verdad; una excepción puede
+                // sustituir el turno habitual de la asignación.
+                shift = shifts.findById(schedule.intervals().getFirst().shiftId());
+                if (shift.isEmpty()) {
                     status = AttendanceStatus.INCOMPLETE; reason = "SHIFT_NOT_AVAILABLE";
                 } else {
                     try {
@@ -172,7 +210,12 @@ public class AttendanceCalculationService {
                         status = AttendanceStatus.INCOMPLETE;
                         if (reason == null) reason = "INVALID_SCHEDULE_DURATION";
                     } else if (events.isEmpty()) {
-                        status = Instant.now().isAfter(expectedEnd) ? AttendanceStatus.ABSENT : AttendanceStatus.PENDING;
+                        status = Instant.now().isAfter(expectedEnd.plus(Duration.ofHours(2)))
+                                ? AttendanceStatus.ABSENT : AttendanceStatus.PENDING;
+                    } else if (policies != null && policies.enabled("attendance.break_punch_required", false)
+                            && !hasCompleteBreakEvidence(events, scheduledBreaks)) {
+                        status = AttendanceStatus.INCOMPLETE;
+                        reason = "BREAK_PUNCH_REQUIRED";
                     } else {
                         PunchTimeline.Result result = PunchTimeline.evaluate(events, scheduledBreaks);
                         actualFirst = result.firstIn(); actualLast = result.lastOut();
@@ -214,7 +257,7 @@ public class AttendanceCalculationService {
         details.put("approvedLeaveRequestIds", approvedLeavePeriods.stream()
                 .map(ApprovedLeaveLookup.ApprovedPeriod::requestId).toList());
         JsonNode calculationDetails = json.valueToTree(details);
-        AttendanceRecord updated = new AttendanceRecord(before.id(), before.employeeId(), assignmentId, before.workDate(),
+        AttendanceRecord updated = new AttendanceRecord(before.id(), before.employeeId(), before.employmentPeriodId(), assignmentId, before.workDate(),
                 expectedStart, expectedEnd, actualFirst, actualLast, worked, late, early, status,
                 calculationDetails, Instant.now(), before.createdAt(), before.updatedAt());
         if (same(before, updated)) return before;
@@ -242,5 +285,12 @@ public class AttendanceCalculationService {
                 && a.workedMinutes() == b.workedMinutes() && a.lateMinutes() == b.lateMinutes()
                 && a.earlyDepartureMinutes() == b.earlyDepartureMinutes() && a.status() == b.status()
                 && Objects.equals(a.calculationDetails(), b.calculationDetails());
+    }
+
+    private boolean hasCompleteBreakEvidence(List<PunchTimeline.Event> events, List<PunchTimeline.Window> scheduled) {
+        if (scheduled.isEmpty()) return true;
+        long starts = events.stream().filter(e -> e.type() == PunchType.BREAK_START).count();
+        long ends = events.stream().filter(e -> e.type() == PunchType.BREAK_END).count();
+        return starts >= scheduled.size() && ends >= scheduled.size();
     }
 }

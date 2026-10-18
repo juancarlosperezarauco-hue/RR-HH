@@ -8,5 +8,5 @@ import java.util.UUID;
 
 public interface TenantAuditEventJpaRepository extends JpaRepository<TenantAuditEventEntity, UUID> {
 
-    List<TenantAuditEventEntity> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    List<TenantAuditEventEntity> findAllByOrderByCreatedAtDescIdDesc(Pageable pageable);
 }

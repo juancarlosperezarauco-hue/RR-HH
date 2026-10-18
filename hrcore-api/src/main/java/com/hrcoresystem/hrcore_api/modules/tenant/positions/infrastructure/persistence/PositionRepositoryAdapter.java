@@ -57,14 +57,8 @@ public class PositionRepositoryAdapter implements PositionRepository {
         return jpa.findAll(spec, pageable).map(this::toDomain);
     }
 
-    @Override
-    public boolean hasCurrentAssignments(UUID positionId) {
-        Boolean found = jdbc.queryForObject("""
-                SELECT EXISTS (SELECT 1 FROM employee_assignments
-                 WHERE position_id = ? AND start_date <= CURRENT_DATE
-                   AND (end_date IS NULL OR end_date >= CURRENT_DATE))
-                """, Boolean.class, positionId);
-        return Boolean.TRUE.equals(found);
+    @Override public boolean hasCurrentOrFutureAssignments(UUID positionId, java.time.LocalDate date) {
+        Boolean found=jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee_assignments WHERE position_id=? AND assignment_status = 'ACTIVE' AND (end_date IS NULL OR end_date >= ?))",Boolean.class,positionId,date); return Boolean.TRUE.equals(found);
     }
 
     private String escapeLike(String value) {

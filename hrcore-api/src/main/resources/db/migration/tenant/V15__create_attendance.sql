@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     employee_id UUID NOT NULL,
+    employment_period_id UUID NOT NULL,
 
     shift_assignment_id UUID NULL,
 
@@ -45,8 +46,11 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT uq_attendance_employee_date
-        UNIQUE (employee_id, work_date),
+    CONSTRAINT uq_attendance_employee_date UNIQUE (employee_id,work_date),
+    CONSTRAINT uq_attendance_id_employee UNIQUE (id,employee_id),
+    CONSTRAINT fk_attendance_records_period_employee
+        FOREIGN KEY (employment_period_id,employee_id)
+        REFERENCES employment_periods(id,employee_id) ON DELETE RESTRICT,
 
     CONSTRAINT fk_attendance_records_employee
         FOREIGN KEY (employee_id)
@@ -54,8 +58,8 @@ CREATE TABLE IF NOT EXISTS attendance_records (
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_attendance_records_shift
-        FOREIGN KEY (shift_assignment_id)
-        REFERENCES employee_shift_assignments(id)
+        FOREIGN KEY (shift_assignment_id,employee_id)
+        REFERENCES employee_shift_assignments(id,employee_id)
         ON DELETE RESTRICT,
 
     CONSTRAINT chk_attendance_records_status
@@ -89,6 +93,10 @@ CREATE INDEX IF NOT EXISTS idx_attendance_records_date
 
 CREATE INDEX IF NOT EXISTS idx_attendance_records_status
     ON attendance_records(status);
+CREATE INDEX idx_attendance_records_period ON attendance_records(employment_period_id);
+CREATE TRIGGER trg_bind_attendance_period
+BEFORE INSERT OR UPDATE OF employee_id, employment_period_id, work_date ON attendance_records
+FOR EACH ROW EXECUTE FUNCTION bind_employee_employment_period('work_date');
 
 
 -- ============================================================
@@ -125,8 +133,8 @@ CREATE TABLE IF NOT EXISTS attendance_punches (
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_attendance_punches_record
-        FOREIGN KEY (attendance_record_id)
-        REFERENCES attendance_records(id)
+        FOREIGN KEY (attendance_record_id,employee_id)
+        REFERENCES attendance_records(id,employee_id)
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_attendance_punches_user
@@ -294,5 +302,4 @@ CREATE TABLE IF NOT EXISTS attendance_overtime (
 
 CREATE INDEX IF NOT EXISTS idx_attendance_overtime_record
     ON attendance_overtime(attendance_record_id);
-
 

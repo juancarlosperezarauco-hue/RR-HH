@@ -7,6 +7,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.departments.application.servic
 import com.hrcoresystem.hrcore_api.modules.tenant.departments.domain.model.Department;
 import com.hrcoresystem.hrcore_api.modules.tenant.departments.domain.model.DepartmentStatus;
 import com.hrcoresystem.hrcore_api.modules.tenant.departments.domain.repository.DepartmentRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import org.junit.jupiter.api.Test;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,7 +17,7 @@ import static org.mockito.Mockito.*;
 class DepartmentPolicyTest {
     private final DepartmentRepository repository = mock(DepartmentRepository.class);
     private final DepartmentPolicy policy = new DepartmentPolicy(repository,
-            mock(TenantPlanEnforcementService.class), mock(SecurityContextFacade.class));
+            mock(TenantPlanEnforcementService.class), mock(SecurityContextFacade.class), mock(TenantTimezoneService.class));
 
     @Test
     void rejectsIndirectCycle() {
@@ -42,7 +43,7 @@ class DepartmentPolicyTest {
         when(repository.hasActiveChildren(id)).thenReturn(true);
         assertThrows(BusinessException.class, () -> policy.validateDeactivation(id));
         when(repository.hasActiveChildren(id)).thenReturn(false);
-        when(repository.hasCurrentAssignments(id)).thenReturn(true);
+        when(repository.hasCurrentOrFutureAssignments(eq(id), any())).thenReturn(true);
         assertThrows(BusinessException.class, () -> policy.validateDeactivation(id));
     }
 

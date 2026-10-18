@@ -27,7 +27,7 @@ public class UpdateDepartmentUseCase {
         policy.assertOperational();
         policy.lockForWrite();
         Department before = policy.require(id);
-        String code = policy.required(request.code(), 50, "code");
+        String code = before.code();
         String name = policy.required(request.name(), 150, "name");
         policy.assertCodeAvailable(code, id);
         policy.validateReferences(id, request.parentDepartmentId(), request.managerEmployeeId());
@@ -45,6 +45,7 @@ public class UpdateDepartmentUseCase {
                 after.managerEmployeeId(), after.costCenterCode(), after.status(), before.createdBy(), actor,
                 before.createdAt(), before.updatedAt());
         Department saved = departments.save(after);
+        policy.validateReportingAfterChange();
         recorder.record(before, saved, recorder.updateAction(before, saved), reason, actor);
         return mapper.toResponse(saved);
     }
