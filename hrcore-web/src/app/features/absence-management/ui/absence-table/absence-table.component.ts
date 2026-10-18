@@ -35,7 +35,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
             class="rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
           >
             <option value="ALL">Todos los Estados</option>
-            <option value="DRAFT">Borradores</option>
+            <option value="DRAFT">Borrador</option>
             <option value="PENDING">Pendientes de Aprobación</option>
             <option value="APPROVED">Aprobadas</option>
             <option value="REJECTED">Rechazadas</option>
@@ -62,8 +62,8 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
             <tr>
               <th scope="col" class="px-5 py-3 font-bold">Colaborador</th>
               <th scope="col" class="px-5 py-3 font-bold">Tipo de Ausencia</th>
-              <th scope="col" class="px-5 py-3 font-bold">Período / Horario</th>
-              <th scope="col" class="px-5 py-3 font-bold">Duración</th>
+              <th scope="col" class="px-5 py-3 font-bold">Período</th>
+              <th scope="col" class="px-5 py-3 font-bold">Días Hábiles</th>
               <th scope="col" class="px-5 py-3 font-bold">Respaldo</th>
               <th scope="col" class="px-5 py-3 font-bold">Estado</th>
               <th scope="col" class="px-5 py-3 font-bold text-right">Acción</th>
@@ -85,7 +85,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                   <lucide-icon name="calendar" class="h-6 w-6 text-muted-foreground"></lucide-icon>
                 </div>
                 <p class="font-medium text-foreground">No se encontraron solicitudes de ausencia</p>
-                <p class="text-xs text-muted-foreground mt-1">Pruebe ajustando los filtros o registre una nueva solicitud con el botón superior</p>
+                <p class="text-xs text-muted-foreground mt-1">Pruebe ajustando los filtros o cree una nueva solicitud</p>
               </td>
             </tr>
 
@@ -104,7 +104,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                     <div class="font-semibold text-foreground text-sm">
                       {{ req.employeeFullName || 'Colaborador' }}
                     </div>
-                    <div class="text-xs text-muted-foreground line-clamp-1 max-w-[220px]" [title]="req.reason">
+                    <div class="text-xs text-muted-foreground line-clamp-1 max-w-[200px]" [title]="req.reason">
                       "{{ req.reason }}"
                     </div>
                   </div>
@@ -118,15 +118,12 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 </span>
               </td>
 
-              <!-- Período / Horas -->
+              <!-- Período -->
               <td class="px-5 py-3.5 whitespace-nowrap text-xs text-foreground font-medium">
-                <div>{{ req.startDate }} al {{ req.endDate }}</div>
-                <div *ngIf="req.startTime && req.endTime" class="text-[11px] text-muted-foreground font-mono mt-0.5">
-                  {{ req.startTime }} - {{ req.endTime }}
-                </div>
+                {{ req.startDate }} al {{ req.endDate }}
               </td>
 
-              <!-- Duración -->
+              <!-- Días Hábiles -->
               <td class="px-5 py-3.5 whitespace-nowrap">
                 <span class="font-mono text-xs font-bold text-foreground">
                   {{ req.totalDays }}d
@@ -134,17 +131,19 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 <span class="text-[11px] text-muted-foreground ml-1">hábiles</span>
               </td>
 
-              <!-- Respaldo / Justificativo -->
+              <!-- Respaldo HU15 -->
               <td class="px-5 py-3.5 whitespace-nowrap">
-                <button
-                  type="button"
-                  (click)="review.emit(req)"
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-background/80 px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                  title="Ver o adjuntar documentos probatorios"
+                <a
+                  *ngIf="req.attachmentUrl"
+                  [href]="req.attachmentUrl"
+                  target="_blank"
+                  class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  title="Ver documento adjunto"
                 >
-                  <lucide-icon name="paperclip" class="h-3.5 w-3.5 text-primary"></lucide-icon>
-                  <span>Respaldo</span>
-                </button>
+                  <lucide-icon name="file-text" class="h-3.5 w-3.5"></lucide-icon>
+                  <span>Adjunto</span>
+                </a>
+                <span *ngIf="!req.attachmentUrl" class="text-xs text-muted-foreground">--</span>
               </td>
 
               <!-- Estado -->
@@ -152,12 +151,12 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 <app-absence-status-badge [status]="req.status"></app-absence-status-badge>
               </td>
 
-              <!-- Acción Evaluar / Ver Detalle -->
+              <!-- Acción Evaluar -->
               <td class="px-5 py-3.5 whitespace-nowrap text-right">
                 <button
                   type="button"
                   (click)="review.emit(req)"
-                  class="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors shadow-2xs"
+                  class="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                   title="Revisar o evaluar solicitud"
                 >
                   <lucide-icon name="eye" class="h-3.5 w-3.5"></lucide-icon>
@@ -170,9 +169,9 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
       </div>
 
       <!-- Table Footer -->
-      <div class="p-4 border-t border-border/60 bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span>Mostrando {{ requests.length }} solicitudes de ausencia o permiso</span>
-        <span>Cómputo en días hábiles conforme a la Ley General del Trabajo de Bolivia</span>
+      <div class="p-4 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
+        <span>Mostrando {{ requests.length }} solicitudes de ausencia</span>
+        <span>Cómputo en días hábiles (LGT Bolivia)</span>
       </div>
     </div>
   `

@@ -13,7 +13,8 @@ import {
 import {
   AttendancePunchResponse,
   CreatePunchInput,
-  PunchType
+  PunchType,
+  SelfAttendancePunchRequest
 } from '../model/attendance-punch.model';
 import {
   AttendanceAdjustmentResponse,
@@ -35,6 +36,7 @@ export class AttendanceService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/api/attendance`;
   private readonly legacyBaseUrl = `${environment.apiUrl}/api/v1/attendance`;
+  private readonly selfBaseUrl = `${environment.apiUrl}/api/me/attendance`;
 
   // ==========================================
   // HU17 - 1. PUNCHES (Marcaciones individuales)
@@ -42,6 +44,35 @@ export class AttendanceService {
 
   createPunch(input: CreatePunchInput): Observable<ApiResponse<AttendancePunchResponse>> {
     return this.http.post<ApiResponse<AttendancePunchResponse>>(`${this.baseUrl}/punches`, input);
+  }
+
+  createSelfPunch(input: SelfAttendancePunchRequest): Observable<ApiResponse<AttendancePunchResponse>> {
+    return this.http.post<ApiResponse<AttendancePunchResponse>>(`${this.selfBaseUrl}/punches`, input);
+  }
+
+  listMyRecords(filters: { from?: string; to?: string; status?: AttendanceStatus | 'ALL'; page?: number; size?: number } = {}) {
+    let params = new HttpParams().set('page', String(filters.page ?? 0)).set('size', String(filters.size ?? 50));
+    if (filters.from) params = params.set('from', filters.from);
+    if (filters.to) params = params.set('to', filters.to);
+    if (filters.status && filters.status !== 'ALL') params = params.set('status', filters.status);
+    return this.http.get<ApiResponse<PageResponse<AttendanceRecordResponse>>>(this.selfBaseUrl, { params }).pipe(
+      map(res => ({ ...res, data: { ...res.data, content: (res.data?.content ?? []).map(r => this.toViewRecord(r)) } }))
+    );
+  }
+
+  getMyRecord(id: string) {
+    return this.http.get<ApiResponse<AttendanceRecordResponse>>(`${this.selfBaseUrl}/${id}`).pipe(
+      map(res => ({ ...res, data: this.toViewRecord(res.data) }))
+    );
+  }
+
+  listMyPunches(filters: { recordId?: string; from?: string; to?: string; type?: PunchType; page?: number; size?: number } = {}) {
+    let params = new HttpParams().set('page', String(filters.page ?? 0)).set('size', String(filters.size ?? 50));
+    if (filters.recordId) params = params.set('recordId', filters.recordId);
+    if (filters.from) params = params.set('from', filters.from);
+    if (filters.to) params = params.set('to', filters.to);
+    if (filters.type) params = params.set('type', filters.type);
+    return this.http.get<ApiResponse<PageResponse<AttendancePunchResponse>>>(`${this.selfBaseUrl}/punches`, { params });
   }
 
   listPunches(filters?: {
@@ -88,7 +119,7 @@ export class AttendanceService {
     employeeId?: string,
     status?: AttendanceStatus | 'ALL',
     page = 0,
-    size = 100,
+    size = 20,
     sort = 'workDate',
     direction = 'desc'
   ): Observable<ApiResponse<PageResponse<AttendanceRecordResponse>>> {
@@ -135,14 +166,14 @@ export class AttendanceService {
   }
 
   getTodayStatus(employeeId?: string): Observable<ApiResponse<AttendanceRecordResponse | null>> {
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = new Date().toISOString().split('T')[0];
     let params = new HttpParams()
       .set('from', today)
       .set('to', today)
       .set('page', '0')
       .set('size', '1');
 
-    if (employeeId && employeeId.length > 20 && !employeeId.startsWith('mock')) {
+    if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
 
@@ -168,6 +199,16 @@ export class AttendanceService {
       `${this.baseUrl}/adjustments`,
       request
     );
+  }
+
+  createMyAdjustment(request: CreateAdjustmentRequest) {
+    return this.http.post<ApiResponse<AttendanceAdjustmentResponse>>(`${this.selfBaseUrl}/adjustments`, request);
+  }
+
+  listMyAdjustments(filters: { status?: ReviewStatus; page?: number; size?: number } = {}) {
+    let params = new HttpParams().set('page', String(filters.page ?? 0)).set('size', String(filters.size ?? 50));
+    if (filters.status) params = params.set('status', filters.status);
+    return this.http.get<ApiResponse<PageResponse<AttendanceAdjustmentResponse>>>(`${this.selfBaseUrl}/adjustments`, { params });
   }
 
   listAdjustments(filters?: {
@@ -227,6 +268,20 @@ export class AttendanceService {
 
   createOvertime(request: CreateOvertimeRequest): Observable<ApiResponse<AttendanceOvertimeResponse>> {
     return this.http.post<ApiResponse<AttendanceOvertimeResponse>>(`${this.baseUrl}/overtime`, request);
+  }
+
+  createMyOvertime(request: CreateOvertimeRequest) {
+    return this.http.post<ApiResponse<AttendanceOvertimeResponse>>(`${this.selfBaseUrl}/overtime`, request);
+  }
+
+  listMyOvertime(filters: { status?: ReviewStatus; page?: number; size?: number } = {}) {
+    let params = new HttpParams().set('page', String(filters.page ?? 0)).set('size', String(filters.size ?? 50));
+    if (filters.status) params = params.set('status', filters.status);
+    return this.http.get<ApiResponse<PageResponse<AttendanceOvertimeResponse>>>(`${this.selfBaseUrl}/overtime`, { params });
+  }
+
+  calculateRecordsRange(request: { employeeId: string; from: string; to: string }) {
+    return this.http.post<ApiResponse<AttendanceRecordResponse[]>>(`${this.baseUrl}/records/process-range`, request);
   }
 
   listOvertime(filters?: {
@@ -297,20 +352,12 @@ export class AttendanceService {
       canonicalType = 'BREAK_END';
     }
 
-    const customPunchTime = request.punchedAt || request.timestamp;
-    const hasCustomTime = !!customPunchTime;
-    const punchedAtIso = hasCustomTime ? new Date(customPunchTime).toISOString() : undefined;
-    const notesValue = request.notes?.trim() || (hasCustomTime ? 'Marcación manual administrativa' : undefined);
-
     const payload: CreatePunchInput = {
-      employeeId: request.employeeId && request.employeeId.length > 20 && !request.employeeId.startsWith('mock')
-        ? request.employeeId
-        : undefined,
+      employeeId: request.employeeId || undefined,
       punchType: canonicalType,
-      punchedAt: punchedAtIso,
       latitude: request.latitude,
       longitude: request.longitude,
-      notes: notesValue
+      notes: request.notes
     };
 
     return this.createPunch(payload);

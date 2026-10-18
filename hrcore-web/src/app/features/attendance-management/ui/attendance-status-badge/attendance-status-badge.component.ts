@@ -22,14 +22,13 @@ import { AttendanceStatus } from '../../../../entities/attendance';
 export class AttendanceStatusBadgeComponent {
   @Input({ required: true }) status!: AttendanceStatus;
   @Input() lateMinutes?: number;
-  @Input() checkOutTime?: string | null;
 
   get label(): string {
     switch (this.status) {
       case 'PRESENT':
-        return this.checkOutTime ? 'Jornada Concluida' : 'Presente';
+        return 'Presente';
       case 'LATE':
-        return this.checkOutTime ? 'Retraso (Concluido)' : 'Presente c/ Retraso';
+        return 'Retraso';
       case 'EARLY_DEPARTURE':
         return 'Salida Anticipada';
       case 'ABSENT':
@@ -81,9 +80,9 @@ export class AttendanceStatusBadgeComponent {
   get dotClass(): string {
     switch (this.status) {
       case 'PRESENT':
-        return this.checkOutTime ? 'bg-emerald-500' : 'bg-emerald-500 animate-pulse';
+        return 'bg-emerald-500 animate-pulse';
       case 'LATE':
-        return this.checkOutTime ? 'bg-amber-500' : 'bg-amber-500 animate-pulse';
+        return 'bg-amber-500';
       case 'EARLY_DEPARTURE':
         return 'bg-indigo-500';
       case 'ABSENT':

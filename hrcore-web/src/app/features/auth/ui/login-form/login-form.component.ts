@@ -20,11 +20,8 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
         <p class="mt-2 text-sm text-muted-foreground">Elige entre contraseña o reconocimiento facial.</p>
       </div>
 
-      <div *ngIf="status === 'error'" class="mb-6 flex items-start gap-3 rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-        <lucide-icon name="alert-circle" class="mt-0.5 h-5 w-5 shrink-0 text-destructive"></lucide-icon>
-        <div class="flex-1 leading-relaxed">
-          {{ error }}
-        </div>
+      <div *ngIf="status === 'error'" class="mb-6 rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">
+        {{ error }}
       </div>
 
       <div class="mb-6 grid grid-cols-2 rounded-full bg-accent p-1">

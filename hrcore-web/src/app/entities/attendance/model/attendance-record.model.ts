@@ -59,7 +59,4 @@ export interface ClockPunchRequest {
   latitude?: number;
   longitude?: number;
   notes?: string;
-  timestamp?: string;
-  punchedAt?: string;
 }
-

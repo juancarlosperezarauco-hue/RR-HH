@@ -1,11 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import {
-  ShiftService,
-  EmployeeShiftAssignmentResponse,
-  AssignShiftRequest,
-  CreateShiftAssignmentRequest
-} from '../../../entities/shift';
+import { ShiftService, EmployeeShiftAssignmentResponse, AssignShiftRequest } from '../../../entities/shift';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 import { EmployeesService, EmployeeSummary } from '../../../entities/employees';
 import { ShiftResponse } from '../../../entities/shift';
@@ -24,7 +19,6 @@ export class ShiftAssignmentUseCase {
   async loadAssignments(): Promise<void> {
     this.loading.set(true);
     try {
-      // 1. Intentar listado canónico de Spring Boot: /api/shifts/assignments
       const [res, employeesRes, shiftsRes] = await Promise.all([
         firstValueFrom(this.shiftService.listAssignments()),
         firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
@@ -50,13 +44,6 @@ export class ShiftAssignmentUseCase {
         }));
         return;
       }
-    } catch {
-      // Fallback a ruta legada
-    }
-
-    try {
-      const res = await firstValueFrom(this.shiftService.getEmployeeAssignments('all'));
-      this.assignments.set(res.data);
     } catch {
       this.assignments.set([]);
     } finally {
@@ -97,41 +84,6 @@ export class ShiftAssignmentUseCase {
     return { hasOverlap: false };
   }
 
-  private extractErrorMessage(err: unknown): string {
-    const errorObj = err as any;
-    const apiError = errorObj?.error;
-
-    let rawMessage = '';
-    if (apiError) {
-      if (Array.isArray(apiError.errors) && apiError.errors.length > 0) {
-        rawMessage = apiError.errors.join('. ');
-      } else if (typeof apiError.message === 'string' && apiError.message.trim().length > 0) {
-        rawMessage = apiError.message;
-      }
-    } else if (typeof errorObj?.message === 'string') {
-      rawMessage = errorObj.message;
-    }
-
-    if (!rawMessage) {
-      return 'Error al asignar turno al colaborador';
-    }
-
-    if (rawMessage.includes('startDate cannot precede today')) {
-      return 'La fecha de inicio no puede ser anterior a la fecha de hoy.';
-    }
-    if (rawMessage.includes('endDate cannot precede startDate')) {
-      return 'La fecha fin no puede ser anterior a la fecha de inicio.';
-    }
-    if (rawMessage.includes('company.timezone')) {
-      return 'Configure la zona horaria en la configuración de la empresa antes de asignar turnos.';
-    }
-    if (rawMessage.includes('Employee must be active')) {
-      return 'El colaborador seleccionado debe estar activo.';
-    }
-
-    return rawMessage;
-  }
-
   async assign(request: AssignShiftRequest): Promise<boolean> {
     // Validar solapamiento para cada colaborador seleccionado
     for (const empId of request.employeeIds) {
@@ -147,49 +99,15 @@ export class ShiftAssignmentUseCase {
     this.error.set(null);
 
     const weekdays = request.weekdays && request.weekdays.length > 0 ? request.weekdays : [1, 2, 3, 4, 5];
-    const errors: string[] = [];
-    const newAssignments: EmployeeShiftAssignmentResponse[] = [];
 
     try {
-      for (const empId of request.employeeIds) {
-        const payload: CreateShiftAssignmentRequest = {
-          employeeId: empId,
-          shiftId: request.shiftId,
-          startDate: request.startDate,
-          endDate: request.endDate ? request.endDate : null,
-          weekdays
-        };
-
-        try {
-          const res = await firstValueFrom(this.shiftService.createAssignment(payload));
-          if (res?.data) {
-            newAssignments.push(res.data);
-          }
-        } catch (err: unknown) {
-          const detail = this.extractErrorMessage(err);
-          errors.push(detail);
-        }
-      }
-
-      if (newAssignments.length > 0) {
-        this.assignments.update((prev) => [...newAssignments, ...prev]);
-        this.loadAssignments().catch(() => {});
-      }
-
-      if (errors.length === 0) {
-        this.toastService.success(
-          `Turno asignado exitosamente a ${newAssignments.length} colaborador(es)`
-        );
-        return true;
-      } else {
-        const uniqueErrors = Array.from(new Set(errors));
-        const errorMessage = uniqueErrors.join('. ');
-        this.error.set(errorMessage);
-        this.toastService.error(errorMessage);
-        return newAssignments.length > 0;
-      }
+      const res = await firstValueFrom(this.shiftService.assignShifts({ ...request, weekdays }));
+      this.toastService.success(`Turno asignado a ${res.data.length} colaborador(es) exitosamente`);
+      this.assignments.update((prev) => [...res.data, ...prev]);
+      return true;
     } catch (err: unknown) {
-      const msg = this.extractErrorMessage(err);
+      const errorResponse = err as { error?: { message?: string } };
+      const msg = errorResponse?.error?.message || 'Error al asignar el turno a los trabajadores';
       this.error.set(msg);
       this.toastService.error(msg);
       return false;

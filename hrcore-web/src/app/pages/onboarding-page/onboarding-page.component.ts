@@ -67,14 +67,6 @@ export class OnboardingPageComponent implements OnInit {
       return;
     }
 
-    if (planCode === 'DEMO') {
-      this.selectedPlanCode.set('DEMO');
-      this.selectedBillingInterval.set('MONTHLY');
-      this.ready.set(true);
-      this.loadingPlan.set(false);
-      return;
-    }
-
     try {
       const response = await firstValueFrom(this.billing.listPublicPlans().pipe(timeout(15000)));
       const plans: PublicBillingPlan[] = response.success && Array.isArray(response.data) ? response.data : [];

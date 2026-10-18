@@ -17,15 +17,15 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
     >
       <div
-        class="w-full max-w-xl rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all max-h-[92vh] overflow-y-auto"
+        class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all"
         (click)="$event.stopPropagation()"
       >
         <!-- Modal Header -->
         <div class="flex items-start justify-between border-b border-border pb-4">
           <div>
-            <h3 class="text-lg font-bold text-foreground">Detalle y Evaluación de Solicitud</h3>
+            <h3 class="text-lg font-bold text-foreground">Revisión de Solicitud de Ausencia</h3>
             <p class="text-xs text-muted-foreground mt-0.5">
-              Revisión, aprobación, rechazo y justificación formal de permisos y ausencias laborales (LGT)
+              Decisión formal de RRHH / Supervisión con auditoría laboral
             </p>
           </div>
           <button
@@ -37,145 +37,59 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
           </button>
         </div>
 
-        <!-- Alerta de Segregación de Funciones (Auditoría LGT) -->
-        <div
-          *ngIf="isRequester && request.status === 'PENDING'"
-          class="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300"
-        >
-          <lucide-icon name="shield-alert" class="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5"></lucide-icon>
-          <div class="space-y-0.5">
-            <p class="font-bold">Norma de Segregación de Funciones (LGT / Auditoría)</p>
-            <p class="text-muted-foreground">
-              Esta solicitud fue registrada por su usuario. Según las políticas de control interno de HRCore, la aprobación debe ser efectuada por otro revisor o supervisor del tenant.
-            </p>
-          </div>
-        </div>
-
         <!-- Detalles de la Solicitud -->
-        <div class="mt-4 space-y-4">
-          <div class="rounded-xl bg-accent/40 border border-border/60 p-4 space-y-3">
+        <div class="mt-4 space-y-3">
+          <div class="rounded-xl bg-accent/40 border border-border/60 p-4 space-y-2">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-sm font-bold text-foreground">{{ request.employeeFullName || 'Colaborador' }}</p>
-                <p class="text-xs font-semibold text-primary">{{ request.leaveTypeName || 'Permiso Laboral' }}</p>
+                <p class="text-xs font-semibold text-primary">{{ request.leaveTypeName }}</p>
               </div>
               <app-absence-status-badge [status]="request.status"></app-absence-status-badge>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-border/40 text-xs">
+            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-border/40 text-xs">
               <div>
                 <span class="text-muted-foreground">Período Solicitado:</span>
-                <p class="font-semibold text-foreground mt-0.5">
-                  {{ request.startDate }} al {{ request.endDate }}
-                </p>
-                <p *ngIf="request.startTime && request.endTime" class="text-[11px] text-muted-foreground font-mono mt-0.5">
-                  Horario: {{ request.startTime }} a {{ request.endTime }}
-                </p>
+                <p class="font-medium text-foreground mt-0.5">{{ request.startDate }} al {{ request.endDate }}</p>
               </div>
               <div>
-                <span class="text-muted-foreground">Duración en Días Hábiles:</span>
-                <p class="font-mono font-bold text-foreground mt-0.5">
-                  {{ request.totalDays }} {{ request.totalDays === 1 ? 'día hábil' : 'días hábiles' }}
-                </p>
+                <span class="text-muted-foreground">Días Hábiles:</span>
+                <p class="font-mono font-bold text-foreground mt-0.5">{{ request.totalDays }} días</p>
               </div>
             </div>
 
-            <div class="pt-2 border-t border-border/40 text-xs">
+            <div class="pt-2 text-xs">
               <span class="text-muted-foreground">Motivo expuesto:</span>
-              <p class="text-foreground mt-1 italic bg-background/60 p-2.5 rounded-xl border border-border/40">
+              <p class="text-foreground mt-0.5 italic bg-background/50 p-2 rounded-lg border border-border/30">
                 "{{ request.reason }}"
               </p>
             </div>
 
-            <!-- Comentario de Revisión Previo (si fue aprobada/rechazada) -->
-            <div *ngIf="request.reviewComment" class="pt-2 border-t border-border/40 text-xs">
-              <span class="font-semibold" [ngClass]="request.status === 'APPROVED' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
-                {{ request.status === 'APPROVED' ? 'Comentario de Aprobación:' : 'Motivo del Rechazo:' }}
-              </span>
-              <p class="text-foreground mt-1 p-2 rounded-xl bg-background/60 border border-border/40">
-                {{ request.reviewComment }}
+            <!-- Documentos probatorios privados de la solicitud -->
+            <div class="pt-2 border-t border-border/40">
+              <p class="text-xs font-semibold text-foreground mb-1.5">Documentos probatorios</p>
+              <p *ngIf="attachmentsLoading" class="text-xs text-muted-foreground">Cargando documentos...</p>
+              <p *ngIf="!attachmentsLoading && attachments.length === 0" class="text-xs text-muted-foreground">
+                La solicitud no tiene documentos adjuntos.
               </p>
-            </div>
-          </div>
-
-          <!-- Documentos Probatorios / Respaldo (HU15) -->
-          <div class="rounded-xl border border-border bg-card p-4 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <lucide-icon name="paperclip" class="h-4 w-4 text-primary"></lucide-icon>
-                <span>Documentos de Respaldo / Justificativos ({{ attachments.length }})</span>
-              </div>
-              <span class="text-[11px] text-muted-foreground font-mono">Archivos probatorios</span>
-            </div>
-
-            <!-- Loading Documentos -->
-            <p *ngIf="attachmentsLoading" class="text-xs text-muted-foreground py-2 flex items-center gap-1.5">
-              <lucide-icon name="loader-circle" class="h-3.5 w-3.5 animate-spin text-primary"></lucide-icon>
-              Cargando comprobantes...
-            </p>
-
-            <!-- Lista de Adjuntos -->
-            <div *ngIf="!attachmentsLoading && attachments.length > 0" class="space-y-1.5">
-              <div
+              <button
                 *ngFor="let attachment of attachments"
-                class="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-accent/20 px-3 py-2 text-xs"
+                type="button"
+                (click)="downloadAttachment(attachment)"
+                class="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-primary hover:bg-background/70"
               >
-                <div class="inline-flex min-w-0 items-center gap-2">
-                  <lucide-icon name="file-text" class="h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                  <span class="font-medium text-foreground truncate max-w-[240px]">{{ attachment.filename }}</span>
-                  <span class="text-[10px] text-muted-foreground font-mono">({{ formatFileSize(attachment.fileSize) }})</span>
-                </div>
-                <button
-                  type="button"
-                  (click)="downloadAttachment(attachment)"
-                  class="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-primary hover:bg-background transition-colors"
-                  title="Descargar documento de respaldo"
-                >
-                  <lucide-icon name="download" class="h-3.5 w-3.5"></lucide-icon>
-                  <span>Descargar</span>
-                </button>
-              </div>
+                <span class="inline-flex min-w-0 items-center gap-1.5">
+                  <lucide-icon name="file-text" class="h-3.5 w-3.5 shrink-0"></lucide-icon>
+                  <span class="truncate">{{ attachment.filename }}</span>
+                </span>
+                <lucide-icon name="download" class="h-3.5 w-3.5 shrink-0"></lucide-icon>
+              </button>
             </div>
-
-            <!-- Sin documentos -->
-            <p *ngIf="!attachmentsLoading && attachments.length === 0" class="text-xs text-muted-foreground italic py-1">
-              Esta solicitud no cuenta con documentos probatorios adjuntos.
-            </p>
-
-            <!-- Opción para Adjuntar Justificativo en Solicitudes Pendientes o Borradores -->
-            <div *ngIf="canAddAttachment" class="pt-2 border-t border-border/40">
-              <div class="flex items-center justify-between mb-1.5">
-                <span class="text-xs font-semibold text-foreground">Justificar con nuevo documento:</span>
-                <span class="text-[11px] text-muted-foreground">PDF, PNG, JPG (máx 10MB)</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <input
-                  type="file"
-                  (change)="onUploadProofSelected($event)"
-                  accept=".pdf,.png,.jpg,.jpeg"
-                  [disabled]="uploadingAttachment"
-                  class="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs text-foreground file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          <!-- Modo Aprobación con Comentario -->
-          <div *ngIf="isApproveMode" class="space-y-2 rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4 animate-in fade-in duration-150">
-            <label class="block text-xs font-bold text-emerald-700 dark:text-emerald-400">
-              Comentario de Aprobación (Opcional):
-            </label>
-            <textarea
-              [(ngModel)]="approvalComment"
-              name="approvalComment"
-              rows="2"
-              placeholder="Indique alguna observación o acuerdo laboral (ej. Aprobado de acuerdo al cronograma de área)..."
-              class="w-full rounded-xl border border-emerald-500/40 bg-background p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            ></textarea>
           </div>
 
           <!-- Modo Rechazo: Justificación Obligatoria -->
-          <div *ngIf="isRejectMode" class="space-y-2 rounded-xl border border-rose-500/40 bg-rose-500/5 p-4 animate-in fade-in duration-150">
+          <div *ngIf="isRejectMode" class="space-y-2 pt-2 animate-in fade-in duration-200">
             <div class="flex items-center justify-between">
               <label class="text-xs font-bold text-rose-600 dark:text-rose-400">
                 Motivo del Rechazo <span class="text-rose-500">* (Obligatorio)</span>
@@ -191,7 +105,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
               [(ngModel)]="rejectionReason"
               name="rejectionReason"
               rows="3"
-              placeholder="Indique con claridad las razones del rechazo (ej. Necesidad operativa crítica del área, período no consensuado)..."
+              placeholder="Indique con claridad las razones del rechazo (ej. Necesidad operativa crítica del área, período no consensuado...)"
               class="w-full rounded-xl border border-rose-500/50 bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
               required
             ></textarea>
@@ -202,7 +116,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
         </div>
 
         <!-- Modal Actions -->
-        <div class="mt-6 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
+        <div class="mt-6 flex items-center justify-between gap-3 pt-3 border-t border-border">
           <button
             type="button"
             (click)="close()"
@@ -212,62 +126,41 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
             Cerrar
           </button>
 
-          <!-- Acciones cuando está en estado PENDING -->
-          <div *ngIf="request.status === 'PENDING'" class="flex items-center gap-2">
-            <!-- Normal / Sin modo seleccionado -->
-            <ng-container *ngIf="!isRejectMode && !isApproveMode">
+          <div class="flex items-center gap-2">
+            <!-- Si no está en modo rechazo -->
+            <ng-container *ngIf="!isRejectMode">
               <button
                 type="button"
                 (click)="isRejectMode = true"
-                [disabled]="useCase.reviewing()"
-                class="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 transition-colors"
+                [disabled]="useCase.reviewing() || request.status !== 'PENDING'"
+                class="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-50 transition-colors"
               >
                 <lucide-icon name="ban" class="h-4 w-4"></lucide-icon>
-                <span>Rechazar</span>
+                Rechazar
               </button>
 
-              <button
-                type="button"
-                (click)="isApproveMode = true"
-                [disabled]="useCase.reviewing() || isRequester"
-                [title]="isRequester ? 'No puede aprobar una solicitud que usted mismo registró' : 'Evaluar y aprobar solicitud'"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                <lucide-icon *ngIf="useCase.reviewing()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
-                <lucide-icon *ngIf="!useCase.reviewing()" name="check-circle" class="h-4 w-4"></lucide-icon>
-                <span>Aprobar</span>
-              </button>
-            </ng-container>
-
-            <!-- Modo Confirmar Aprobación -->
-            <ng-container *ngIf="isApproveMode">
-              <button
-                type="button"
-                (click)="isApproveMode = false"
-                class="rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
-              >
-                Cancelar
-              </button>
               <button
                 type="button"
                 (click)="onApprove()"
-                [disabled]="useCase.reviewing() || isRequester"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:bg-emerald-500 disabled:opacity-50 transition-all"
+                [disabled]="useCase.reviewing() || request.status !== 'PENDING'"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all"
               >
                 <lucide-icon *ngIf="useCase.reviewing()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
-                <span>Confirmar Aprobación</span>
+                <lucide-icon *ngIf="!useCase.reviewing()" name="check-circle" class="h-4 w-4"></lucide-icon>
+                Aprobar
               </button>
             </ng-container>
 
-            <!-- Modo Rechazo -->
+            <!-- Si está en modo rechazo -->
             <ng-container *ngIf="isRejectMode">
               <button
                 type="button"
                 (click)="isRejectMode = false"
                 class="rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
               >
-                Cancelar
+                Cancelar Rechazo
               </button>
+
               <button
                 type="button"
                 (click)="onConfirmReject()"
@@ -275,22 +168,9 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <lucide-icon *ngIf="useCase.reviewing()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
-                <span>Confirmar Rechazo</span>
+                Confirmar Rechazo
               </button>
             </ng-container>
-          </div>
-
-          <!-- Si es Borrador o Aprobada, permitir Cancelar si aplica -->
-          <div *ngIf="request.status === 'DRAFT' || (request.status === 'APPROVED' && canCancel)" class="flex items-center gap-2">
-            <button
-              type="button"
-              (click)="onCancel()"
-              [disabled]="useCase.reviewing()"
-              class="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-500/10 transition-colors"
-            >
-              <lucide-icon name="x-circle" class="h-4 w-4"></lucide-icon>
-              <span>Cancelar Solicitud</span>
-            </button>
           </div>
         </div>
       </div>
@@ -303,48 +183,19 @@ export class AbsenceReviewModalComponent implements OnChanges {
 
   @Input() isOpen = false;
   @Input() request: LeaveRequestResponse | null = null;
-  @Input() currentUserId?: string | null = null;
-
   @Output() closeModal = new EventEmitter<void>();
   @Output() reviewCompleted = new EventEmitter<void>();
 
-  isApproveMode = false;
   isRejectMode = false;
-  approvalComment = '';
   rejectionReason = '';
   rejectionTouched = false;
   attachments: LeaveAttachmentResponse[] = [];
   attachmentsLoading = false;
-  uploadingAttachment = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if ((changes['isOpen'] || changes['request']) && this.isOpen && this.request) {
-      this.isApproveMode = false;
-      this.isRejectMode = false;
-      this.approvalComment = '';
-      this.rejectionReason = '';
-      this.rejectionTouched = false;
       void this.loadAttachments();
     }
-  }
-
-  get isRequester(): boolean {
-    if (!this.currentUserId || !this.request?.requestedBy) return false;
-    return this.currentUserId.toLowerCase() === this.request.requestedBy.toLowerCase();
-  }
-
-  get canAddAttachment(): boolean {
-    return this.request?.status === 'DRAFT' || this.request?.status === 'PENDING';
-  }
-
-  get canCancel(): boolean {
-    if (!this.request) return false;
-    if (this.request.status === 'DRAFT' || this.request.status === 'PENDING') return true;
-    if (this.request.status === 'APPROVED') {
-      const today = new Date().toISOString().substring(0, 10);
-      return this.request.startDate >= today;
-    }
-    return false;
   }
 
   private async loadAttachments(): Promise<void> {
@@ -353,7 +204,7 @@ export class AbsenceReviewModalComponent implements OnChanges {
     this.attachments = [];
     try {
       const response = await firstValueFrom(this.absenceService.listAttachments(this.request.id));
-      this.attachments = response.data?.content || [];
+      this.attachments = response.data.content ?? [];
     } catch {
       this.attachments = [];
     } finally {
@@ -363,46 +214,19 @@ export class AbsenceReviewModalComponent implements OnChanges {
 
   async downloadAttachment(attachment: LeaveAttachmentResponse): Promise<void> {
     if (!this.request) return;
-    try {
-      const blob = await firstValueFrom(
-        this.absenceService.downloadAttachment(this.request.id, attachment.id)
-      );
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = attachment.filename;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Error manejado en servicio
-    }
-  }
-
-  async onUploadProofSelected(event: any): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file || !this.request) return;
-
-    this.uploadingAttachment = true;
-    const ok = await this.useCase.uploadJustification(this.request.id, file);
-    this.uploadingAttachment = false;
-
-    if (ok) {
-      await this.loadAttachments();
-      this.reviewCompleted.emit();
-    }
-    event.target.value = '';
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    const blob = await firstValueFrom(
+      this.absenceService.downloadAttachment(this.request.id, attachment.id)
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = attachment.filename;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   close(): void {
-    this.isApproveMode = false;
     this.isRejectMode = false;
-    this.approvalComment = '';
     this.rejectionReason = '';
     this.rejectionTouched = false;
     this.attachments = [];
@@ -413,8 +237,7 @@ export class AbsenceReviewModalComponent implements OnChanges {
     if (!this.request) return;
     const ok = await this.useCase.review({
       requestId: this.request.id,
-      approved: true,
-      rejectionReason: this.approvalComment.trim() || undefined
+      approved: true
     });
     if (ok) {
       this.close();
@@ -431,15 +254,6 @@ export class AbsenceReviewModalComponent implements OnChanges {
       approved: false,
       rejectionReason: this.rejectionReason.trim()
     });
-    if (ok) {
-      this.close();
-      this.reviewCompleted.emit();
-    }
-  }
-
-  async onCancel(): Promise<void> {
-    if (!this.request) return;
-    const ok = await this.useCase.cancel(this.request.id, this.approvalComment.trim() || undefined);
     if (ok) {
       this.close();
       this.reviewCompleted.emit();

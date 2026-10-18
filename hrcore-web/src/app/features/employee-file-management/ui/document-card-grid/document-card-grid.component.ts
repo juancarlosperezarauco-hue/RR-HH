@@ -66,15 +66,6 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
               <lucide-icon name="lock" [size]="10"></lucide-icon>
               CONFIDENCIAL
             </span>
-
-            <!-- Badge si no tiene archivo digital adjunto (carga fallida o incompleta) -->
-            <span
-              *ngIf="!doc.activeVersionId && doc.fileSizeBytes === 0"
-              class="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600 border border-rose-500/20 shrink-0"
-              title="Este documento no cuenta con archivo físico adjunto debido a una carga incompleta.">
-              <lucide-icon name="circle-alert" [size]="10"></lucide-icon>
-              SIN ARCHIVO
-            </span>
           </div>
 
           <!-- Título y Tipo -->
@@ -117,7 +108,6 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
         <div *ngIf="canAccessDocument(doc); else sensitiveBlocked" class="space-y-2 pt-1">
           <div class="flex items-center justify-between gap-2">
             <button
-              *ngIf="doc.activeVersionId || doc.fileSizeBytes > 0"
               type="button"
               (click)="previewUseCase.openPreview(doc)"
               class="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-border bg-muted/40 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
@@ -125,23 +115,15 @@ import { PermissionService } from '../../../../shared/lib/auth/permission.servic
               Ver
             </button>
 
-            <button
-              *ngIf="!doc.activeVersionId && doc.fileSizeBytes === 0"
-              type="button"
-              (click)="onArchive(doc.id)"
-              class="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500 hover:text-white"
-              title="Archivar documento incompleto">
-              <lucide-icon name="archive" [size]="14"></lucide-icon>
-              Archivar Huérfano
-            </button>
-
-            <button
-              type="button"
-              (click)="previewUseCase.downloadDocument(doc)"
+            <a
+              *ngIf="doc.downloadUrl"
+              [href]="doc.downloadUrl"
+              target="_blank"
+              download
               class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               title="Descargar">
               <lucide-icon name="download" [size]="14"></lucide-icon>
-            </button>
+            </a>
 
             <button
               type="button"

@@ -61,7 +61,7 @@ export interface EmployeeDocumentResponse {
   fileSizeBytes: number;
   mimeType: string;
   versionNumber: number;
-  activeVersionId?: string;
+  latestVersionId?: string;
   issueDate?: string | null;
   expirationDate?: string | null;
   downloadUrl?: string;
@@ -123,7 +123,6 @@ export interface DocumentVersionResponse {
 
 // Compatibilidad transicional
 export interface UploadEmployeeDocumentRequest {
-  fileId?: string;
   employeeId: string;
   documentTypeId: string;
   documentType?: DocumentType;

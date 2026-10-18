@@ -8,10 +8,8 @@ import {
   WorkShiftResponse,
   WorkShiftRequest,
   CreateShiftRequest,
-  ShiftStatus,
-  ShiftType
+  ShiftStatus
 } from '../model/shift.model';
-import { ShiftDayResponse } from '../model/shift-day.model';
 import {
   ShiftBreakResponse,
   ShiftBreakRequest
@@ -29,7 +27,7 @@ import {
   WorkCalendarExceptionRequest,
   CalendarExceptionType
 } from '../model/calendar-exception.model';
-import { ScheduleResponse } from '../model/schedule.model';
+import { ScheduleRangeResponse, ScheduleResponse } from '../model/schedule.model';
 
 @Injectable({ providedIn: 'root' })
 export class ShiftService {
@@ -50,7 +48,7 @@ export class ShiftService {
   listShifts(
     status?: 'ACTIVE' | 'INACTIVE' | 'ALL',
     page = 0,
-    size = 50,
+    size = 25,
     code?: string,
     name?: string,
     sort = 'name',
@@ -92,24 +90,14 @@ export class ShiftService {
    * POST /api/shifts
    */
   createShift(request: WorkShiftRequest | CreateShiftRequest): Observable<ApiResponse<ShiftResponse>> {
-    const createReq = request as CreateShiftRequest;
-    let description = request.description;
-    if (createReq.workDays && Array.isArray(createReq.workDays)) {
-      description = JSON.stringify({
-        workDays: createReq.workDays,
-        breakMinutes: createReq.breakMinutes || 0,
-        shiftType: createReq.shiftType || 'CONTINUOUS'
-      });
-    }
-
+    // Normalizar payload enviando campos oficiales de Spring Boot
     const payload: WorkShiftRequest = {
-      code: request.code,
       name: request.name,
-      description,
+      description: request.description,
       startTime: request.startTime,
       endTime: request.endTime,
-      crossesMidnight: request.crossesMidnight ?? createReq.isOvernight ?? false,
-      lateToleranceMinutes: request.lateToleranceMinutes ?? createReq.gracePeriodMinutes ?? 10,
+      crossesMidnight: request.crossesMidnight ?? (request as CreateShiftRequest).isOvernight ?? false,
+      lateToleranceMinutes: request.lateToleranceMinutes ?? (request as CreateShiftRequest).gracePeriodMinutes ?? 10,
       earlyDepartureToleranceMinutes: request.earlyDepartureToleranceMinutes ?? 5
     };
     return this.http.post<ApiResponse<WorkShiftResponse>>(this.baseUrl, payload).pipe(
@@ -122,24 +110,13 @@ export class ShiftService {
    * PUT /api/shifts/{id}
    */
   updateShift(id: string, request: WorkShiftRequest | CreateShiftRequest): Observable<ApiResponse<ShiftResponse>> {
-    const createReq = request as CreateShiftRequest;
-    let description = request.description;
-    if (createReq.workDays && Array.isArray(createReq.workDays)) {
-      description = JSON.stringify({
-        workDays: createReq.workDays,
-        breakMinutes: createReq.breakMinutes || 0,
-        shiftType: createReq.shiftType || 'CONTINUOUS'
-      });
-    }
-
     const payload: WorkShiftRequest = {
-      code: request.code,
       name: request.name,
-      description,
+      description: request.description,
       startTime: request.startTime,
       endTime: request.endTime,
-      crossesMidnight: request.crossesMidnight ?? createReq.isOvernight ?? false,
-      lateToleranceMinutes: request.lateToleranceMinutes ?? createReq.gracePeriodMinutes ?? 10,
+      crossesMidnight: request.crossesMidnight ?? (request as CreateShiftRequest).isOvernight ?? false,
+      lateToleranceMinutes: request.lateToleranceMinutes ?? (request as CreateShiftRequest).gracePeriodMinutes ?? 10,
       earlyDepartureToleranceMinutes: request.earlyDepartureToleranceMinutes ?? 5
     };
     return this.http.put<ApiResponse<WorkShiftResponse>>(`${this.baseUrl}/${id}`, payload).pipe(
@@ -185,7 +162,7 @@ export class ShiftService {
   listBreaks(
     shiftId: string,
     page = 0,
-    size = 50,
+    size = 25,
     sort = 'startTime',
     direction = 'asc'
   ): Observable<ApiResponse<PageResponse<ShiftBreakResponse>>> {
@@ -274,7 +251,7 @@ export class ShiftService {
     shiftId?: string,
     status?: ShiftAssignmentStatus,
     page = 0,
-    size = 50
+    size = 25
   ): Observable<ApiResponse<PageResponse<ShiftAssignmentResponse>>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -341,7 +318,7 @@ export class ShiftService {
    */
   assignShifts(request: AssignShiftRequest): Observable<ApiResponse<EmployeeShiftAssignmentResponse[]>> {
     return this.http.post<ApiResponse<EmployeeShiftAssignmentResponse[]>>(
-      `${this.baseUrl}/assignments`,
+      `${this.baseUrl}/assignments/batch`,
       request
     );
   }
@@ -388,7 +365,7 @@ export class ShiftService {
       organizationOnly?: boolean;
     },
     page = 0,
-    size = 50
+    size = 25
   ): Observable<ApiResponse<PageResponse<WorkCalendarExceptionResponse>>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -461,42 +438,36 @@ export class ShiftService {
     );
   }
 
+  getEffectiveScheduleRange(employeeId: string, fromDate: string, toDate: string): Observable<ApiResponse<ScheduleRangeResponse>> {
+    const params = new HttpParams()
+      .set('employeeId', employeeId)
+      .set('fromDate', fromDate)
+      .set('toDate', toDate);
+    return this.http.get<ApiResponse<ScheduleRangeResponse>>(`${this.baseUrl}/schedule/range`, { params });
+  }
+
+  getMySchedule(date?: string): Observable<ApiResponse<ScheduleResponse>> {
+    let params = new HttpParams();
+    if (date) params = params.set('date', date);
+    return this.http.get<ApiResponse<ScheduleResponse>>(`${environment.apiUrl}/api/me/schedule`, { params });
+  }
+
+  getMyScheduleRange(fromDate: string, toDate: string): Observable<ApiResponse<ScheduleRangeResponse>> {
+    const params = new HttpParams().set('fromDate', fromDate).set('toDate', toDate);
+    return this.http.get<ApiResponse<ScheduleRangeResponse>>(`${environment.apiUrl}/api/me/schedule/range`, { params });
+  }
+
   private toShiftResponse(shift: WorkShiftResponse): ShiftResponse {
     const isOvernight = !!shift.crossesMidnight;
-    let workDays = [1, 2, 3, 4, 5];
-    let breakMinutes = 0;
-    let shiftType: ShiftType = isOvernight ? 'NIGHT' : 'CONTINUOUS';
-
-    if (shift.description) {
-      try {
-        const parsed = JSON.parse(shift.description);
-        if (Array.isArray(parsed.workDays) && parsed.workDays.length > 0) {
-          workDays = parsed.workDays;
-        }
-        if (typeof parsed.breakMinutes === 'number') {
-          breakMinutes = parsed.breakMinutes;
-        }
-        if (parsed.shiftType) {
-          shiftType = parsed.shiftType;
-        }
-      } catch {
-        // Plain text description
-      }
-    }
-
-    const days: ShiftDayResponse[] = [1, 2, 3, 4, 5, 6, 7].map((d) => ({
-      dayOfWeek: d,
-      isWorkDay: workDays.includes(d),
-      breakMinutes
-    }));
-
+    const startHour = Number(shift.startTime?.substring(0, 2));
+    const endHour = Number(shift.endTime?.substring(0, 2));
+    const shiftType = isOvernight || startHour >= 18 || endHour <= 6 ? 'NIGHT' : 'CONTINUOUS';
     return {
       ...shift,
       shiftType,
-      breakMinutes,
+      breakMinutes: 0,
       gracePeriodMinutes: shift.lateToleranceMinutes,
-      isOvernight,
-      days
+      isOvernight
     };
   }
 }

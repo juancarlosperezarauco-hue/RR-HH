@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -44,9 +44,8 @@ import { firstValueFrom } from 'rxjs';
         <div class="flex items-center gap-2">
           <button
             type="button"
-            (click)="refreshAll()"
-            class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors shadow-xs cursor-pointer"
-            title="Actualizar registros y marcaciones"
+            (click)="listUseCase.loadRecords()"
+            class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors shadow-xs"
           >
             <lucide-icon name="refresh-ccw" class="h-4 w-4" [ngClass]="{ 'animate-spin': listUseCase.loading() }"></lucide-icon>
             <span>Actualizar</span>
@@ -161,7 +160,7 @@ import { firstValueFrom } from 'rxjs';
         [statusFilter]="listUseCase.statusFilter()"
         (searchChanged)="listUseCase.setSearch($event)"
         (statusChanged)="onStatusFilterChanged($event)"
-        (refresh)="refreshAll()"
+        (refresh)="listUseCase.loadRecords()"
         (regularize)="openRegularizeDialog($event)"
       ></app-attendance-table>
 
@@ -178,7 +177,6 @@ import { firstValueFrom } from 'rxjs';
 export class AttendancePageComponent implements OnInit {
   readonly listUseCase = inject(AttendanceListUseCase);
   private readonly employeesService = inject(EmployeesService);
-  private readonly cdr = inject(ChangeDetectorRef);
 
   employees: EmployeeSummary[] = [];
   selectedEmployeeId = '';
@@ -193,31 +191,20 @@ export class AttendancePageComponent implements OnInit {
     } catch {
       this.employees = [];
     }
-    await this.refreshAll();
-  }
-
-  async refreshAll(): Promise<void> {
-    try {
-      await this.listUseCase.loadRecords();
-    } finally {
-      this.cdr.markForCheck();
-      this.cdr.detectChanges();
-    }
+    this.listUseCase.loadRecords();
   }
 
   updateDateRange(start: string, end: string): void {
     if (!start || !end || start > end) return;
     this.listUseCase.setDateRange(start, end);
-    this.refreshAll();
   }
 
-  async onClockRegistered(_record: AttendanceRecordResponse): Promise<void> {
-    await this.refreshAll();
+  onClockRegistered(_record: AttendanceRecordResponse): void {
+    this.listUseCase.loadRecords();
   }
 
   onStatusFilterChanged(status: AttendanceStatus | 'ALL'): void {
     this.listUseCase.setStatusFilter(status);
-    this.refreshAll();
   }
 
   openRegularizeDialog(record: AttendanceRecordResponse): void {
@@ -225,7 +212,7 @@ export class AttendancePageComponent implements OnInit {
     this.isRegularizeModalOpen = true;
   }
 
-  async onRegularized(): Promise<void> {
-    await this.refreshAll();
+  onRegularized(): void {
+    this.listUseCase.loadRecords();
   }
 }

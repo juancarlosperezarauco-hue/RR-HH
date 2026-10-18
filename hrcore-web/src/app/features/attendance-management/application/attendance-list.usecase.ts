@@ -16,15 +16,11 @@ export class AttendanceListUseCase {
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
 
-  // Fechas en hora local (evita desfases por UTC-4 a altas horas de la noche)
-  readonly startDate = signal<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA')
-  );
-  readonly endDate = signal<string>(
-    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toLocaleDateString('en-CA')
-  );
+  // Filtros reactivos
   readonly statusFilter = signal<AttendanceStatus | 'ALL'>('ALL');
   readonly searchTerm = signal<string>('');
+  readonly startDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly endDate = signal<string>(new Date().toISOString().substring(0, 10));
   readonly employeeFilter = signal<string>('');
 
   // Registros filtrados localmente por buscador de texto (nombre / código)
@@ -94,105 +90,25 @@ export class AttendanceListUseCase {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [res, employeesRes, punchesRes] = await Promise.all([
+      const [res, employeesRes] = await Promise.all([
         firstValueFrom(this.attendanceService.listRecords(
           this.startDate(),
           this.endDate(),
           this.employeeFilter() || undefined,
-          this.statusFilter(),
-          0,
-          100
-        )).catch(() => ({ data: { content: [] } })),
-        firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
-        firstValueFrom(this.attendanceService.listPunches({
-          employeeId: this.employeeFilter() || undefined,
-          page: 0,
-          size: 100
-        })).catch(() => ({ data: { content: [] } }))
+          this.statusFilter()
+        )),
+        firstValueFrom(this.employeesService.list(0, 100)).catch(() => null)
       ]);
-
       const employees = employeesRes?.data?.content || [];
       const directory = new Map<string, EmployeeSummary>(employees.map((employee) => [employee.id, employee]));
-
-      // 1. Mapeo de jornadas oficiales consolidadas
-      const recordMap = new Map<string, AttendanceRecordResponse>();
-      for (const record of res.data?.content || []) {
+      this.records.set((res.data.content || []).map((record) => {
         const employee = directory.get(record.employeeId);
-        const key = `${record.employeeId}_${record.workDate}`;
-        recordMap.set(key, {
+        return {
           ...record,
-          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : (record.employeeFullName || 'Colaborador'),
+          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : record.employeeFullName,
           employeeCode: employee?.employeeNumber || record.employeeCode
-        });
-      }
-
-      // 2. Consolidar e integrar marcaciones recientes para que cualquier entrada o salida realizada aparezca inmediatamente
-      const punches = punchesRes.data?.content || [];
-      const chronologicPunches = [...punches].sort((a, b) => a.punchedAt.localeCompare(b.punchedAt));
-
-      for (const punch of chronologicPunches) {
-        const punchDate = this.toLocalDateString(punch.punchedAt);
-        // Verificar si cae dentro del rango de visualización
-        if (punchDate < this.startDate() || punchDate > this.endDate()) {
-          continue;
-        }
-
-        const key = `${punch.employeeId}_${punchDate}`;
-        const existing = recordMap.get(key);
-        const employee = directory.get(punch.employeeId);
-
-        if (existing) {
-          if (punch.punchType === 'IN' && (!existing.checkInTime || punch.punchedAt < existing.checkInTime)) {
-            existing.checkInTime = punch.punchedAt;
-            existing.actualFirstInAt = punch.punchedAt;
-          } else if (punch.punchType === 'OUT') {
-            if (!existing.checkOutTime || punch.punchedAt > existing.checkOutTime) {
-              existing.checkOutTime = punch.punchedAt;
-              existing.actualLastOutAt = punch.punchedAt;
-            }
-          }
-          if (punch.source === 'MANUAL') {
-            existing.source = 'MANUAL';
-          }
-          if (existing.checkInTime && existing.checkOutTime && (!existing.workedHours || existing.workedHours === 0)) {
-            const diffMs = new Date(existing.checkOutTime).getTime() - new Date(existing.checkInTime).getTime();
-            existing.workedHours = Math.max(0, Math.round((diffMs / 3600000) * 10) / 10);
-            if (existing.status === 'PENDING') {
-              if (existing.earlyDepartureMinutes && existing.earlyDepartureMinutes > 0) {
-                existing.status = 'INCOMPLETE';
-              } else if (existing.lateMinutes && existing.lateMinutes > 0) {
-                existing.status = 'LATE';
-              } else {
-                existing.status = 'PRESENT';
-              }
-            }
-          }
-        } else {
-          // Si no existe jornada previa calculada en backend, sintetizar fila con las marcaciones registradas
-          const synthesized: AttendanceRecordResponse = {
-            id: punch.attendanceRecordId || punch.id,
-            employeeId: punch.employeeId,
-            workDate: punchDate,
-            checkInTime: punch.punchType === 'IN' ? punch.punchedAt : null,
-            checkOutTime: punch.punchType === 'OUT' ? punch.punchedAt : null,
-            actualFirstInAt: punch.punchType === 'IN' ? punch.punchedAt : null,
-            actualLastOutAt: punch.punchType === 'OUT' ? punch.punchedAt : null,
-            workedHours: 0,
-            lateMinutes: 0,
-            earlyDepartureMinutes: 0,
-            status: punch.punchType === 'IN' ? 'PRESENT' : 'INCOMPLETE',
-            source: punch.source,
-            createdAt: punch.punchedAt,
-            employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : 'Colaborador',
-            employeeCode: employee?.employeeNumber || punch.employeeId
-          };
-          recordMap.set(key, synthesized);
-        }
-      }
-
-      // Ordenar por fecha descendente
-      const sorted = Array.from(recordMap.values()).sort((a, b) => b.workDate.localeCompare(a.workDate));
-      this.records.set(sorted);
+        };
+      }));
     } catch (err: any) {
       this.error.set(err?.error?.message || err?.message || 'Error al cargar registros');
     } finally {
@@ -200,18 +116,8 @@ export class AttendanceListUseCase {
     }
   }
 
-  private toLocalDateString(iso: string): string {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleDateString('en-CA');
-    } catch {
-      return iso.substring(0, 10);
-    }
-  }
-
   setStatusFilter(status: AttendanceStatus | 'ALL'): void {
     this.statusFilter.set(status);
-    this.loadRecords();
   }
 
   setDateRange(start: string, end: string): void {

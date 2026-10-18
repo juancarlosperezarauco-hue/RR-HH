@@ -70,9 +70,8 @@ export class AbsenceListUseCase {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const empParam = (employeeId && employeeId !== 'ALL') ? employeeId : undefined;
       const [res, employeesRes, typesRes] = await Promise.all([
-        firstValueFrom(this.absenceService.listRequests(empParam, this.statusFilter())),
+        firstValueFrom(this.absenceService.listRequests(employeeId, this.statusFilter())),
         firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
         firstValueFrom(this.absenceService.getLeaveTypes()).catch(() => null)
       ]);
@@ -85,9 +84,8 @@ export class AbsenceListUseCase {
         const employee = employees.get(request.employeeId);
         return {
           ...request,
-          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : (request.employeeFullName || 'Colaborador'),
-          leaveTypeName: types.get(request.leaveTypeId)?.name || request.leaveTypeName || 'Permiso Laboral',
-          totalDays: request.totalDays ?? Number(request.requestedDays ?? 0)
+          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : request.employeeFullName,
+          leaveTypeName: types.get(request.leaveTypeId)?.name || request.leaveTypeName
         };
       }));
     } catch (err: any) {

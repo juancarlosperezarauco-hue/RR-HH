@@ -18,37 +18,33 @@ export interface DayOption {
           Días Laborales de la Jornada *
         </label>
         <!-- Presets rápidos -->
-        <div class="flex items-center gap-2 text-[11px]">
+        <div class="flex gap-2 text-[11px]">
           <button
-            *ngIf="canShowPreset([1, 2, 3, 4, 5])"
             type="button"
             (click)="setPreset([1, 2, 3, 4, 5])"
             class="text-primary hover:underline font-semibold cursor-pointer">
             L-V
           </button>
-          <span *ngIf="canShowPreset([1, 2, 3, 4, 5]) && canShowPreset([1, 2, 3, 4, 5, 6])" class="text-muted-foreground">•</span>
+          <span class="text-muted-foreground">•</span>
           <button
-            *ngIf="canShowPreset([1, 2, 3, 4, 5, 6])"
             type="button"
             (click)="setPreset([1, 2, 3, 4, 5, 6])"
             class="text-primary hover:underline font-semibold cursor-pointer">
             L-S
           </button>
-          <span *ngIf="canShowPreset([1, 2, 3, 4, 5]) || canShowPreset([1, 2, 3, 4, 5, 6])" class="text-muted-foreground">•</span>
+          <span class="text-muted-foreground">•</span>
           <button
             type="button"
-            (click)="selectAllAllowed()"
+            (click)="setPreset([1, 2, 3, 4, 5, 6, 7])"
             class="text-primary hover:underline font-semibold cursor-pointer">
             Todos
           </button>
         </div>
       </div>
 
-      <div
-        class="grid gap-1.5 sm:gap-2"
-        [style.grid-template-columns]="'repeat(' + visibleDays.length + ', minmax(0, 1fr))'">
+      <div class="grid grid-cols-7 gap-1.5 sm:gap-2">
         <button
-          *ngFor="let d of visibleDays"
+          *ngFor="let d of days"
           type="button"
           (click)="toggleDay(d.dayOfWeek)"
           [class.bg-primary]="isSelected(d.dayOfWeek)"
@@ -69,7 +65,6 @@ export interface DayOption {
 })
 export class ShiftDaysPickerComponent {
   @Input() selectedDays: number[] = [1, 2, 3, 4, 5];
-  @Input() allowedDays?: number[];
   @Output() daysChange = new EventEmitter<number[]>();
 
   readonly days: DayOption[] = [
@@ -81,18 +76,6 @@ export class ShiftDaysPickerComponent {
     { dayOfWeek: 6, label: 'Sábado', short: 'Sáb' },
     { dayOfWeek: 7, label: 'Domingo', short: 'Dom' }
   ];
-
-  get visibleDays(): DayOption[] {
-    if (this.allowedDays && this.allowedDays.length > 0) {
-      return this.days.filter((d) => this.allowedDays!.includes(d.dayOfWeek));
-    }
-    return this.days;
-  }
-
-  canShowPreset(preset: number[]): boolean {
-    if (!this.allowedDays || this.allowedDays.length === 0) return true;
-    return preset.every((d) => this.allowedDays!.includes(d));
-  }
 
   isSelected(day: number): boolean {
     return this.selectedDays.includes(day);
@@ -109,14 +92,6 @@ export class ShiftDaysPickerComponent {
   }
 
   setPreset(days: number[]): void {
-    const valid = this.allowedDays && this.allowedDays.length > 0
-      ? days.filter((d) => this.allowedDays!.includes(d))
-      : days;
-    this.daysChange.emit(valid);
-  }
-
-  selectAllAllowed(): void {
-    const all = this.visibleDays.map((d) => d.dayOfWeek);
-    this.daysChange.emit(all);
+    this.daysChange.emit(days);
   }
 }

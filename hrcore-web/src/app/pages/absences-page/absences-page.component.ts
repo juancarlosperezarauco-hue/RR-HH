@@ -11,9 +11,9 @@ import {
   AbsenceReviewModalComponent,
   AbsenceTableComponent
 } from '../../features/absence-management';
-import { LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
-import { EmployeesService, EmployeeSummary } from '../../entities/employees';
-import { AuthFacade } from '../../shared/lib/auth/auth.facade';
+import { AbsenceService, LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
+import { EmployeesService, EmployeeSummary, EmploymentPeriod } from '../../entities/employees';
+import { ToastService } from '../../shared/ui/toast/toast.service';
 
 @Component({
   selector: 'app-absences-page',
@@ -34,14 +34,14 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-2xl font-bold tracking-tight text-foreground">
-              Gestión de Permisos y Ausencias (CU18)
+              Gestión de Ausencias y Vacaciones
             </h1>
             <span class="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
               LGT Bolivia
             </span>
           </div>
           <p class="text-sm text-muted-foreground mt-1">
-            Registro, consulta, evaluación y justificación de permisos laborales y ausencias con cómputo de días hábiles.
+            Control legal de permisos, bajas médicas y licencias con cómputo de días hábiles.
           </p>
         </div>
 
@@ -50,14 +50,14 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
             type="button"
             (click)="reloadData()"
             class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors shadow-xs"
-            title="Actualizar datos"
           >
             <lucide-icon name="refresh-ccw" class="h-4 w-4" [ngClass]="{ 'animate-spin': listUseCase.loading() }"></lucide-icon>
             <span>Actualizar</span>
           </button>
           <button
             type="button"
-            (click)="openNewRequestModal()"
+            (click)="openRequestModal()"
+            [disabled]="!currentEmployeeId"
             class="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"
           >
             <lucide-icon name="plus" class="h-4 w-4"></lucide-icon>
@@ -66,38 +66,40 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
         </div>
       </div>
 
-      <!-- Filtro Superior: Seleccionar Colaborador -->
       <div class="rounded-2xl border border-border bg-card p-4 shadow-xs">
         <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-          Filtrar por Colaborador / Trabajador
+          Empleado
         </label>
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <select
+          [(ngModel)]="currentEmployeeId"
+          (ngModelChange)="onEmployeeChanged()"
+          class="w-full max-w-xl rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground">
+          <option value="" disabled>Seleccione un empleado</option>
+          <option *ngFor="let employee of employees" [value]="employee.id">
+            {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+          </option>
+        </select>
+        <label class="mt-3 block max-w-xl space-y-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Período laboral</span>
           <select
-            [(ngModel)]="currentEmployeeId"
-            (ngModelChange)="onEmployeeChanged()"
-            class="w-full max-w-xl rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-          >
-            <option value="">👥 Todos los trabajadores (Vista General de la Empresa)</option>
-            <option *ngFor="let employee of employees" [value]="employee.id">
-              {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }} ({{ employee.employmentStatus }})
+            [(ngModel)]="selectedEmploymentPeriodId"
+            (ngModelChange)="onPeriodChanged()"
+            [disabled]="!employmentPeriods.length"
+            class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground">
+            <option value="" disabled>Seleccione un período laboral</option>
+            <option *ngFor="let period of employmentPeriods" [value]="period.id">
+              Período {{ period.periodNumber }} · {{ period.startDate | date:'dd/MM/yyyy' }} — {{ period.endDate ? (period.endDate | date:'dd/MM/yyyy') : 'vigente' }}
             </option>
           </select>
-
-          <span *ngIf="currentEmployeeId" class="text-xs text-muted-foreground">
-            Mostrando ausencias del colaborador seleccionado.
-          </span>
-          <span *ngIf="!currentEmployeeId" class="text-xs text-muted-foreground">
-            Mostrando solicitudes consolidadas de todos los colaboradores.
-          </span>
-        </div>
+          <span *ngIf="currentEmployeeId && !employmentPeriods.length" class="text-xs text-muted-foreground">El empleado no tiene períodos laborales disponibles.</span>
+        </label>
       </div>
 
       <!-- Vacation Balance Widget (LGT Bolivia) -->
       <app-vacation-balance-card
         [balance]="balanceUseCase.balance()"
-        [employeeSelected]="!!currentEmployeeId"
-        (requestLeave)="openNewRequestModal()"
-        (initializeBalance)="onInitializeBalance()"
+        (requestLeave)="openRequestModal()"
+        (configureBalance)="configureVacationBalance()"
       ></app-vacation-balance-card>
 
       <!-- KPI Summary Cards -->
@@ -114,7 +116,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
             <span class="text-3xl font-black text-foreground">{{ listUseCase.pendingCount() }}</span>
             <span class="text-xs font-medium text-amber-600 dark:text-amber-400">en trámite</span>
           </div>
-          <p class="mt-1 text-xs text-muted-foreground">Requieren evaluación de RRHH</p>
+          <p class="mt-1 text-xs text-muted-foreground">Requieren aprobación de RRHH</p>
         </div>
 
         <!-- Aprobadas -->
@@ -159,11 +161,11 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
             <span class="text-3xl font-black text-foreground">{{ listUseCase.totalApprovedDays() }}d</span>
             <span class="text-xs font-medium text-muted-foreground">hábiles</span>
           </div>
-          <p class="mt-1 text-xs text-muted-foreground">{{ listUseCase.totalRequests() }} solicitudes registradas</p>
+          <p class="mt-1 text-xs text-muted-foreground">{{ listUseCase.totalRequests() }} solicitudes en total</p>
         </div>
       </div>
 
-      <!-- Tabla de Solicitudes y Consultas -->
+      <!-- Requests Data Table -->
       <app-absence-table
         [requests]="listUseCase.filteredRequests()"
         [loading]="listUseCase.loading()"
@@ -175,24 +177,21 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
         (review)="openReviewModal($event)"
       ></app-absence-table>
 
-      <!-- Modal de Registro de Solicitud (CU18) -->
+      <!-- New Request Modal -->
       <app-absence-request-modal
         [isOpen]="isRequestModalOpen"
         [employeeId]="currentEmployeeId"
-        [employees]="employees"
         [leaveTypes]="listUseCase.leaveTypes()"
         [balance]="balanceUseCase.balance()"
         [holidays]="listUseCase.holidays()"
-        (employeeSelected)="onModalEmployeeSelected($event)"
         (closeModal)="isRequestModalOpen = false"
         (requestSubmitted)="onRequestSubmitted()"
       ></app-absence-request-modal>
 
-      <!-- Modal de Revisión, Aprobación y Rechazo (CU18) -->
+      <!-- Review / Decision Modal -->
       <app-absence-review-modal
         [isOpen]="isReviewModalOpen"
         [request]="selectedRequest"
-        [currentUserId]="authFacade.currentUser()?.id"
         (closeModal)="isReviewModalOpen = false"
         (reviewCompleted)="onReviewCompleted()"
       ></app-absence-review-modal>
@@ -201,12 +200,15 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
 })
 export class AbsencesPageComponent implements OnInit {
   private readonly employeesService = inject(EmployeesService);
+  private readonly absenceService = inject(AbsenceService);
+  private readonly toast = inject(ToastService);
   readonly balanceUseCase = inject(VacationBalanceUseCase);
   readonly listUseCase = inject(AbsenceListUseCase);
-  readonly authFacade = inject(AuthFacade);
 
   employees: EmployeeSummary[] = [];
+  employmentPeriods: EmploymentPeriod[] = [];
   currentEmployeeId = '';
+  selectedEmploymentPeriodId = '';
   isRequestModalOpen = false;
   isReviewModalOpen = false;
   selectedRequest: LeaveRequestResponse | null = null;
@@ -215,8 +217,8 @@ export class AbsencesPageComponent implements OnInit {
     try {
       const employeeResponse = await firstValueFrom(this.employeesService.list(0, 100));
       this.employees = employeeResponse.data?.content || [];
-      // Iniciar con el primer colaborador o vista general
       this.currentEmployeeId = this.employees[0]?.id || '';
+      this.loadEmploymentPeriods();
     } catch {
       this.employees = [];
     }
@@ -228,21 +230,79 @@ export class AbsencesPageComponent implements OnInit {
 
   reloadData(): void {
     if (this.currentEmployeeId) {
-      this.balanceUseCase.loadBalance(this.currentEmployeeId);
+      this.balanceUseCase.loadBalance(this.currentEmployeeId, this.selectedEmploymentPeriodId || undefined);
       this.listUseCase.loadRequests(this.currentEmployeeId);
-    } else {
-      this.balanceUseCase.balance.set(null);
-      this.listUseCase.loadRequests(undefined);
     }
   }
 
   onEmployeeChanged(): void {
+    this.loadEmploymentPeriods();
+  }
+
+  onPeriodChanged(): void {
     this.reloadData();
   }
 
-  onModalEmployeeSelected(employeeId: string): void {
-    if (employeeId) {
-      this.balanceUseCase.loadBalance(employeeId);
+  private loadEmploymentPeriods(): void {
+    this.employmentPeriods = [];
+    this.selectedEmploymentPeriodId = '';
+    if (!this.currentEmployeeId) { this.reloadData(); return; }
+    this.employeesService.periods(this.currentEmployeeId).subscribe({
+      next: response => {
+        this.employmentPeriods = response.data ?? [];
+        const year = new Date().getFullYear();
+        const matching = this.employmentPeriods.find(period =>
+          period.startDate <= `${year}-12-31`
+          && (!period.endDate || period.endDate >= `${year}-01-01`)
+        );
+        this.selectedEmploymentPeriodId = matching?.id ?? this.employmentPeriods[0]?.id ?? '';
+        this.reloadData();
+      },
+      error: () => this.reloadData()
+    });
+  }
+
+  openRequestModal(): void {
+    if (!this.currentEmployeeId) {
+      this.toast.warning('Seleccione un empleado antes de registrar una ausencia.');
+      return;
+    }
+    if (!this.selectedEmploymentPeriodId) {
+      this.toast.warning('Seleccione el período laboral que recibirá el saldo.');
+      return;
+    }
+    this.isRequestModalOpen = true;
+  }
+
+  async configureVacationBalance(): Promise<void> {
+    if (!this.currentEmployeeId) {
+      this.toast.warning('Seleccione un empleado antes de configurar su saldo.');
+      return;
+    }
+    const vacationType = this.listUseCase.leaveTypes().find(item => item.code === 'LEAVE_VACATION');
+    if (!vacationType) {
+      this.toast.error('No se encontró el tipo de ausencia Vacación anual.');
+      return;
+    }
+    const entered = window.prompt('Saldo inicial de vacaciones para el año actual:', '15');
+    if (entered === null) return;
+    const openingDays = Number(entered);
+    if (!Number.isFinite(openingDays) || openingDays < 0) {
+      this.toast.warning('Ingrese una cantidad válida de días.');
+      return;
+    }
+    try {
+      await firstValueFrom(this.absenceService.createBalance({
+        employeeId: this.currentEmployeeId,
+        leaveTypeId: vacationType.id,
+        balanceYear: new Date().getFullYear(),
+        openingDays,
+        employmentPeriodId: this.selectedEmploymentPeriodId
+      }));
+      this.toast.success('Saldo de vacaciones registrado correctamente.');
+      this.balanceUseCase.loadBalance(this.currentEmployeeId);
+    } catch (error: any) {
+      this.toast.error(error?.error?.errors?.[0] || error?.error?.message || 'No se pudo registrar el saldo de vacaciones.');
     }
   }
 
@@ -250,22 +310,9 @@ export class AbsencesPageComponent implements OnInit {
     this.listUseCase.setStatusFilter(status);
   }
 
-  openNewRequestModal(): void {
-    this.isRequestModalOpen = true;
-  }
-
   openReviewModal(request: LeaveRequestResponse): void {
     this.selectedRequest = request;
     this.isReviewModalOpen = true;
-  }
-
-  async onInitializeBalance(): Promise<void> {
-    if (!this.currentEmployeeId) return;
-    const types = this.listUseCase.leaveTypes();
-    const vacationType = types.find(t => t.code === 'LEAVE_VACATION' || t.deductsBalance) || types[0];
-    if (vacationType) {
-      await this.balanceUseCase.initializeBalance(this.currentEmployeeId, vacationType.id, 2026, 15);
-    }
   }
 
   onRequestSubmitted(): void {

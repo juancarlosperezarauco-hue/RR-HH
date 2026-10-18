@@ -23,38 +23,14 @@ export class VacationBalanceUseCase {
     return 30;
   }
 
-  async loadBalance(employeeId: string, year = 2026): Promise<void> {
-    if (!employeeId) {
-      this.balance.set(null);
-      return;
-    }
+  async loadBalance(employeeId: string, employmentPeriodId?: string): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const res = await firstValueFrom(this.absenceService.getEmployeeBalance(employeeId, year));
+      const res = await firstValueFrom(this.absenceService.getEmployeeBalance(employeeId, new Date().getFullYear(), employmentPeriodId));
       this.balance.set(res.data);
     } catch (err: any) {
       this.error.set(err?.error?.message || 'Error al obtener el saldo de vacaciones');
-    } finally {
-      this.loading.set(false);
-    }
-  }
-
-  async initializeBalance(employeeId: string, leaveTypeId: string, year = 2026, openingDays = 15): Promise<boolean> {
-    if (!employeeId || !leaveTypeId) return false;
-    this.loading.set(true);
-    try {
-      await firstValueFrom(this.absenceService.createBalance({
-        employeeId,
-        leaveTypeId,
-        balanceYear: year,
-        openingDays
-      }));
-      await this.loadBalance(employeeId, year);
-      return true;
-    } catch (err: any) {
-      this.error.set(err?.error?.message || 'Error al inicializar el saldo de vacaciones');
-      return false;
     } finally {
       this.loading.set(false);
     }
