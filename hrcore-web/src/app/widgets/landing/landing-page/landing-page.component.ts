@@ -29,11 +29,11 @@ import { LandingWebPlatformComponent } from '../landing-web-platform/landing-web
 
       <!-- <app-landing-tutorials /> -->
 
-      <!-- <app-landing-web-platform /> -->
+      <app-landing-web-platform />
 
-      <!-- <app-landing-mobile-screenshots /> -->
+      <app-landing-mobile-screenshots />
 
-      <!-- <app-landing-mobile-experience /> -->
+      <app-landing-mobile-experience />
 
       <app-landing-pricing-preview />
     </main>

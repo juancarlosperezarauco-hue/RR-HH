@@ -33,6 +33,7 @@ public class ActivateDepartmentUseCase {
         Department saved = departments.save(new Department(id, before.code(), before.name(), before.description(),
                 before.parentDepartmentId(), before.managerEmployeeId(), before.costCenterCode(),
                 DepartmentStatus.ACTIVE, before.createdBy(), actor, before.createdAt(), before.updatedAt()));
+        policy.validateReportingAfterChange();
         recorder.record(before, saved, DepartmentHistoryAction.ACTIVATED,
                 requiredReason, actor);
         return mapper.toResponse(saved);

@@ -86,6 +86,9 @@ import { AbsenceRequestUseCase } from '../../application/absence-request.usecase
               />
             </div>
           </div>
+          <div *ngIf="dateRangeError" class="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-700 dark:text-rose-400" role="alert">
+            {{ dateRangeError }}
+          </div>
 
           <!-- Cómputo de Días Hábiles & Alertas -->
           <div class="rounded-xl border border-border bg-accent/40 p-3.5 space-y-2">
@@ -204,6 +207,7 @@ export class AbsenceRequestModalComponent {
     if (this.useCase.submitting()) return true;
     if (!this.employeeId) return true;
     if (!this.selectedTypeId || !this.startDate || !this.endDate || !this.reason.trim()) return true;
+    if (this.dateRangeError) return true;
     if (this.computedDays <= 0) return true;
     if (this.isVacation && this.balance && this.computedDays > this.balance.remainingDays) return true;
     if (this.selectedType?.requiresAttachment && !this.proofFile) return true;
@@ -219,8 +223,21 @@ export class AbsenceRequestModalComponent {
       this.computedDays = 0;
       return;
     }
+    if (this.dateRangeError) {
+      this.computedDays = 0;
+      return;
+    }
     const holidayDates = this.holidays.map(h => h.holidayDate);
     this.computedDays = this.useCase.calculateBusinessDays(this.startDate, this.endDate, holidayDates);
+  }
+
+  get dateRangeError(): string {
+    if (!this.startDate || !this.endDate) return '';
+    const from = new Date(`${this.startDate}T00:00:00Z`).getTime();
+    const to = new Date(`${this.endDate}T00:00:00Z`).getTime();
+    if (to < from) return 'La fecha final no puede ser anterior a la inicial.';
+    if (Math.floor((to - from) / 86400000) + 1 > 366) return 'Una solicitud de permiso no puede superar 366 días calendario.';
+    return '';
   }
 
   onFileSelected(event: any): void {

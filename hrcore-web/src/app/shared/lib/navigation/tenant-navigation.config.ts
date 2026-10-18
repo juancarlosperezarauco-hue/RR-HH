@@ -35,4 +35,5 @@ export const TENANT_NAVIGATION: TenantNavigationItem[] = [
   { id: 'security', label: 'Seguridad', route: '/dashboard/security', icon: 'lock' },
   { id: 'settings', label: 'Preferencias', route: '/dashboard/settings', icon: 'settings' },
   { id: 'company-settings', label: 'Empresa', route: '/dashboard/company-settings', icon: 'building', permission: TENANT_ROUTE_PERMISSIONS.companySettings, ownerOnly: true },
+  { id: 'audit', label: 'Auditoría', route: '/dashboard/audit', icon: 'clipboard-list', permission: TENANT_ROUTE_PERMISSIONS.audit, ownerOnly: true },
 ];

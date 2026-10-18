@@ -11,26 +11,38 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.dto.Empl
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.*;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class EmployeePolicy {
     private final EmployeeRepository employees;
     private final EmployeeAssignmentRepository assignments;
+    private final EmploymentPeriodRepository periods;
     private final TenantUserRepository users;
     private final TenantPlanEnforcementService plans;
     private final SecurityContextFacade security;
     private final TenantTimezoneService timezone;
 
+    @Autowired
+    public EmployeePolicy(EmployeeRepository employees, EmployeeAssignmentRepository assignments,
+                          EmploymentPeriodRepository periods, TenantUserRepository users,
+                          TenantPlanEnforcementService plans, SecurityContextFacade security,
+                          TenantTimezoneService timezone) {
+        this.employees = employees; this.assignments = assignments; this.users = users;
+        this.periods = periods; this.plans = plans; this.security = security; this.timezone = timezone;
+    }
+
+    /** Compatibility constructor for isolated unit tests that do not use employment periods. */
     public EmployeePolicy(EmployeeRepository employees, EmployeeAssignmentRepository assignments,
                           TenantUserRepository users, TenantPlanEnforcementService plans,
                           SecurityContextFacade security, TenantTimezoneService timezone) {
-        this.employees = employees; this.assignments = assignments; this.users = users;
-        this.plans = plans; this.security = security; this.timezone = timezone;
+        this(employees, assignments, null, users, plans, security, timezone);
     }
 
     public void assertOperational() { plans.assertCanOperate(); }
@@ -75,8 +87,18 @@ public class EmployeePolicy {
             throw new BusinessException("Employee must be at least 18 years old");
         if (r.birthDate() != null && r.hireDate().isBefore(r.birthDate()))
             throw new BusinessException("hireDate cannot precede birthDate");
-        if (before != null && assignments.earliestStartDate(id).filter(d -> d.isBefore(r.hireDate())).isPresent())
-            throw new BusinessException("hireDate cannot follow an existing assignment");
+        if (before != null && !Objects.equals(before.hireDate(), r.hireDate()) && periods != null) {
+            var latestPeriod = periods.findLatestByEmployeeId(id)
+                    .orElseThrow(() -> new BusinessException("El empleado no tiene períodos laborales"));
+            Optional<LocalDate> earliestAssignmentDate = assignments.earliestStartDateInPeriod(id, latestPeriod.id());
+            if (earliestAssignmentDate.filter(date -> date.isBefore(r.hireDate())).isPresent())
+                throw new BusinessException("hireDate cannot follow an existing assignment in the current employment period");
+            boolean overlapsPreviousPeriod = periods.findAllByEmployeeId(id).stream()
+                    .filter(period -> !period.id().equals(latestPeriod.id()))
+                    .anyMatch(period -> period.endDate() == null || !r.hireDate().isAfter(period.endDate()));
+            if (overlapsPreviousPeriod)
+                throw new BusinessException("hireDate must be after the end of previous employment periods");
+        }
         return new Employee(id, r.tenantUserId(), employeeNumber,
                 required(r.firstName(), 100, "firstName"), optional(r.middleName(), 100, "middleName"),
                 required(r.lastName(), 100, "lastName"), optional(r.secondLastName(), 100, "secondLastName"),

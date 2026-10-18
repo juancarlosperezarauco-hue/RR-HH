@@ -96,6 +96,7 @@ export interface RehireEmployeeResponse {
   employee: Employee;
   employmentPeriod: EmploymentPeriod;
   assignment: EmployeeAssignment | null;
+  userActivationRequired: boolean;
 }
 
 export interface EmergencyContactRequest {

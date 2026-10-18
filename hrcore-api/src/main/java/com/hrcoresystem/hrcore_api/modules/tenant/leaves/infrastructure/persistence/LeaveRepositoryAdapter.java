@@ -58,6 +58,7 @@ public class LeaveRepositoryAdapter implements LeaveStore {
         e.setAdjustedDays(v.adjustedDays()); return balance(balances.saveAndFlush(e));
     }
     @Override public Optional<LeaveBalance> balance(UUID id) { return balances.findById(id).map(this::balance); }
+    @Override public Optional<LeaveBalance> lockedBalanceById(UUID id) { return balances.lockById(id).map(this::balance); }
     @Override public Optional<LeaveBalance> lockedBalance(UUID employeeId, UUID typeId, int year) {
         return balances.lock(employeeId, typeId, year).map(this::balance);
     }

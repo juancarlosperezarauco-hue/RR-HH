@@ -3,12 +3,18 @@ package com.hrcoresystem.hrcore_api.modules.governance.audit.infrastructure.pers
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.PlatformAuditEvent;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.repository.PlatformAuditEventRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
 public class PlatformAuditEventRepositoryAdapter implements PlatformAuditEventRepository {
+
+    private static final Sort AUDIT_SORT = Sort.by(
+            Sort.Order.desc("createdAt"),
+            Sort.Order.desc("id")
+    );
 
     private final PlatformAuditEventJpaRepository jpaRepository;
 
@@ -25,7 +31,7 @@ public class PlatformAuditEventRepositoryAdapter implements PlatformAuditEventRe
 
     @Override
     public List<PlatformAuditEvent> findAll() {
-        return jpaRepository.findAll()
+        return jpaRepository.findAll(AUDIT_SORT)
                 .stream()
                 .map(this::toDomain)
                 .toList();
@@ -33,7 +39,8 @@ public class PlatformAuditEventRepositoryAdapter implements PlatformAuditEventRe
 
     @Override
     public List<PlatformAuditEvent> findRecent(int limit) {
-        return jpaRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit))
+        int safeLimit = Math.min(Math.max(limit, 1), 200);
+        return jpaRepository.findAllByOrderByCreatedAtDescIdDesc(PageRequest.of(0, safeLimit))
                 .stream()
                 .map(this::toDomain)
                 .toList();

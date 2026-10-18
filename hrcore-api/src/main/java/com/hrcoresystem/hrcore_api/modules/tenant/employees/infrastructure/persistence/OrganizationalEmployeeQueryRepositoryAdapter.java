@@ -3,6 +3,8 @@ package com.hrcoresystem.hrcore_api.modules.tenant.employees.infrastructure.pers
 import com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException;
 import com.hrcoresystem.hrcore_api.modules.tenant.departments.application.dto.OrganizationalEmployeeSummaryResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.EmploymentStatus;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.OrganizationalReportingService;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.OrganizationalReportingRepository.OrganizationalEmployee;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.OrganizationalEmployeeQueryRepository;
 import org.springframework.data.domain.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,7 +17,8 @@ import java.util.*;
 public class OrganizationalEmployeeQueryRepositoryAdapter implements OrganizationalEmployeeQueryRepository {
     private static final String ACTIVE = "e.employment_status IN ('ACTIVE','ON_LEAVE','SUSPENDED')";
     private final JdbcTemplate jdbc;
-    public OrganizationalEmployeeQueryRepositoryAdapter(DataSource dataSource){jdbc=new JdbcTemplate(dataSource);}
+    private final OrganizationalReportingService reporting;
+    public OrganizationalEmployeeQueryRepositoryAdapter(DataSource dataSource, OrganizationalReportingService reporting){jdbc=new JdbcTemplate(dataSource);this.reporting=reporting;}
     @Override public Page<OrganizationalEmployeeSummaryResponse> findByDepartment(UUID id,LocalDate date,Pageable page){return query("ea.department_id = ?",id,date,page);}
     @Override public Page<OrganizationalEmployeeSummaryResponse> findByPosition(UUID id,LocalDate date,Pageable page){return query("ea.position_id = ?",id,date,page);}
     private Page<OrganizationalEmployeeSummaryResponse> query(String filter,UUID id,LocalDate date,Pageable page){
@@ -28,12 +31,23 @@ public class OrganizationalEmployeeQueryRepositoryAdapter implements Organizatio
     }
     private void ensureUnique(String filter,UUID id,LocalDate date){Long conflicts=jdbc.queryForObject("SELECT COUNT(*) FROM (SELECT ea.employee_id FROM employee_assignments ea WHERE "+filter+" AND ea.assignment_type='PRIMARY' AND ea.assignment_status='ACTIVE' AND ea.start_date<=? AND (ea.end_date IS NULL OR ea.end_date>=?) GROUP BY ea.employee_id HAVING COUNT(*)>1) x",Long.class,id,date,date);if(conflicts!=null&&conflicts>0)throw new BusinessConflictException("El empleado tiene asignaciones primarias superpuestas que requieren regularización");}
     @Override public Page<OrganizationalEmployeeSummaryResponse> findBySupervisor(UUID supervisorId,LocalDate date,Pageable page){
-        String cte="WITH RECURSIVE primary_assignments AS (SELECT ea.employee_id,ea.department_id,ea.position_id,ea.supervisor_employee_id FROM employee_assignments ea WHERE ea.assignment_type='PRIMARY' AND ea.assignment_status='ACTIVE' AND ea.start_date<=? AND (ea.end_date IS NULL OR ea.end_date>=?), chains AS (SELECT pa.employee_id,pa.department_id,pa.supervisor_employee_id,0 depth FROM primary_assignments pa UNION ALL SELECT c.employee_id,d.parent_department_id,c.supervisor_employee_id,c.depth+1 FROM chains c JOIN departments d ON d.id=c.department_id WHERE c.supervisor_employee_id IS NULL AND c.depth<100 AND c.department_id IS NOT NULL), effective AS (SELECT DISTINCT ON (c.employee_id) c.employee_id,COALESCE(c.supervisor_employee_id,d.manager_employee_id) supervisor_id FROM chains c LEFT JOIN departments d ON d.id=c.department_id WHERE c.supervisor_employee_id IS NOT NULL OR d.manager_employee_id IS NOT NULL ORDER BY c.employee_id,c.depth) ";
-        String base=" FROM employees e JOIN primary_assignments ea ON ea.employee_id=e.id JOIN effective es ON es.employee_id=e.id WHERE es.supervisor_id=? AND e.id<>? AND "+ACTIVE;
-        long total=jdbc.queryForObject(cte+"SELECT COUNT(*)"+base,Long.class,date,date,supervisorId,supervisorId);
-        String sql=cte+"SELECT e.id,e.employee_number,e.first_name,e.middle_name,e.last_name,e.second_last_name,ea.department_id,ea.position_id,e.employment_status"+base+sort(page)+" LIMIT ? OFFSET ?";
-        List<OrganizationalEmployeeSummaryResponse> rows=jdbc.query(sql,(rs,n)->map(rs),date,date,supervisorId,supervisorId,page.getPageSize(),page.getOffset());
-        return new PageImpl<>(rows,page,total);
+        Map<UUID, UUID> supervisors = reporting.resolveSupervisors(reporting.current(date));
+        List<UUID> employeeIds = supervisors.entrySet().stream()
+                .filter(entry -> supervisorId.equals(entry.getValue()))
+                .map(Map.Entry::getKey).sorted().toList();
+        if (employeeIds.isEmpty()) return Page.empty(page);
+        String placeholders = String.join(",", Collections.nCopies(employeeIds.size(), "?"));
+        String base = " FROM employees e JOIN employee_assignments ea ON ea.employee_id=e.id WHERE e.id IN (" + placeholders + ")"
+                + " AND " + ACTIVE + " AND ea.assignment_type='PRIMARY' AND ea.assignment_status='ACTIVE'"
+                + " AND ea.start_date<=? AND (ea.end_date IS NULL OR ea.end_date>=?)";
+        List<Object> parameters = new ArrayList<>(employeeIds);
+        parameters.add(date); parameters.add(date);
+        Long total = jdbc.queryForObject("SELECT COUNT(*)" + base, Long.class, parameters.toArray());
+        String sql = "SELECT e.id,e.employee_number,e.first_name,e.middle_name,e.last_name,e.second_last_name,ea.department_id,ea.position_id,e.employment_status"
+                + base + sort(page) + " LIMIT ? OFFSET ?";
+        parameters.add(page.getPageSize()); parameters.add(page.getOffset());
+        List<OrganizationalEmployeeSummaryResponse> rows = jdbc.query(sql, (rs,n)->map(rs), parameters.toArray());
+        return new PageImpl<>(rows,page,total == null ? 0L : total);
     }
     private String sort(Pageable page){
         if(page.getSort().isUnsorted())return " ORDER BY LOWER(e.last_name),LOWER(e.first_name),e.id";

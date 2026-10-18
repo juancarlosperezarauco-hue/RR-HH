@@ -64,13 +64,14 @@ import { LucideAngularModule } from 'lucide-angular';
               Descargar desde Drive
               <lucide-icon name="download" class="h-4 w-4"></lucide-icon>
             </a>
-
+          <!--
             <a
               href="#tutoriales"
               class="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-5 text-sm font-black text-accent-foreground shadow-sm transition-colors hover:bg-background">
               Ver tutoriales
               <lucide-icon name="play" class="h-4 w-4"></lucide-icon>
             </a>
+          -->
           </div>
         </div>
 

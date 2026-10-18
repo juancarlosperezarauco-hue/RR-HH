@@ -16,4 +16,5 @@ export const TENANT_ROUTE_PERMISSIONS = {
   positions: 'positions.list',
   team: 'employees.team.read',
   companySettings: 'tenant-settings.read',
+  audit: 'audit.events.read',
 } as const;

@@ -11,11 +11,13 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.Shift
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkShiftRepository;
 import java.math.*;
 import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LeaveDayCalculator {
+    private static final long MAX_LEAVE_CALENDAR_DAYS = 366;
     private final EffectiveScheduleService schedules;
     private final WorkShiftRepository shifts;
     private final ShiftBreakRepository breaks;
@@ -27,7 +29,7 @@ public class LeaveDayCalculator {
 
     public BigDecimal calculate(UUID employeeId, LocalDate from, LocalDate to,
             LocalTime start, LocalTime end) {
-        if (from == null || to == null || to.isBefore(from)) throw new BusinessException("Invalid leave dates");
+        validateDateRange(from, to);
         boolean partial = start != null || end != null;
         if (partial && (start == null || end == null || !from.equals(to) || !end.isAfter(start)))
             throw new BusinessException("Partial leave requires one day and an increasing time interval");
@@ -137,6 +139,16 @@ public class LeaveDayCalculator {
         if (days.signum() <= 0) throw new BusinessException("Leave has no chargeable working days");
         if (days.precision() > 8) throw new BusinessException("Leave duration exceeds database precision");
         return days.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public static void validateDateRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null)
+            throw new BusinessException("Las fechas del permiso son obligatorias");
+        if (to.isBefore(from))
+            throw new BusinessException("La fecha final no puede ser anterior a la inicial");
+        long calendarDays = ChronoUnit.DAYS.between(from, to) + 1;
+        if (calendarDays > MAX_LEAVE_CALENDAR_DAYS)
+            throw new BusinessException("Una solicitud de permiso no puede superar 366 días calendario");
     }
 
     public boolean nightContinuationOverlaps(UUID employeeId, LocalDate shiftDate,

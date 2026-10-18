@@ -12,7 +12,7 @@ import {
   AbsenceTableComponent
 } from '../../features/absence-management';
 import { AbsenceService, LeaveRequestResponse, LeaveStatus } from '../../entities/absence';
-import { EmployeesService, EmployeeSummary } from '../../entities/employees';
+import { EmployeesService, EmployeeSummary, EmploymentPeriod } from '../../entities/employees';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 
 @Component({
@@ -79,6 +79,20 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
             {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
           </option>
         </select>
+        <label class="mt-3 block max-w-xl space-y-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Período laboral</span>
+          <select
+            [(ngModel)]="selectedEmploymentPeriodId"
+            (ngModelChange)="onPeriodChanged()"
+            [disabled]="!employmentPeriods.length"
+            class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-foreground">
+            <option value="" disabled>Seleccione un período laboral</option>
+            <option *ngFor="let period of employmentPeriods" [value]="period.id">
+              Período {{ period.periodNumber }} · {{ period.startDate | date:'dd/MM/yyyy' }} — {{ period.endDate ? (period.endDate | date:'dd/MM/yyyy') : 'vigente' }}
+            </option>
+          </select>
+          <span *ngIf="currentEmployeeId && !employmentPeriods.length" class="text-xs text-muted-foreground">El empleado no tiene períodos laborales disponibles.</span>
+        </label>
       </div>
 
       <!-- Vacation Balance Widget (LGT Bolivia) -->
@@ -192,7 +206,9 @@ export class AbsencesPageComponent implements OnInit {
   readonly listUseCase = inject(AbsenceListUseCase);
 
   employees: EmployeeSummary[] = [];
+  employmentPeriods: EmploymentPeriod[] = [];
   currentEmployeeId = '';
+  selectedEmploymentPeriodId = '';
   isRequestModalOpen = false;
   isReviewModalOpen = false;
   selectedRequest: LeaveRequestResponse | null = null;
@@ -202,6 +218,7 @@ export class AbsencesPageComponent implements OnInit {
       const employeeResponse = await firstValueFrom(this.employeesService.list(0, 100));
       this.employees = employeeResponse.data?.content || [];
       this.currentEmployeeId = this.employees[0]?.id || '';
+      this.loadEmploymentPeriods();
     } catch {
       this.employees = [];
     }
@@ -213,18 +230,45 @@ export class AbsencesPageComponent implements OnInit {
 
   reloadData(): void {
     if (this.currentEmployeeId) {
-      this.balanceUseCase.loadBalance(this.currentEmployeeId);
+      this.balanceUseCase.loadBalance(this.currentEmployeeId, this.selectedEmploymentPeriodId || undefined);
       this.listUseCase.loadRequests(this.currentEmployeeId);
     }
   }
 
   onEmployeeChanged(): void {
+    this.loadEmploymentPeriods();
+  }
+
+  onPeriodChanged(): void {
     this.reloadData();
+  }
+
+  private loadEmploymentPeriods(): void {
+    this.employmentPeriods = [];
+    this.selectedEmploymentPeriodId = '';
+    if (!this.currentEmployeeId) { this.reloadData(); return; }
+    this.employeesService.periods(this.currentEmployeeId).subscribe({
+      next: response => {
+        this.employmentPeriods = response.data ?? [];
+        const year = new Date().getFullYear();
+        const matching = this.employmentPeriods.find(period =>
+          period.startDate <= `${year}-12-31`
+          && (!period.endDate || period.endDate >= `${year}-01-01`)
+        );
+        this.selectedEmploymentPeriodId = matching?.id ?? this.employmentPeriods[0]?.id ?? '';
+        this.reloadData();
+      },
+      error: () => this.reloadData()
+    });
   }
 
   openRequestModal(): void {
     if (!this.currentEmployeeId) {
       this.toast.warning('Seleccione un empleado antes de registrar una ausencia.');
+      return;
+    }
+    if (!this.selectedEmploymentPeriodId) {
+      this.toast.warning('Seleccione el período laboral que recibirá el saldo.');
       return;
     }
     this.isRequestModalOpen = true;
@@ -252,12 +296,13 @@ export class AbsencesPageComponent implements OnInit {
         employeeId: this.currentEmployeeId,
         leaveTypeId: vacationType.id,
         balanceYear: new Date().getFullYear(),
-        openingDays
+        openingDays,
+        employmentPeriodId: this.selectedEmploymentPeriodId
       }));
       this.toast.success('Saldo de vacaciones registrado correctamente.');
       this.balanceUseCase.loadBalance(this.currentEmployeeId);
     } catch (error: any) {
-      this.toast.error(error?.error?.message || 'No se pudo registrar el saldo de vacaciones.');
+      this.toast.error(error?.error?.errors?.[0] || error?.error?.message || 'No se pudo registrar el saldo de vacaciones.');
     }
   }
 

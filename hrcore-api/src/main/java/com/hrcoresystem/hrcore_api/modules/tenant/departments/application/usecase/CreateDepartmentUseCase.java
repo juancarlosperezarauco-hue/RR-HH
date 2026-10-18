@@ -36,6 +36,7 @@ public class CreateDepartmentUseCase {
                 policy.optional(request.description(), 0, "description"), request.parentDepartmentId(),
                 request.managerEmployeeId(), policy.optional(request.costCenterCode(), 50, "costCenterCode"),
                 DepartmentStatus.ACTIVE, actor, actor, null, null));
+        policy.validateReportingAfterChange();
         recorder.record(null, saved, DepartmentHistoryAction.CREATED,
                 policy.optional(request.reason(), 0, "reason"), actor);
         return mapper.toResponse(saved);

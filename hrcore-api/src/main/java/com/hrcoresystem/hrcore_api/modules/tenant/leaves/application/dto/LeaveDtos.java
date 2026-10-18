@@ -18,7 +18,12 @@ public final class LeaveDtos {
             TypeStatus status, Instant createdAt, Instant updatedAt) { }
 
     public record BalanceInput(@NotNull UUID employeeId, @NotNull UUID leaveTypeId,
-            @NotNull Integer balanceYear, @NotNull BigDecimal openingDays) { }
+            @NotNull Integer balanceYear, @NotNull BigDecimal openingDays,
+            @NotNull UUID employmentPeriodId) {
+        public BalanceInput(UUID employeeId, UUID leaveTypeId, Integer balanceYear, BigDecimal openingDays) {
+            this(employeeId, leaveTypeId, balanceYear, openingDays, null);
+        }
+    }
     public record BalanceAdjustment(@NotNull BigDecimal deltaDays, @NotBlank String reason) { }
     public record BalanceResponse(UUID id, UUID employeeId, UUID employmentPeriodId, UUID leaveTypeId, int balanceYear,
             BigDecimal openingDays, BigDecimal accruedDays, BigDecimal usedDays,

@@ -23,11 +23,11 @@ export class VacationBalanceUseCase {
     return 30;
   }
 
-  async loadBalance(employeeId: string): Promise<void> {
+  async loadBalance(employeeId: string, employmentPeriodId?: string): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const res = await firstValueFrom(this.absenceService.getEmployeeBalance(employeeId));
+      const res = await firstValueFrom(this.absenceService.getEmployeeBalance(employeeId, new Date().getFullYear(), employmentPeriodId));
       this.balance.set(res.data);
     } catch (err: any) {
       this.error.set(err?.error?.message || 'Error al obtener el saldo de vacaciones');

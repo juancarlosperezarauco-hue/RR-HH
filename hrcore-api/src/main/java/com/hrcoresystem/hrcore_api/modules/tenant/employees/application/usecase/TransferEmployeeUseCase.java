@@ -22,7 +22,7 @@ public class TransferEmployeeUseCase {
     }
     @Transactional
     public EmployeeTransferResponse execute(UUID employeeId, TransferEmployeeRequest request) {
-        employees.assertOperational(); Employee employee = employees.requireForUpdate(employeeId);
+        employees.assertOperational(); policy.lockForWrite(); Employee employee = employees.requireForUpdate(employeeId);
         employees.assertNotTerminated(employee);
         LocalDate today = timezone.today();
         if (request.effectiveDate() == null || !request.effectiveDate().isAfter(today))
@@ -35,6 +35,7 @@ public class TransferEmployeeUseCase {
         EmployeeAssignmentRequest next = new EmployeeAssignmentRequest(request.departmentId(), request.positionId(),
                 request.supervisorEmployeeId(), request.effectiveDate(), null, AssignmentType.PRIMARY, request.reason());
         EmployeeAssignment created = assignments.save(policy.normalized(employee, next, null, employees.actorId()));
+        policy.validateReportingAfterChange(created.startDate());
         audit.record("EMPLOYEE_ASSIGNMENT", "TRANSFERRED", created.id(), java.util.List.of("previousAssignmentId", "effectiveDate", "reason"));
         return new EmployeeTransferResponse(employeeId, mapper.toResponse(closed), mapper.toResponse(created),
                 request.effectiveDate(), request.reason().trim());

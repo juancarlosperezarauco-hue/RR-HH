@@ -18,4 +18,5 @@ public interface EmployeeAssignmentRepository {
     List<EmployeeAssignment> findAllByEmployeeIdForUpdate(UUID employeeId);
     boolean hasOverlappingPrimary(UUID employeeId, UUID exceptId, LocalDate startDate, LocalDate endDate);
     Optional<LocalDate> earliestStartDate(UUID employeeId);
+    Optional<LocalDate> earliestStartDateInPeriod(UUID employeeId, UUID employmentPeriodId);
 }

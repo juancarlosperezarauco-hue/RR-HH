@@ -28,6 +28,7 @@ export interface CreateLeaveBalanceInput {
   leaveTypeId: string;
   balanceYear: number;
   openingDays: number;
+  employmentPeriodId: string;
 }
 
 export interface AdjustLeaveBalanceInput {
