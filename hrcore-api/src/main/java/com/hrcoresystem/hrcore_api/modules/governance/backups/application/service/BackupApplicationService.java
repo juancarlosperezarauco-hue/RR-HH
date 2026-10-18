@@ -13,6 +13,8 @@ import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.exception.Pla
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenant;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.repository.PlatformTenantRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -22,12 +24,16 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class BackupApplicationService {
+
+    private static final Logger log = LoggerFactory.getLogger(BackupApplicationService.class);
 
     private final BackupJobRepository repo;
     private final PlatformTenantRepository tenants;
@@ -213,20 +219,43 @@ public class BackupApplicationService {
             String reason
     ) {
         if (file == null || file.isEmpty()) {
-            throw new BackupOperationNotAllowedException("Backup file is required");
+            throw new BackupOperationNotAllowedException("Debe seleccionar un archivo de respaldo");
+        }
+        if (scope == null) {
+            throw new BackupOperationNotAllowedException("Debe indicar el alcance del respaldo");
+        }
+        if (scope == BackupScope.TENANT_SCHEMA &&
+                (tenantId == null || tenantSlug == null || schemaName == null || schemaName.isBlank())) {
+            throw new BackupOperationNotAllowedException("No se pudo identificar el tenant de destino");
+        }
+        if (scope == BackupScope.FULL_DATABASE && tenantId != null) {
+            throw new BackupOperationNotAllowedException("La restauración completa no admite tenantId");
         }
 
         String originalName = safeFileName(file.getOriginalFilename());
-        String storageFileName = "restore_upload_" + System.currentTimeMillis() + "_" + originalName;
+        String storageFileName = "restore_upload_" + UUID.randomUUID() + ".dump";
         Path target = storage.resolveTargetPath(storageFileName);
+        boolean jobRegistered = false;
 
         try {
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            try (InputStream input = file.getInputStream()) {
+                Files.copy(input, target);
+            }
+            log.info("[RESTORE_UPLOAD] file stored path={}, scope={}, tenantSlug={}", target, scope, tenantSlug);
         } catch (Exception e) {
             throw new BackupOperationNotAllowedException("Unable to store uploaded backup file: " + e.getMessage());
         }
 
         try {
+            long size = Files.size(target);
+            if (size < 5) throw new BackupOperationNotAllowedException("Archivo de respaldo vacío o incompleto");
+            try (InputStream input = Files.newInputStream(target)) {
+                String magic = new String(input.readNBytes(5), StandardCharsets.US_ASCII);
+                if (!"PGDMP".equals(magic)) {
+                    throw new BackupOperationNotAllowedException("El archivo no está en formato PostgreSQL custom (pg_dump -Fc)");
+                }
+            }
+            String sha256 = checksumService.sha256(target);
             BackupJob created = save(BackupJobFactory.restoreJobFromUploadedFile(
                     scope,
                     tenantId,
@@ -251,8 +280,8 @@ public class BackupApplicationService {
                     created.fileName(),
                     created.storagePath(),
                     created.format(),
-                    safeSize(target),
-                    safeChecksum(target),
+                    size,
+                    sha256,
                     created.requestedBy(),
                     created.reason(),
                     created.failureReason(),
@@ -262,26 +291,36 @@ public class BackupApplicationService {
                     created.updatedAt()
             ));
 
+            jobRegistered = true;
             executeAfterCommit(() -> async.executeRestore(withMetadata.id()));
             return withMetadata;
-        } catch (RuntimeException e) {
-            try {
-                Files.deleteIfExists(target);
-            } catch (Exception ignored) {
-                // Best effort cleanup.
-            }
+        } catch (BackupOperationNotAllowedException | BackupExecutionException e) {
+            if (!jobRegistered) deleteQuietly(target);
             throw e;
+        } catch (Exception e) {
+            if (!jobRegistered) deleteQuietly(target);
+            log.error("Unable to accept backup upload scope={} tenantSlug={}", scope, tenantSlug, e);
+            throw new BackupOperationNotAllowedException("No se pudo recibir el archivo de respaldo");
+        }
+    }
+
+    private void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (Exception ignored) {
+            // El proceso de limpieza administrativa puede retirar archivos huérfanos.
         }
     }
 
     private String safeFileName(String originalName) {
         String name = originalName == null ? "" : originalName.trim();
-        if (name.isBlank()) {
+        name = name.replace('\\', '/');
+        name = name.substring(name.lastIndexOf('/') + 1);
+        String sanitized = name.replaceAll("[^a-zA-Z0-9_.-]", "_");
+        if (sanitized.isBlank() || sanitized.equals(".") || sanitized.equals("..")) {
             return "backup_upload.dump";
         }
-
-        String sanitized = name.replaceAll("[^a-zA-Z0-9_.-]", "_");
-        return sanitized.isBlank() ? "backup_upload.dump" : sanitized;
+        return sanitized.length() <= 200 ? sanitized : sanitized.substring(sanitized.length() - 200);
     }
 
     private Long safeSize(Path target) {

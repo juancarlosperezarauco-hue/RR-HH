@@ -38,8 +38,18 @@ public class RestorePlatformBackupFromFileUseCase {
     ) {
         String normalizedConfirmation = confirmationText == null ? "" : confirmationText.trim();
 
-        if (!CONFIRMATION_TENANT.equals(normalizedConfirmation) && !CONFIRMATION_FULL.equals(normalizedConfirmation)) {
-            throw new BackupOperationNotAllowedException("Invalid confirmation text. Expected: " + CONFIRMATION_TENANT + " or " + CONFIRMATION_FULL);
+        if (scope == null) {
+            throw new BackupOperationNotAllowedException("scope es obligatorio");
+        }
+        String expected = scope == BackupScope.FULL_DATABASE ? CONFIRMATION_FULL : CONFIRMATION_TENANT;
+        if (!expected.equals(normalizedConfirmation)) {
+            throw new BackupOperationNotAllowedException("Confirmación inválida. Se esperaba: " + expected);
+        }
+        if (scope == BackupScope.TENANT_SCHEMA && tenantId == null) {
+            throw new BackupOperationNotAllowedException("tenantId es obligatorio para TENANT_SCHEMA");
+        }
+        if (scope == BackupScope.FULL_DATABASE && tenantId != null) {
+            throw new BackupOperationNotAllowedException("tenantId no se permite para FULL_DATABASE");
         }
 
         return backupJobMapper.toResponse(
