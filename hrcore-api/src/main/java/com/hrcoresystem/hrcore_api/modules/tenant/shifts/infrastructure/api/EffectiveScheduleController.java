@@ -2,6 +2,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.shifts.infrastructure.api;
 
 import com.hrcoresystem.hrcore_api.common.response.ApiResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleResponse;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleRangeResponse;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.EffectiveScheduleService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.time.LocalDate;
@@ -27,6 +28,14 @@ public class EffectiveScheduleController {
     @PreAuthorize("hasAuthority('shifts.schedule.read')")
     public ApiResponse<ScheduleResponse> get(@RequestParam UUID employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ApiResponse.success("Effective schedule retrieved", schedules.get(employeeId, date));
+        return ApiResponse.success("Horario consultado correctamente", schedules.get(employeeId, date));
+    }
+
+    @GetMapping("/range")
+    @PreAuthorize("hasAuthority('shifts.schedule.read')")
+    public ApiResponse<ScheduleRangeResponse> range(@RequestParam UUID employeeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
+        return ApiResponse.success("Horarios consultados correctamente", schedules.range(employeeId, fromDate, toDate));
     }
 }

@@ -42,6 +42,9 @@ public class NotificationRepositoryAdapter implements NotificationRepository {
     public long countUnreadInboxByUserId(UUID userId) {
         return repository.countUnreadInboxByUserId(userId);
     }
+    @Override public boolean existsByUserIdAndActionUrl(UUID userId, String actionUrl) {
+        return repository.existsByUserIdAndActionUrl(userId, actionUrl);
+    }
 
     private NotificationEntity toEntity(Notification notification) {
         NotificationEntity entity = new NotificationEntity();

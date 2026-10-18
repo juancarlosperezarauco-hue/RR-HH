@@ -6,6 +6,10 @@ import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.usecase.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.*;
+import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.repository.EmployeeFileRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.application.service.EmployeeFileProvisioningService;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -30,9 +34,11 @@ class EmployeeUseCasesTest {
         Employee e = employee(EmploymentStatus.ACTIVE);
         EmployeeRequest request = request();
         when(employees.actorId()).thenReturn(UUID.randomUUID());
-        when(employees.normalized(eq(null), eq(request), eq(null), any())).thenReturn(e);
+        when(employees.normalized(eq(null), anyString(), eq(request), eq(null), any())).thenReturn(e);
         when(repository.save(e)).thenReturn(e);
-        assertEquals(e.id(), new CreateEmployeeUseCase(repository, employees, audit, mapper).execute(request).id());
+        BusinessSequenceService sequences = mock(BusinessSequenceService.class);
+        when(sequences.nextCode("employee")).thenReturn("EMP-000001");
+        assertEquals(e.id(), new CreateEmployeeUseCase(repository, employees, audit, mapper, sequences, mock(EmployeeFileProvisioningService.class)).execute(request).id());
         verify(audit).record("EMPLOYEE", "CREATED", e.id(), List.of());
         var page = PageRequest.of(1, 5);
         var filter = new EmployeeFilter("Ana", null, null, null, null);
@@ -45,7 +51,7 @@ class EmployeeUseCasesTest {
         Employee e = employee(EmploymentStatus.ACTIVE);
         when(employees.requireForUpdate(e.id())).thenReturn(e);
         when(employees.actorId()).thenReturn(UUID.randomUUID());
-        when(employees.normalized(eq(e.id()), eq(request()), eq(e), any())).thenReturn(e);
+        when(employees.normalized(eq(e.id()), eq(e.employeeNumber()), eq(request()), eq(e), any())).thenReturn(e);
         when(employees.changedFields(e, e)).thenReturn(List.of());
         new UpdateEmployeeUseCase(repository, employees, audit, mapper).execute(e.id(), request());
         new ChangeEmployeeStatusUseCase(repository, employees, audit, mapper).execute(e.id(), EmploymentStatus.ACTIVE);
@@ -77,6 +83,7 @@ class EmployeeUseCasesTest {
     @Test void onboardingCreatesEmployeeAndItsInitialAssignmentAsOneUseCase() {
         CreateEmployeeUseCase createEmployee = mock(CreateEmployeeUseCase.class);
         CreateEmployeeAssignmentUseCase createAssignment = mock(CreateEmployeeAssignmentUseCase.class);
+        EmployeeFileRepository files = mock(EmployeeFileRepository.class);
         EmployeeRequest employeeRequest = request();
         EmployeeAssignmentRequest assignmentRequest = new EmployeeAssignmentRequest(
                 UUID.randomUUID(), UUID.randomUUID(), null, employeeRequest.hireDate(), null,
@@ -91,7 +98,8 @@ class EmployeeUseCasesTest {
         when(createEmployee.execute(employeeRequest)).thenReturn(employeeResponse);
         when(createAssignment.execute(employeeId, assignmentRequest)).thenReturn(assignmentResponse);
 
-        var result = new CreateEmployeeWithAssignmentUseCase(createEmployee, createAssignment)
+        when(files.findByEmployeeId(employeeId)).thenReturn(Optional.of(mock(com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.model.EmployeeFile.class)));
+        var result = new CreateEmployeeWithAssignmentUseCase(createEmployee, createAssignment, files)
                 .execute(new EmployeeOnboardingRequest(employeeRequest, assignmentRequest));
 
         assertEquals(employeeId, result.employee().id());

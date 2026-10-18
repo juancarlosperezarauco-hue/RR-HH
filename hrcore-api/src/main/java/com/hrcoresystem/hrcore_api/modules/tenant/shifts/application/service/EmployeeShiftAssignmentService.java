@@ -7,6 +7,8 @@ import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.Employee;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.EmploymentStatus;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.EmploymentPeriod;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.EmploymentPeriodService;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.CreateShiftAssignmentsRequest;
@@ -20,6 +22,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.Shift
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkShiftRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,13 +48,24 @@ public class EmployeeShiftAssignmentService {
     private final SecurityContextFacade security;
     private final AuditTrailService audit;
     private final ShiftAssignmentConflictPolicy conflicts;
+    private final EmploymentPeriodService periods;
 
+    @Autowired
     public EmployeeShiftAssignmentService(ShiftAssignmentRepository assignments, WorkShiftRepository shifts,
             EmployeeRepository employees, TenantPlanEnforcementService plans, TenantShiftClock clock,
-            SecurityContextFacade security, AuditTrailService audit, ShiftAssignmentConflictPolicy conflicts) {
+            SecurityContextFacade security, AuditTrailService audit, ShiftAssignmentConflictPolicy conflicts,
+            EmploymentPeriodService periods) {
         this.assignments = assignments; this.shifts = shifts; this.employees = employees;
         this.plans = plans; this.clock = clock; this.security = security;
         this.audit = audit; this.conflicts = conflicts;
+        this.periods = periods;
+    }
+
+    @Deprecated
+    public EmployeeShiftAssignmentService(ShiftAssignmentRepository assignments, WorkShiftRepository shifts,
+            EmployeeRepository employees, TenantPlanEnforcementService plans, TenantShiftClock clock,
+            SecurityContextFacade security, AuditTrailService audit, ShiftAssignmentConflictPolicy conflicts) {
+        this(assignments, shifts, employees, plans, clock, security, audit, conflicts, null);
     }
 
     @Transactional
@@ -64,11 +78,14 @@ public class EmployeeShiftAssignmentService {
         requireActiveEmployee(employee);
         List<Short> weekdays = weekdays(request.weekdays());
         validateDates(request.startDate(), request.endDate(), employee, today, true);
+        EmploymentPeriod period = periods == null ? null : periods.requireOpen(employee.id());
+        validatePeriod(period, request.startDate(), request.endDate());
         List<EmployeeShiftAssignment> possible = assignments.findActiveOverlapping(employee.id(), null,
                 request.startDate(), request.endDate());
         Map<UUID, WorkShift> lockedShifts = lockShifts(possible, request.shiftId(), null);
         WorkShift shift = activeShift(lockedShifts, request.shiftId());
         EmployeeShiftAssignment draft = new EmployeeShiftAssignment(null, employee.id(), shift.id(),
+                period == null ? null : period.id(),
                 request.startDate(), request.endDate(), weekdays, ShiftAssignmentStatus.ACTIVE,
                 actorId(), null, null);
         assertNoConflict(draft, shift, possible, lockedShifts);
@@ -117,11 +134,14 @@ public class EmployeeShiftAssignmentService {
         requireActiveEmployee(employee);
         List<Short> weekdays = weekdays(request.weekdays());
         validateDates(request.startDate(), request.endDate(), employee, today, false);
+        EmploymentPeriod period = periods == null ? null : periods.require(employee.id(), before.employmentPeriodId());
+        validatePeriod(period, request.startDate(), request.endDate());
         List<EmployeeShiftAssignment> possible = assignments.findActiveOverlapping(employee.id(), id,
                 request.startDate(), request.endDate());
         Map<UUID, WorkShift> lockedShifts = lockShifts(possible, request.shiftId(), before.shiftId());
         WorkShift shift = activeShift(lockedShifts, request.shiftId());
         EmployeeShiftAssignment draft = new EmployeeShiftAssignment(id, before.employeeId(), request.shiftId(),
+                before.employmentPeriodId(),
                 request.startDate(), request.endDate(), weekdays, ShiftAssignmentStatus.ACTIVE,
                 before.createdBy(), before.createdAt(), before.updatedAt());
         List<String> changed = changed(before, draft);
@@ -241,9 +261,17 @@ public class EmployeeShiftAssignmentService {
             throw new BusinessException("endDate cannot precede startDate");
     }
 
+    private void validatePeriod(EmploymentPeriod period, LocalDate startDate, LocalDate endDate) {
+        if (period == null) return;
+        if (startDate.isBefore(period.startDate()) || (period.endDate() != null && startDate.isAfter(period.endDate())))
+            throw new BusinessException("Assignment startDate must belong to the employment period");
+        if (endDate != null && period.endDate() != null && endDate.isAfter(period.endDate()))
+            throw new BusinessException("Assignment endDate cannot exceed the employment period");
+    }
+
     private EmployeeShiftAssignment withStatus(EmployeeShiftAssignment before,
             ShiftAssignmentStatus status, LocalDate endDate) {
-        return new EmployeeShiftAssignment(before.id(), before.employeeId(), before.shiftId(),
+        return new EmployeeShiftAssignment(before.id(), before.employeeId(), before.shiftId(), before.employmentPeriodId(),
                 before.startDate(), endDate, before.weekdays(), status,
                 before.createdBy(), before.createdAt(), before.updatedAt());
     }
@@ -268,7 +296,7 @@ public class EmployeeShiftAssignmentService {
     }
 
     private ShiftAssignmentResponse response(EmployeeShiftAssignment assignment) {
-        return new ShiftAssignmentResponse(assignment.id(), assignment.employeeId(), assignment.shiftId(),
+        return new ShiftAssignmentResponse(assignment.id(), assignment.employeeId(), assignment.shiftId(), assignment.employmentPeriodId(),
                 assignment.startDate(), assignment.endDate(), assignment.weekdays(), assignment.status(),
                 assignment.createdAt(), assignment.updatedAt());
     }

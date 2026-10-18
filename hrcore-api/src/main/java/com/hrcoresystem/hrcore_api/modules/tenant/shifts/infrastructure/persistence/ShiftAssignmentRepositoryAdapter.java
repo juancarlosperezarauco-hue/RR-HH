@@ -26,6 +26,7 @@ public class ShiftAssignmentRepositoryAdapter implements ShiftAssignmentReposito
                 : jpa.findById(assignment.id()).orElseThrow();
         entity.setEmployeeId(assignment.employeeId());
         entity.setShiftId(assignment.shiftId());
+        if (assignment.employmentPeriodId() != null) entity.setEmploymentPeriodId(assignment.employmentPeriodId());
         entity.setStartDate(assignment.startDate());
         entity.setEndDate(assignment.endDate());
         entity.setWeekdays(assignment.weekdays().toArray(Short[]::new));
@@ -41,6 +42,8 @@ public class ShiftAssignmentRepositoryAdapter implements ShiftAssignmentReposito
 
     @Override
     public Optional<UUID> findEmployeeId(UUID id) { return jpa.findEmployeeId(id); }
+    @Override public List<EmployeeShiftAssignment> findAllByEmployeeIdForUpdate(UUID employeeId){return jpa.findAllByEmployeeIdForUpdate(employeeId).stream().map(this::toDomain).toList();}
+    @Override public List<EmployeeShiftAssignment> findByEmploymentPeriodId(UUID employmentPeriodId){return jpa.findByEmploymentPeriodId(employmentPeriodId).stream().map(this::toDomain).toList();}
 
     @Override
     public Page<EmployeeShiftAssignment> findAll(UUID employeeId, UUID shiftId,
@@ -89,7 +92,7 @@ public class ShiftAssignmentRepositoryAdapter implements ShiftAssignmentReposito
     }
 
     private EmployeeShiftAssignment toDomain(ShiftAssignmentEntity entity) {
-        return new EmployeeShiftAssignment(entity.getId(), entity.getEmployeeId(), entity.getShiftId(),
+        return new EmployeeShiftAssignment(entity.getId(), entity.getEmployeeId(), entity.getShiftId(), entity.getEmploymentPeriodId(),
                 entity.getStartDate(), entity.getEndDate(), Arrays.asList(entity.getWeekdays()),
                 entity.getStatus(), entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt());
     }

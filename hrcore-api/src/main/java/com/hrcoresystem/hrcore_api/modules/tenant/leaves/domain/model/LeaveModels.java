@@ -16,19 +16,33 @@ public final class LeaveModels {
             boolean requiresApproval, boolean requiresAttachment, boolean deductsBalance,
             TypeStatus status, Instant createdAt, Instant updatedAt) { }
 
-    public record LeaveBalance(UUID id, UUID employeeId, UUID leaveTypeId, int balanceYear,
+    public record LeaveBalance(UUID id, UUID employeeId, UUID employmentPeriodId, UUID leaveTypeId, int balanceYear,
             BigDecimal openingDays, BigDecimal accruedDays, BigDecimal usedDays,
             BigDecimal adjustedDays, Instant updatedAt) {
+        public LeaveBalance(UUID id, UUID employeeId, UUID leaveTypeId, int balanceYear,
+                BigDecimal openingDays, BigDecimal accruedDays, BigDecimal usedDays,
+                BigDecimal adjustedDays, Instant updatedAt) {
+            this(id, employeeId, null, leaveTypeId, balanceYear, openingDays, accruedDays, usedDays, adjustedDays, updatedAt);
+        }
         public BigDecimal available() {
             return openingDays.add(accruedDays).add(adjustedDays).subtract(usedDays);
         }
     }
 
-    public record LeaveRequest(UUID id, UUID employeeId, UUID leaveTypeId, LocalDate startDate,
+    public record LeaveRequest(UUID id, UUID employeeId, UUID employmentPeriodId, UUID leaveTypeId, LocalDate startDate,
             LocalDate endDate, LocalTime startTime, LocalTime endTime, BigDecimal requestedDays,
             String reason, RequestStatus status, UUID requestedBy, Instant submittedAt,
             UUID reviewedBy, Instant reviewedAt, String reviewComment, Instant createdAt,
-            Instant updatedAt) { }
+            Instant updatedAt) {
+        public LeaveRequest(UUID id, UUID employeeId, UUID leaveTypeId, LocalDate startDate,
+                LocalDate endDate, LocalTime startTime, LocalTime endTime, BigDecimal requestedDays,
+                String reason, RequestStatus status, UUID requestedBy, Instant submittedAt,
+                UUID reviewedBy, Instant reviewedAt, String reviewComment, Instant createdAt,
+                Instant updatedAt) {
+            this(id, employeeId, null, leaveTypeId, startDate, endDate, startTime, endTime, requestedDays,
+                    reason, status, requestedBy, submittedAt, reviewedBy, reviewedAt, reviewComment, createdAt, updatedAt);
+        }
+    }
 
     public record LeaveRequestHistory(UUID id, UUID leaveRequestId, RequestStatus previousStatus,
             RequestStatus newStatus, String comment, UUID performedBy, Instant createdAt) { }

@@ -12,10 +12,12 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
   private final TenantMaintenanceInterceptor tenantMaintenanceInterceptor;
+  private final TenantHrReadinessInterceptor tenantHrReadinessInterceptor;
 
   public WebMvcConfig(
-      TenantMaintenanceInterceptor tenantMaintenanceInterceptor) {
+      TenantMaintenanceInterceptor tenantMaintenanceInterceptor, TenantHrReadinessInterceptor tenantHrReadinessInterceptor) {
     this.tenantMaintenanceInterceptor = tenantMaintenanceInterceptor;
+    this.tenantHrReadinessInterceptor = tenantHrReadinessInterceptor;
   }
 
   @Override
@@ -41,6 +43,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
             "/swagger-ui/**",
             "/actuator/**")
         .order(1);
+    registry.addInterceptor(tenantHrReadinessInterceptor).addPathPatterns("/api/shifts", "/api/shifts/**", "/api/attendance", "/api/attendance/**").order(2);
   }
 
   @Override

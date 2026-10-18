@@ -1,4 +1,4 @@
-export type ShiftAssignmentStatus = 'ACTIVE' | 'INACTIVE' | 'CANCELLED' | 'CLOSED';
+export type ShiftAssignmentStatus = 'ACTIVE' | 'INACTIVE' | 'CANCELLED';
 
 /**
  * DTO canónico de Spring Boot: ShiftAssignmentResponse
@@ -9,6 +9,7 @@ export interface ShiftAssignmentResponse {
   id: string;                      // UUID
   employeeId: string;              // UUID
   shiftId: string;                 // UUID
+  employmentPeriodId: string;       // UUID del período laboral
   startDate: string;               // LocalDate YYYY-MM-DD
   endDate?: string | null;         // LocalDate YYYY-MM-DD (null = indefinido)
   weekdays: number[];              // Array de días 1..7 (1=Lunes, 7=Domingo ISO-8601)
@@ -24,6 +25,7 @@ export interface EmployeeShiftAssignmentResponse {
   id: string;                      // UUID
   employeeId: string;              // UUID
   shiftId: string;                 // UUID
+  employmentPeriodId?: string | null;
   startDate: string;               // LocalDate YYYY-MM-DD
   endDate?: string | null;         // LocalDate YYYY-MM-DD (null = indefinido)
   weekdays?: number[];             // Array de días 1..7 (1=Lunes, 7=Domingo ISO-8601)

@@ -26,6 +26,7 @@ public class ShiftAssignmentEntity {
     @Id @GeneratedValue private UUID id;
     @Column(name = "employee_id", nullable = false, updatable = false) private UUID employeeId;
     @Column(name = "shift_id", nullable = false) private UUID shiftId;
+    @Column(name = "employment_period_id", nullable = false, updatable = false) private UUID employmentPeriodId;
     @Column(name = "start_date", nullable = false) private LocalDate startDate;
     @Column(name = "end_date") private LocalDate endDate;
     @JdbcTypeCode(SqlTypes.ARRAY)

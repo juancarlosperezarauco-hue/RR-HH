@@ -21,13 +21,16 @@ public class ChangeEmployeeStatusUseCase {
     }
     @Transactional
     public EmployeeResponse execute(UUID id, EmploymentStatus status) {
+        return execute(id, status, null);
+    }
+    public EmployeeResponse execute(UUID id, EmploymentStatus status, String reason) {
         policy.assertOperational();
         Employee before = policy.requireForUpdate(id);
         policy.assertNotTerminated(before);
         if (status == null || status == EmploymentStatus.TERMINATED)
             throw new BusinessException("Unsupported employment status");
         if (before.employmentStatus() == status) return mapper.toResponse(before);
-        Employee saved = employees.save(policy.changedStatus(before, status, policy.actorId()));
+        Employee saved = employees.save(policy.changedStatus(before, status, reason, policy.actorId()));
         audit.record("EMPLOYEE", "STATUS_UPDATED", id, List.of("employmentStatus"));
         return mapper.toResponse(saved);
     }

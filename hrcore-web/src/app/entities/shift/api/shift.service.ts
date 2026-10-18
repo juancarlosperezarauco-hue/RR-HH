@@ -27,7 +27,7 @@ import {
   WorkCalendarExceptionRequest,
   CalendarExceptionType
 } from '../model/calendar-exception.model';
-import { ScheduleResponse } from '../model/schedule.model';
+import { ScheduleRangeResponse, ScheduleResponse } from '../model/schedule.model';
 
 @Injectable({ providedIn: 'root' })
 export class ShiftService {
@@ -48,7 +48,7 @@ export class ShiftService {
   listShifts(
     status?: 'ACTIVE' | 'INACTIVE' | 'ALL',
     page = 0,
-    size = 50,
+    size = 25,
     code?: string,
     name?: string,
     sort = 'name',
@@ -92,7 +92,6 @@ export class ShiftService {
   createShift(request: WorkShiftRequest | CreateShiftRequest): Observable<ApiResponse<ShiftResponse>> {
     // Normalizar payload enviando campos oficiales de Spring Boot
     const payload: WorkShiftRequest = {
-      code: request.code,
       name: request.name,
       description: request.description,
       startTime: request.startTime,
@@ -112,7 +111,6 @@ export class ShiftService {
    */
   updateShift(id: string, request: WorkShiftRequest | CreateShiftRequest): Observable<ApiResponse<ShiftResponse>> {
     const payload: WorkShiftRequest = {
-      code: request.code,
       name: request.name,
       description: request.description,
       startTime: request.startTime,
@@ -164,7 +162,7 @@ export class ShiftService {
   listBreaks(
     shiftId: string,
     page = 0,
-    size = 50,
+    size = 25,
     sort = 'startTime',
     direction = 'asc'
   ): Observable<ApiResponse<PageResponse<ShiftBreakResponse>>> {
@@ -253,7 +251,7 @@ export class ShiftService {
     shiftId?: string,
     status?: ShiftAssignmentStatus,
     page = 0,
-    size = 50
+    size = 25
   ): Observable<ApiResponse<PageResponse<ShiftAssignmentResponse>>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -367,7 +365,7 @@ export class ShiftService {
       organizationOnly?: boolean;
     },
     page = 0,
-    size = 50
+    size = 25
   ): Observable<ApiResponse<PageResponse<WorkCalendarExceptionResponse>>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -438,6 +436,25 @@ export class ShiftService {
       `${this.baseUrl}/schedule`,
       { params }
     );
+  }
+
+  getEffectiveScheduleRange(employeeId: string, fromDate: string, toDate: string): Observable<ApiResponse<ScheduleRangeResponse>> {
+    const params = new HttpParams()
+      .set('employeeId', employeeId)
+      .set('fromDate', fromDate)
+      .set('toDate', toDate);
+    return this.http.get<ApiResponse<ScheduleRangeResponse>>(`${this.baseUrl}/schedule/range`, { params });
+  }
+
+  getMySchedule(date?: string): Observable<ApiResponse<ScheduleResponse>> {
+    let params = new HttpParams();
+    if (date) params = params.set('date', date);
+    return this.http.get<ApiResponse<ScheduleResponse>>(`${environment.apiUrl}/api/me/schedule`, { params });
+  }
+
+  getMyScheduleRange(fromDate: string, toDate: string): Observable<ApiResponse<ScheduleRangeResponse>> {
+    const params = new HttpParams().set('fromDate', fromDate).set('toDate', toDate);
+    return this.http.get<ApiResponse<ScheduleRangeResponse>>(`${environment.apiUrl}/api/me/schedule/range`, { params });
   }
 
   private toShiftResponse(shift: WorkShiftResponse): ShiftResponse {

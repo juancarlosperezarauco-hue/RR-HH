@@ -1,4 +1,3 @@
-
 -- ============================================================
 -- V7__create_tenant_user_face_login_profiles.sql
 -- HRCore - Perfiles de reconocimiento facial por tenant

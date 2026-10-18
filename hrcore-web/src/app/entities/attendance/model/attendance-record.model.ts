@@ -16,6 +16,7 @@ export type PunchSource = 'WEB' | 'MOBILE' | 'BIOMETRIC' | 'DEVICE' | 'MANUAL' |
 export interface AttendanceRecordResponse {
   id: string;               // UUID
   employeeId: string;       // UUID
+  employmentPeriodId?: string | null;
   shiftAssignmentId?: string | null; // UUID
   workDate: string;         // YYYY-MM-DD
   expectedStartAt?: string | null;   // ISO Instant

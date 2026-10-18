@@ -18,6 +18,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/shifts/calendar-exceptions")
@@ -31,9 +32,10 @@ public class WorkCalendarExceptionController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('shifts.calendar.create')")
     public ApiResponse<WorkCalendarExceptionResponse> create(@Valid @RequestBody WorkCalendarExceptionRequest request) {
-        return ApiResponse.success("Calendar exception created", exceptions.create(request));
+        return ApiResponse.success("Excepción de calendario creada correctamente", exceptions.create(request));
     }
 
     @GetMapping
@@ -45,7 +47,7 @@ public class WorkCalendarExceptionController {
             @RequestParam(required = false) CalendarExceptionType exceptionType,
             @RequestParam(required = false) Boolean workRequired,
             @RequestParam(required = false) Boolean organizationOnly,
-            @ParameterObject @PageableDefault(size = 50) Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 25) Pageable pageable) {
         WorkCalendarExceptionFilter filter = new WorkCalendarExceptionFilter(
                 employeeId, departmentId, fromDate, toDate, exceptionType, workRequired, organizationOnly);
         return ApiResponse.success("Calendar exceptions retrieved",
@@ -55,20 +57,20 @@ public class WorkCalendarExceptionController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('shifts.calendar.detail')")
     public ApiResponse<WorkCalendarExceptionResponse> detail(@PathVariable UUID id) {
-        return ApiResponse.success("Calendar exception retrieved", exceptions.get(id));
+        return ApiResponse.success("Excepción de calendario consultada correctamente", exceptions.get(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('shifts.calendar.update')")
     public ApiResponse<WorkCalendarExceptionResponse> update(@PathVariable UUID id,
             @Valid @RequestBody WorkCalendarExceptionRequest request) {
-        return ApiResponse.success("Calendar exception updated", exceptions.update(id, request));
+        return ApiResponse.success("Excepción de calendario actualizada correctamente", exceptions.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('shifts.calendar.delete')")
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         exceptions.delete(id);
-        return ApiResponse.success("Calendar exception deleted", null);
+        return ApiResponse.success("Excepción de calendario eliminada correctamente", null);
     }
 }

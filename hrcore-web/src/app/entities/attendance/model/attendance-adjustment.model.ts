@@ -38,6 +38,7 @@ export interface AttendanceOvertimeResponse {
   status: ReviewStatus;
   approvedBy?: string | null;    // UUID
   approvedAt?: string | null;    // ISO Instant
+  requestedBy?: string | null;
   createdAt: string;
   updatedAt?: string;
 }

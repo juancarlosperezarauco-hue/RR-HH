@@ -5,13 +5,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 public interface EmployeeAssignmentRepository {
     EmployeeAssignment save(EmployeeAssignment assignment);
     Optional<EmployeeAssignment> findByIdAndEmployeeId(UUID id, UUID employeeId);
     Page<EmployeeAssignment> findByEmployeeId(UUID employeeId, Pageable pageable);
-    boolean hasOpenOrFutureAssignments(UUID employeeId);
+    boolean hasOpenOrFutureAssignments(UUID employeeId, LocalDate asOfDate);
+    Optional<EmployeeAssignment> findCurrentPrimaryForUpdate(UUID employeeId, LocalDate asOfDate);
+    Optional<EmployeeAssignment> findCurrentPrimary(UUID employeeId, LocalDate asOfDate);
+    List<EmployeeAssignment> findAllByEmployeeIdForUpdate(UUID employeeId);
     boolean hasOverlappingPrimary(UUID employeeId, UUID exceptId, LocalDate startDate, LocalDate endDate);
     Optional<LocalDate> earliestStartDate(UUID employeeId);
 }

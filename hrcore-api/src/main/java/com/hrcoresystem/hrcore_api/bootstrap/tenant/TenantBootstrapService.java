@@ -41,6 +41,19 @@ public class TenantBootstrapService {
         VALUES ('company.timezone', 'America/La_Paz', NOW(), NOW())
         ON CONFLICT (setting_key) DO NOTHING
         """.formatted(schemaName));
+    String defaults = """
+        INSERT INTO %s.tenant_settings (setting_key, setting_value, created_at, updated_at) VALUES
+        ('hr.setup_completed','false',NOW(),NOW()),
+        ('attendance.employee_web_punch_enabled','true',NOW(),NOW()),
+        ('attendance.geolocation_required','false',NOW(),NOW()),
+        ('attendance.break_punch_required','false',NOW(),NOW()),
+        ('attendance.daily_processing_enabled','true',NOW(),NOW()),
+        ('attendance.adjustment_approval_required','true',NOW(),NOW()),
+        ('leave.self_service_enabled','true',NOW(),NOW()),
+        ('leave.supervisor_approval_enabled','true',NOW(),NOW())
+        ON CONFLICT (setting_key) DO NOTHING
+        """.formatted(schemaName);
+    jdbcTemplate.update(defaults);
   }
 
   private void validateSchemaName(String schemaName) {

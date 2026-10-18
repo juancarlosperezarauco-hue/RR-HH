@@ -22,9 +22,14 @@ public interface LeaveStore {
     LeaveBalance save(LeaveBalance value);
     Optional<LeaveBalance> balance(UUID id);
     Optional<LeaveBalance> lockedBalance(UUID employeeId, UUID typeId, int year);
+    default Optional<LeaveBalance> lockedBalanceByPeriod(UUID periodId, UUID typeId, int year) { return lockedBalance(null, typeId, year); }
     boolean balanceExists(UUID employeeId, UUID typeId, int year);
+    default boolean balanceExistsByPeriod(UUID periodId, UUID typeId, int year) { return balanceExists(null, typeId, year); }
     Page<LeaveBalance> balances(UUID employeeId, UUID typeId, Integer year, Pageable page);
     BigDecimal pendingDays(UUID employeeId, UUID typeId, int year);
+    default BigDecimal pendingDaysByPeriod(UUID periodId, UUID typeId, LocalDate from, LocalDate to) {
+        return pendingDays(null, typeId, from.getYear());
+    }
     Map<UUID, BigDecimal> pendingDaysForBalances(List<LeaveBalance> balances);
 
     LeaveRequest save(LeaveRequest value);

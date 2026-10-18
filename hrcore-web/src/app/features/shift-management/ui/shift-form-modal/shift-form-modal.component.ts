@@ -2,7 +2,7 @@ import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChange
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { ShiftResponse, ShiftType } from '../../../../entities/shift';
+import { ShiftResponse, WorkShiftRequest } from '../../../../entities/shift';
 import { ShiftFormUseCase } from '../../application/shift-form.usecase';
 
 @Component({
@@ -36,32 +36,6 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
 
         <!-- Formulario -->
         <form (ngSubmit)="submit()" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <!-- Código -->
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Código del Turno *
-              </label>
-              <input
-                type="text"
-                [(ngModel)]="code"
-                name="code"
-                required
-                placeholder="Ej: TUR_DIURNO_OFI"
-                class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-semibold text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-            </div>
-
-            <!-- Tipo de Turno derivado del horario -->
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                Régimen calculado
-              </label>
-              <div class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm font-semibold text-foreground">
-                {{ shiftType === 'NIGHT' ? 'Nocturno (máx. 7 h)' : 'Continuo (máx. 8 h)' }}
-              </div>
-            </div>
-          </div>
-
           <!-- Nombre descriptivo -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -74,6 +48,18 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
               required
               placeholder="Ej: Turno Administrativo Central (8 horas)"
               class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+              Descripción (opcional)
+            </label>
+            <textarea
+              [(ngModel)]="description"
+              name="description"
+              rows="2"
+              placeholder="Ej: Jornada administrativa de lunes a viernes"
+              class="w-full resize-none rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
           </div>
 
           <!-- Horarios: Inicio y Fin -->
@@ -104,44 +90,43 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
 
           </div>
 
-          <p class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs font-medium text-blue-800">
-            Los descansos se registran después de crear el turno y los días laborales se definen al asignarlo a cada empleado.
-          </p>
-
-          <!-- Tolerancias de Puntualidad (HU16: Entrada y Salida) -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Tolerancias -->
+          <div class="space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tolerancia</p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <div class="flex items-center justify-between mb-1.5">
-                <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Tol. Entrada (5 a 15 min) *
+                <label class="block text-xs font-medium text-muted-foreground">
+                  Entrada
                 </label>
                 <span class="text-xs font-bold text-primary">{{ lateToleranceMinutes }} min</span>
               </div>
               <input
-                type="range"
+                type="number"
                 [(ngModel)]="lateToleranceMinutes"
                 name="lateToleranceMinutes"
-                min="5"
-                max="15"
+                min="0"
+                max="1440"
                 step="1"
-                class="w-full accent-primary cursor-pointer" />
+                class="w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
             </div>
 
             <div>
               <div class="flex items-center justify-between mb-1.5">
-                <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Tol. Salida Anticipada (0 a 15 min)
+                <label class="block text-xs font-medium text-muted-foreground">
+                  Salida
                 </label>
                 <span class="text-xs font-bold text-primary">{{ earlyDepartureToleranceMinutes }} min</span>
               </div>
               <input
-                type="range"
+                type="number"
                 [(ngModel)]="earlyDepartureToleranceMinutes"
                 name="earlyDepartureToleranceMinutes"
                 min="0"
-                max="15"
+                max="1440"
                 step="1"
-                class="w-full accent-primary cursor-pointer" />
+                class="w-full rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </div>
             </div>
           </div>
 
@@ -150,7 +135,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
             <div class="space-y-0.5">
               <p class="text-xs font-bold text-accent-foreground">Cruza Medianoche (+1 Día)</p>
               <p class="text-[11px] text-muted-foreground">
-                Habilita si la jornada laboral finaliza al día siguiente (Turno Nocturno).
+                Actívalo cuando la hora de fin pertenece al día siguiente.
               </p>
             </div>
             <input
@@ -169,7 +154,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
             class="rounded-2xl border p-4 transition-all space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Cálculo de Jornada Efectiva:
+                Resumen de la jornada
               </span>
               <div class="flex items-center gap-2">
                 <span *ngIf="effectiveCalculation.isOvernight || crossesMidnight" class="inline-flex items-center gap-1 rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
@@ -226,24 +211,18 @@ export class ShiftFormModalComponent implements OnChanges {
 
   readonly formUseCase = inject(ShiftFormUseCase);
 
-  code = '';
   name = '';
+  description = '';
   startTime = '08:30';
   endTime = '16:30';
   lateToleranceMinutes = 10;
   earlyDepartureToleranceMinutes = 5;
   crossesMidnight = false;
 
-  get shiftType(): ShiftType {
-    const startHour = Number(this.startTime.substring(0, 2));
-    const endHour = Number(this.endTime.substring(0, 2));
-    return this.crossesMidnight || startHour >= 18 || endHour <= 6 ? 'NIGHT' : 'CONTINUOUS';
-  }
-
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['shiftToEdit'] && this.shiftToEdit) {
-      this.code = this.shiftToEdit.code;
       this.name = this.shiftToEdit.name;
+      this.description = this.shiftToEdit.description ?? '';
       this.startTime = this.shiftToEdit.startTime.substring(0, 5);
       this.endTime = this.shiftToEdit.endTime.substring(0, 5);
       this.lateToleranceMinutes = this.shiftToEdit.lateToleranceMinutes ?? this.shiftToEdit.gracePeriodMinutes ?? 10;
@@ -260,44 +239,35 @@ export class ShiftFormModalComponent implements OnChanges {
   }
 
   get lawValidation() {
-    return this.formUseCase.validateLaborLaw({
-      code: this.code,
+    const request: WorkShiftRequest = {
       name: this.name,
-      shiftType: this.shiftType,
+      description: this.description.trim() || undefined,
       startTime: this.startTime,
       endTime: this.endTime,
-      breakMinutes: 0,
-      lateToleranceMinutes: this.lateToleranceMinutes,
-      earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes,
-      gracePeriodMinutes: this.lateToleranceMinutes,
       crossesMidnight: this.crossesMidnight,
-      isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight
-    });
+      lateToleranceMinutes: this.lateToleranceMinutes,
+      earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes
+    };
+    return this.formUseCase.validateLaborLaw(request);
   }
 
   isValid(): boolean {
-    return !!this.code && !!this.name && this.lawValidation.isValid;
+    return !!this.name && this.lawValidation.isValid;
   }
 
   async submit(): Promise<void> {
     if (!this.isValid()) return;
 
-    const ok = await this.formUseCase.saveShift(
-      {
-        code: this.code,
-        name: this.name,
-        shiftType: this.shiftType,
-        startTime: this.startTime.length === 5 ? `${this.startTime}:00` : this.startTime,
-        endTime: this.endTime.length === 5 ? `${this.endTime}:00` : this.endTime,
-        breakMinutes: 0,
-        lateToleranceMinutes: this.lateToleranceMinutes,
-        earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes,
-        gracePeriodMinutes: this.lateToleranceMinutes,
-        crossesMidnight: this.crossesMidnight,
-        isOvernight: this.crossesMidnight || this.effectiveCalculation.isOvernight
-      },
-      this.shiftToEdit?.id
-    );
+    const request: WorkShiftRequest = {
+      name: this.name.trim(),
+      description: this.description.trim() || undefined,
+      startTime: this.startTime.length === 5 ? `${this.startTime}:00` : this.startTime,
+      endTime: this.endTime.length === 5 ? `${this.endTime}:00` : this.endTime,
+      crossesMidnight: this.crossesMidnight,
+      lateToleranceMinutes: this.lateToleranceMinutes,
+      earlyDepartureToleranceMinutes: this.earlyDepartureToleranceMinutes
+    };
+    const ok = await this.formUseCase.saveShift(request, this.shiftToEdit?.id);
 
     if (ok) {
       this.saved.emit();
@@ -310,8 +280,8 @@ export class ShiftFormModalComponent implements OnChanges {
   }
 
   private resetForm(): void {
-    this.code = '';
     this.name = '';
+    this.description = '';
     this.startTime = '08:30';
     this.endTime = '16:30';
     this.lateToleranceMinutes = 10;

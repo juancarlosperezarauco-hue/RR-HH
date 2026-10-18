@@ -18,7 +18,7 @@ public class DeletePositionRequirementUseCase {
     @Transactional
     public void execute(UUID positionId, UUID requirementId) {
         policy.assertOperational();
-        policy.requirePositionForUpdate(positionId);
+        policy.requireActivePosition(positionId);
         PositionRequirement before = policy.requireRequirement(positionId, requirementId);
         requirements.delete(before);
         audit.requirement("DELETED", before, null);

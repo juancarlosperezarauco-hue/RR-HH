@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { ShiftService, CreateShiftRequest, ShiftResponse } from '../../../entities/shift';
+import { ShiftService, WorkShiftRequest } from '../../../entities/shift';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 
 @Injectable({ providedIn: 'root' })
@@ -45,15 +45,15 @@ export class ShiftFormUseCase {
    * Valida restricciones laborales según la Ley General del Trabajo (LGT) de Bolivia
    * y las reglas temporales estrictas del backend Spring Boot
    */
-  validateLaborLaw(request: CreateShiftRequest): { isValid: boolean; message?: string } {
+  validateLaborLaw(request: WorkShiftRequest): { isValid: boolean; message?: string } {
     const { hours, isOvernight } = this.calculateEffectiveHours(
       request.startTime,
       request.endTime,
-      request.breakMinutes
+      0
     );
 
     // Validación de consistencia temporal (ShiftTimeRules de Spring Boot)
-    const effectiveCrosses = request.crossesMidnight ?? isOvernight;
+    const effectiveCrosses = request.crossesMidnight;
     const [sh, sm] = request.startTime.split(':').map(Number);
     const [eh, em] = request.endTime.split(':').map(Number);
     const startMins = sh * 60 + sm;
@@ -72,50 +72,27 @@ export class ShiftFormUseCase {
       };
     }
 
-    // Validación de horario nocturno (máximo 7 horas continuas)
-    if (request.shiftType === 'NIGHT' || effectiveCrosses) {
-      if (hours > 7) {
-        return {
-          isValid: false,
-          message: `La jornada nocturna no puede exceder las 7 horas continuas (LGT Bolivia). Calculado: ${hours}h.`
-        };
-      }
-    } else {
-      // Jornada diurna estándar (máximo 8 horas ordinarias al día)
-      if (hours > 8) {
-        return {
-          isValid: false,
-          message: `La jornada ordinaria diaria no puede exceder las 8 horas (LGT Bolivia). Calculado: ${hours}h.`
-        };
-      }
-    }
-
-    // Validación de tolerancia de puntualidad (5 a 15 min)
-    const lateTol = request.lateToleranceMinutes ?? request.gracePeriodMinutes ?? 10;
-    if (lateTol < 5 || lateTol > 15) {
+    // El backend acepta tolerancias no negativas que no superen la duración.
+    const lateTol = request.lateToleranceMinutes;
+    const earlyTol = request.earlyDepartureToleranceMinutes;
+    const durationMinutes = Math.round(hours * 60);
+    if (lateTol < 0 || earlyTol < 0 || lateTol > durationMinutes || earlyTol > durationMinutes) {
       return {
         isValid: false,
-        message: 'La tolerancia de llegada tarde debe estar configurada entre 5 y 15 minutos.'
+        message: 'Las tolerancias deben ser no negativas y no superar la duración de la jornada.'
       };
     }
 
     return { isValid: true };
   }
 
-  async saveShift(request: CreateShiftRequest, shiftId?: string): Promise<boolean> {
+  async saveShift(request: WorkShiftRequest, shiftId?: string): Promise<boolean> {
     const val = this.validateLaborLaw(request);
     if (!val.isValid) {
       this.validationError.set(val.message!);
       this.toastService.error(val.message!);
       return false;
     }
-
-    // Sincronizar campos de Spring Boot
-    const { isOvernight } = this.calculateEffectiveHours(request.startTime, request.endTime, request.breakMinutes);
-    request.crossesMidnight = request.crossesMidnight ?? isOvernight;
-    request.isOvernight = request.crossesMidnight;
-    request.lateToleranceMinutes = request.lateToleranceMinutes ?? request.gracePeriodMinutes ?? 10;
-    request.earlyDepartureToleranceMinutes = request.earlyDepartureToleranceMinutes ?? 5;
 
     this.saving.set(true);
     this.validationError.set(null);

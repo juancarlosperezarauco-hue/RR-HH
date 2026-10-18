@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS employment_contracts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     employee_id UUID NOT NULL,
+    employment_period_id UUID NOT NULL,
 
     contract_number VARCHAR(80) NOT NULL,
 
@@ -52,8 +53,11 @@ CREATE TABLE IF NOT EXISTS employment_contracts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT uq_employment_contracts_number
-        UNIQUE (contract_number),
+    CONSTRAINT uq_employment_contracts_number UNIQUE (contract_number),
+    CONSTRAINT uq_employment_contracts_id_employee UNIQUE (id,employee_id),
+    CONSTRAINT fk_employment_contracts_period_employee
+        FOREIGN KEY (employment_period_id,employee_id)
+        REFERENCES employment_periods(id,employee_id) ON DELETE RESTRICT,
 
     CONSTRAINT fk_employment_contracts_employee
         FOREIGN KEY (employee_id)
@@ -104,6 +108,11 @@ CREATE TABLE IF NOT EXISTS employment_contracts (
             'DAILY'
         )),
 
+    CONSTRAINT chk_employment_contracts_termination_state CHECK (
+        (status = 'TERMINATED' AND termination_date IS NOT NULL AND BTRIM(COALESCE(termination_reason,'')) <> '')
+        OR (status <> 'TERMINATED' AND termination_date IS NULL)
+    ),
+
     CONSTRAINT chk_employment_contracts_dates
         CHECK (
             (end_date IS NULL OR end_date >= start_date)
@@ -129,6 +138,19 @@ CREATE INDEX IF NOT EXISTS idx_employment_contracts_status
 
 CREATE INDEX IF NOT EXISTS idx_employment_contracts_end_date
     ON employment_contracts(end_date);
+CREATE INDEX idx_employment_contracts_period ON employment_contracts(employment_period_id);
+CREATE TRIGGER trg_bind_contract_period
+BEFORE INSERT OR UPDATE OF employee_id, employment_period_id, start_date ON employment_contracts
+FOR EACH ROW EXECUTE FUNCTION bind_employee_employment_period('start_date');
+
+-- Impide dos contratos ACTIVE superpuestos para un mismo período laboral.
+-- La fecha de terminación, si existe, es el extremo efectivo del contrato.
+ALTER TABLE employment_contracts
+    ADD CONSTRAINT ex_active_contract_overlap EXCLUDE USING gist (
+        employee_id WITH =,
+        daterange(start_date, COALESCE(termination_date,end_date,'infinity'::DATE),'[]') WITH &&
+    ) WHERE (status='ACTIVE') DEFERRABLE INITIALLY IMMEDIATE;
+
 
 
 -- ============================================================
@@ -243,4 +265,19 @@ CREATE TABLE IF NOT EXISTS employment_contract_history (
 
 CREATE INDEX IF NOT EXISTS idx_contract_history_contract
     ON employment_contract_history(contract_id, created_at DESC);
+
+
+
+
+CREATE FUNCTION protect_contract_employee_owner()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.employee_id IS DISTINCT FROM OLD.employee_id THEN
+        RAISE EXCEPTION 'Contract owner is immutable' USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_protect_contract_employee_owner
+BEFORE UPDATE OF employee_id ON employment_contracts
+FOR EACH ROW EXECUTE FUNCTION protect_contract_employee_owner();
 

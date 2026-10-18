@@ -1,6 +1,7 @@
 export interface LeaveBalanceResponse {
   id: string;                    // UUID
   employeeId: string;            // UUID
+  employmentPeriodId?: string | null;
   leaveTypeId: string;           // UUID
   balanceYear?: number;          // Ej: 2026 (canonical backend)
   openingDays?: number;          // Días base/iniciales

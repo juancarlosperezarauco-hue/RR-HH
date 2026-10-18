@@ -11,5 +11,7 @@ public interface TenantSettingRepository {
 
     Optional<TenantSetting> findByKey(String settingKey);
 
+    TenantSetting requireForUpdate(String settingKey);
+
     TenantSetting save(TenantSetting tenantSetting);
 }

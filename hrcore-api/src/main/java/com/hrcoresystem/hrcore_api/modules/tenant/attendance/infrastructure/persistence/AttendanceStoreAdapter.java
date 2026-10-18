@@ -36,7 +36,9 @@ public class AttendanceStoreAdapter implements AttendanceStore {
 
     @Override public AttendanceRecord save(AttendanceRecord value) {
         AttendanceRecordEntity e = value.id() == null ? new AttendanceRecordEntity() : records.findById(value.id()).orElseThrow();
-        e.setEmployeeId(value.employeeId()); e.setShiftAssignmentId(value.shiftAssignmentId()); e.setWorkDate(value.workDate());
+        e.setEmployeeId(value.employeeId());
+        if (e.getEmploymentPeriodId() == null) e.setEmploymentPeriodId(value.employmentPeriodId());
+        e.setShiftAssignmentId(value.shiftAssignmentId()); e.setWorkDate(value.workDate());
         e.setExpectedStartAt(value.expectedStartAt()); e.setExpectedEndAt(value.expectedEndAt());
         e.setActualFirstInAt(value.actualFirstInAt()); e.setActualLastOutAt(value.actualLastOutAt());
         e.setWorkedMinutes(value.workedMinutes()); e.setLateMinutes(value.lateMinutes());
@@ -46,9 +48,12 @@ public class AttendanceStoreAdapter implements AttendanceStore {
     }
 
     @Override public AttendanceRecord lockOrCreate(UUID employeeId, LocalDate workDate) {
+        return lockOrCreate(employeeId, workDate, null);
+    }
+    @Override public AttendanceRecord lockOrCreate(UUID employeeId, LocalDate workDate, UUID employmentPeriodId) {
         return records.lockByEmployeeAndDate(employeeId, workDate).map(this::model).orElseGet(() -> {
             AttendanceRecordEntity e = new AttendanceRecordEntity();
-            e.setEmployeeId(employeeId); e.setWorkDate(workDate); e.setStatus(AttendanceStatus.PENDING);
+            e.setEmployeeId(employeeId); e.setEmploymentPeriodId(employmentPeriodId); e.setWorkDate(workDate); e.setStatus(AttendanceStatus.PENDING);
             return model(records.saveAndFlush(e));
         });
     }
@@ -145,7 +150,7 @@ public class AttendanceStoreAdapter implements AttendanceStore {
                 : overtime.findById(value.id()).orElseThrow();
         e.setAttendanceRecordId(value.attendanceRecordId()); e.setRequestedMinutes(value.requestedMinutes());
         e.setApprovedMinutes(value.approvedMinutes()); e.setReason(value.reason()); e.setStatus(value.status());
-        e.setApprovedBy(value.approvedBy()); e.setApprovedAt(value.approvedAt());
+        e.setApprovedBy(value.approvedBy()); e.setApprovedAt(value.approvedAt()); e.setRequestedBy(value.requestedBy());
         return model(overtime.saveAndFlush(e));
     }
     @Override public Optional<AttendanceOvertime> overtime(UUID id) { return overtime.findById(id).map(this::model); }
@@ -172,6 +177,12 @@ public class AttendanceStoreAdapter implements AttendanceStore {
         });
         return overtime.findAll(s, page).map(this::model);
     }
+    @Override public Page<AttendanceOvertime> overtimeByRequester(UUID requesterId, ReviewStatus status,
+            LocalDate from, LocalDate to, Pageable page) {
+        Specification<AttendanceOvertimeEntity> s = (r, q, cb) -> cb.equal(r.get("requestedBy"), requesterId);
+        if (status != null) s = s.and((r,q,cb) -> cb.equal(r.get("status"), status));
+        return overtime.findAll(s, page).map(this::model);
+    }
 
     @Override public Optional<UUID> employeeForUser(UUID tenantUserId) {
         List<UUID> ids = jdbc.query("select id from employees where tenant_user_id = ?",
@@ -186,7 +197,7 @@ public class AttendanceStoreAdapter implements AttendanceStore {
     }
 
     private AttendanceRecord model(AttendanceRecordEntity e) {
-        return new AttendanceRecord(e.getId(), e.getEmployeeId(), e.getShiftAssignmentId(), e.getWorkDate(),
+        return new AttendanceRecord(e.getId(), e.getEmployeeId(), e.getEmploymentPeriodId(), e.getShiftAssignmentId(), e.getWorkDate(),
                 e.getExpectedStartAt(), e.getExpectedEndAt(), e.getActualFirstInAt(), e.getActualLastOutAt(),
                 e.getWorkedMinutes(), e.getLateMinutes(), e.getEarlyDepartureMinutes(), e.getStatus(),
                 e.getCalculationDetails(), e.getCalculatedAt(), e.getCreatedAt(), e.getUpdatedAt());
@@ -203,7 +214,7 @@ public class AttendanceStoreAdapter implements AttendanceStore {
     }
     private AttendanceOvertime model(AttendanceOvertimeEntity e) {
         return new AttendanceOvertime(e.getId(), e.getAttendanceRecordId(), e.getRequestedMinutes(),
-                e.getApprovedMinutes(), e.getReason(), e.getStatus(), e.getApprovedBy(), e.getApprovedAt(),
+                e.getApprovedMinutes(), e.getReason(), e.getStatus(), e.getApprovedBy(), e.getApprovedAt(), e.getRequestedBy(),
                 e.getCreatedAt(), e.getUpdatedAt());
     }
 }

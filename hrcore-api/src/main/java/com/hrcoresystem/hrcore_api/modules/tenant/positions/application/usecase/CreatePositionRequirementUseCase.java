@@ -22,7 +22,7 @@ public class CreatePositionRequirementUseCase {
     @Transactional
     public PositionRequirementResponse execute(UUID positionId, PositionRequirementRequest request) {
         policy.assertOperational();
-        policy.requirePositionForUpdate(positionId);
+        policy.requireActivePosition(positionId);
         PositionRequirement saved = requirements.save(policy.normalizedRequirement(positionId, request, null));
         audit.requirement("CREATED", null, saved);
         return mapper.toResponse(saved);

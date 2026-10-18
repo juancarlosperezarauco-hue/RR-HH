@@ -3,7 +3,6 @@ export type AssignmentType = 'PRIMARY' | 'TEMPORARY' | 'ADDITIONAL';
 
 export interface EmployeeRequest {
   tenantUserId: string | null;
-  employeeNumber: string;
   firstName: string;
   middleName: string | null;
   lastName: string;
@@ -31,6 +30,7 @@ export interface EmployeeSummary {
 
 export interface Employee extends EmployeeRequest {
   id: string;
+  employeeNumber: string;
   terminationDate: string | null;
   employmentStatus: EmploymentStatus;
   createdAt: string;
@@ -52,6 +52,7 @@ export interface EmployeeAssignment extends EmployeeAssignmentRequest {
   employeeId: string;
   createdAt: string;
   updatedAt: string;
+  status: 'ACTIVE' | 'CANCELLED';
 }
 
 export interface EmployeeOnboardingRequest {
@@ -62,6 +63,39 @@ export interface EmployeeOnboardingRequest {
 export interface EmployeeOnboardingResponse {
   employee: Employee;
   assignment: EmployeeAssignment;
+  employeeFile: { id: string; employeeId: string; fileNumber: string; status: 'ACTIVE' | 'ARCHIVED'; notes?: string | null; createdAt: string; updatedAt: string };
+}
+
+export interface EmploymentPeriod {
+  id: string;
+  employeeId: string;
+  periodNumber: number;
+  startDate: string;
+  endDate: string | null;
+  status: EmploymentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeTermination {
+  employeeId: string;
+  employmentPeriodId: string;
+  effectiveDate: string;
+  reason: string;
+  performedBy: string | null;
+  createdAt: string;
+}
+
+export interface RehireEmployeeRequest {
+  startDate: string;
+  reason: string | null;
+  assignment: EmployeeAssignmentRequest | null;
+}
+
+export interface RehireEmployeeResponse {
+  employee: Employee;
+  employmentPeriod: EmploymentPeriod;
+  assignment: EmployeeAssignment | null;
 }
 
 export interface EmergencyContactRequest {

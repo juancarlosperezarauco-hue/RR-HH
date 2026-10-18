@@ -21,11 +21,12 @@ public class EmployeeAssignmentController {
     private static final Set<String> SORTABLE = Set.of("startDate", "endDate", "assignmentType", "createdAt");
     private final CreateEmployeeAssignmentUseCase create; private final ListEmployeeAssignmentsUseCase list;
     private final GetEmployeeAssignmentUseCase get; private final UpdateEmployeeAssignmentUseCase update;
-    private final CloseEmployeeAssignmentUseCase close;
+    private final CloseEmployeeAssignmentUseCase close; private final CancelEmployeeAssignmentUseCase cancel;
     public EmployeeAssignmentController(CreateEmployeeAssignmentUseCase create, ListEmployeeAssignmentsUseCase list,
                                         GetEmployeeAssignmentUseCase get, UpdateEmployeeAssignmentUseCase update,
-                                        CloseEmployeeAssignmentUseCase close) {
+                                        CloseEmployeeAssignmentUseCase close, CancelEmployeeAssignmentUseCase cancel) {
         this.create = create; this.list = list; this.get = get; this.update = update; this.close = close;
+        this.cancel = cancel;
     }
     @PostMapping
     @PreAuthorize("hasAuthority('employees.assignments.create')")
@@ -56,5 +57,11 @@ public class EmployeeAssignmentController {
     public ApiResponse<EmployeeAssignmentResponse> close(@PathVariable UUID employeeId,
             @PathVariable UUID assignmentId, @Valid @RequestBody CloseAssignmentRequest request) {
         return ApiResponse.success("Assignment closed successfully", close.execute(employeeId, assignmentId, request.endDate()));
+    }
+    @PatchMapping("/{assignmentId}/cancel")
+    @PreAuthorize("hasAuthority('employees.assignments.cancel')")
+    public ApiResponse<EmployeeAssignmentResponse> cancel(@PathVariable UUID employeeId,
+            @PathVariable UUID assignmentId) {
+        return ApiResponse.success("Assignment cancelled successfully", cancel.execute(employeeId, assignmentId));
     }
 }

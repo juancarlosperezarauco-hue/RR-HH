@@ -11,11 +11,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 
 @Repository
 public class EmployeeRepositoryAdapter implements EmployeeRepository {
     private final EmployeeJpaRepository jpa;
-    public EmployeeRepositoryAdapter(EmployeeJpaRepository jpa) { this.jpa = jpa; }
+    private final TenantTimezoneService timezone;
+    public EmployeeRepositoryAdapter(EmployeeJpaRepository jpa, TenantTimezoneService timezone) { this.jpa = jpa; this.timezone = timezone; }
 
     @Override
     public Employee save(Employee p) {
@@ -33,6 +35,7 @@ public class EmployeeRepositoryAdapter implements EmployeeRepository {
 
     @Override public Optional<Employee> findById(UUID id) { return jpa.findById(id).map(this::toDomain); }
     @Override public Optional<Employee> findByIdForUpdate(UUID id) { return jpa.findByIdForUpdate(id).map(this::toDomain); }
+    @Override public Optional<Employee> findByTenantUserId(UUID tenantUserId) { return jpa.findByTenantUserId(tenantUserId).map(this::toDomain); }
     @Override public boolean existsNumberOtherThan(String number, UUID id) {
         return id == null ? jpa.existsByEmployeeNumber(number) : jpa.existsByEmployeeNumberAndIdNot(number, id);
     }
@@ -64,8 +67,10 @@ public class EmployeeRepositoryAdapter implements EmployeeRepository {
                 var assignment = sub.from(EmployeeAssignmentEntity.class);
                 var joinConditions = new ArrayList<Predicate>();
                 joinConditions.add(cb.equal(assignment.get("employeeId"), root.get("id")));
-                LocalDate today = LocalDate.now();
+                LocalDate today = timezone.today();
                 joinConditions.add(cb.lessThanOrEqualTo(assignment.get("startDate"), today));
+                joinConditions.add(cb.equal(assignment.get("assignmentType"), AssignmentType.PRIMARY));
+                joinConditions.add(cb.equal(assignment.get("assignmentStatus"), EmployeeAssignmentStatus.ACTIVE));
                 joinConditions.add(cb.or(cb.isNull(assignment.get("endDate")),
                         cb.greaterThanOrEqualTo(assignment.get("endDate"), today)));
                 if (filter.departmentId() != null)

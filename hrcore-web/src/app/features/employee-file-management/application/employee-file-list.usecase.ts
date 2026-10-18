@@ -160,7 +160,7 @@ export class EmployeeFileListUseCase {
     this.loadDocuments();
   }
 
-  async createFileForEmployee(employeeId: string, employeeNumber: string): Promise<boolean> {
+  async createFileForEmployee(employeeId: string): Promise<boolean> {
     if (!employeeId) {
       this.toast.warning('Seleccione un empleado para crear su expediente.');
       return false;
@@ -168,7 +168,6 @@ export class EmployeeFileListUseCase {
     try {
       const response = await firstValueFrom(this.fileService.createFile({
         employeeId,
-        fileNumber: `EXP-${employeeNumber || employeeId.substring(0, 8)}`.toUpperCase(),
         notes: 'Expediente laboral digital del colaborador'
       }));
       this.activeFile.set(response.data);

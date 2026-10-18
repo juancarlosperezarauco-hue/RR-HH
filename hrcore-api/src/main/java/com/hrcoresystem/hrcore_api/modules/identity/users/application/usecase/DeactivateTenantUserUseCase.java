@@ -12,6 +12,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.Tena
 import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.hrcoresystem.hrcore_api.common.security.session.domain.repository.TenantAuthSessionRepository;
 
 import java.util.UUID;
 
@@ -22,17 +23,19 @@ public class DeactivateTenantUserUseCase {
     private final TenantUserMapper tenantUserMapper;
     private final AuditTrailService auditTrailService;
     private final TenantAuthorizationStateRepository authorizationStateRepository;
+    private final TenantAuthSessionRepository sessions;
 
     public DeactivateTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
             TenantUserMapper tenantUserMapper,
             AuditTrailService auditTrailService,
-            TenantAuthorizationStateRepository authorizationStateRepository
+            TenantAuthorizationStateRepository authorizationStateRepository, TenantAuthSessionRepository sessions
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserMapper = tenantUserMapper;
         this.auditTrailService = auditTrailService;
         this.authorizationStateRepository = authorizationStateRepository;
+        this.sessions = sessions;
     }
 
     @Transactional
@@ -58,6 +61,7 @@ public class DeactivateTenantUserUseCase {
         );
 
         TenantUser savedUser = tenantUserRepository.save(updatedUser);
+        sessions.revokeAllByUserId(savedUser.id());
 
         auditTrailService.recordTenantEvent(
                 AuditEventTypes.USER_DEACTIVATED,

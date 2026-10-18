@@ -19,7 +19,7 @@ public class EmployeeMapper {
     public EmployeeAssignmentResponse toResponse(EmployeeAssignment a) {
         return new EmployeeAssignmentResponse(a.id(), a.employeeId(), a.departmentId(), a.positionId(),
                 a.supervisorEmployeeId(), a.startDate(), a.endDate(), a.assignmentType(), a.reason(),
-                a.createdAt(), a.updatedAt());
+                a.createdAt(), a.updatedAt(), a.status());
     }
     public EmployeeEmergencyContactResponse toResponse(EmployeeEmergencyContact c) {
         return new EmployeeEmergencyContactResponse(c.id(), c.employeeId(), c.fullName(), c.relationship(),

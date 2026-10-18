@@ -22,7 +22,7 @@ public class UpdatePositionRequirementUseCase {
     @Transactional
     public PositionRequirementResponse execute(UUID positionId, UUID requirementId, PositionRequirementRequest request) {
         policy.assertOperational();
-        policy.requirePositionForUpdate(positionId);
+        policy.requireActivePosition(positionId);
         PositionRequirement before = policy.requireRequirement(positionId, requirementId);
         PositionRequirement after = policy.normalizedRequirement(positionId, request, before);
         if (policy.sameContent(before, after)) return mapper.toResponse(before);

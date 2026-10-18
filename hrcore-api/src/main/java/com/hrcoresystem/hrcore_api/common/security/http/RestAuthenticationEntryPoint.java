@@ -32,8 +32,8 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
         ApiErrorResponse body = ApiErrorResponse.of(
-                "Authentication is required to access this resource",
-                List.of(authException.getMessage())
+                "Debe iniciar sesión para acceder a este recurso",
+                List.of()
         );
 
         objectMapper.writeValue(response.getOutputStream(), body);

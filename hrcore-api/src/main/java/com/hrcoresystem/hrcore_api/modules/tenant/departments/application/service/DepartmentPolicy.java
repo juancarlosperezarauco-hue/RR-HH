@@ -11,18 +11,21 @@ import org.springframework.stereotype.Component;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 
 @Component
 public class DepartmentPolicy {
     private final DepartmentRepository departments;
     private final TenantPlanEnforcementService plans;
     private final SecurityContextFacade security;
+    private final TenantTimezoneService timezone;
 
     public DepartmentPolicy(DepartmentRepository departments, TenantPlanEnforcementService plans,
-                            SecurityContextFacade security) {
+                            SecurityContextFacade security, TenantTimezoneService timezone) {
         this.departments = departments;
         this.plans = plans;
         this.security = security;
+        this.timezone = timezone;
     }
 
     public void assertOperational() { plans.assertCanOperate(); }
@@ -77,6 +80,6 @@ public class DepartmentPolicy {
 
     public void validateDeactivation(UUID id) {
         if (departments.hasActiveChildren(id)) throw new BusinessException("Department has active child departments");
-        if (departments.hasCurrentAssignments(id)) throw new BusinessException("Department has current employee assignments");
+        if (departments.hasCurrentOrFutureAssignments(id, timezone.today())) throw new BusinessException("El departamento tiene asignaciones laborales vigentes o futuras");
     }
 }

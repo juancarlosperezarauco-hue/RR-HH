@@ -13,3 +13,4 @@ CREATE INDEX IF NOT EXISTS idx_tenant_account_activation_tokens_email
 
 CREATE INDEX IF NOT EXISTS idx_tenant_account_activation_tokens_expires_at
     ON tenant_account_activation_tokens(expires_at);
+

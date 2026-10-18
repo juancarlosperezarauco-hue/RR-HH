@@ -29,6 +29,23 @@ public final class ShiftTimeRules {
         }
     }
 
+    public static int durationMinutes(LocalTime start, LocalTime end, boolean crossesMidnight) {
+        validateShift(start, end, crossesMidnight);
+        if (crossesMidnight && start.equals(end)) return 24 * 60;
+        int minutes = end.toSecondOfDay() / 60 - start.toSecondOfDay() / 60;
+        if (crossesMidnight) minutes += 24 * 60;
+        return minutes;
+    }
+
+    public static void validateTolerances(LocalTime start, LocalTime end, boolean crossesMidnight,
+                                           Integer lateTolerance, Integer earlyTolerance) {
+        if (lateTolerance == null || earlyTolerance == null || lateTolerance < 0 || earlyTolerance < 0)
+            throw new BusinessException("Shift tolerances must be nonnegative");
+        int duration = durationMinutes(start, end, crossesMidnight);
+        if (lateTolerance > duration || earlyTolerance > duration)
+            throw new BusinessException("Shift tolerances cannot exceed shift duration");
+    }
+
     public static LocalInterval shiftInterval(WorkShift shift, LocalDate startDate) {
         validateShift(shift.startTime(), shift.endTime(), shift.crossesMidnight());
         LocalDateTime start = startDate.atTime(shift.startTime());

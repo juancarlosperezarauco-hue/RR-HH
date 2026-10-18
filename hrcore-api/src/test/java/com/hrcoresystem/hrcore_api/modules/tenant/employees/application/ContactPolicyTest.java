@@ -8,6 +8,7 @@ import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.se
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.dto.EmployeeEmergencyContactRequest;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.*;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import org.junit.jupiter.api.Test;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,7 +18,8 @@ class ContactPolicyTest {
     private final EmployeeEmergencyContactRepository contacts = mock(EmployeeEmergencyContactRepository.class);
     private final EmployeePolicy employees = new EmployeePolicy(mock(EmployeeRepository.class),
             mock(EmployeeAssignmentRepository.class), mock(TenantUserRepository.class),
-            mock(TenantPlanEnforcementService.class), mock(SecurityContextFacade.class));
+            mock(TenantPlanEnforcementService.class), mock(SecurityContextFacade.class),
+            mock(TenantTimezoneService.class));
     private final ContactPolicy policy = new ContactPolicy(contacts, employees);
 
     @Test void rejectsSecondPrimaryAndInvalidPhone() {

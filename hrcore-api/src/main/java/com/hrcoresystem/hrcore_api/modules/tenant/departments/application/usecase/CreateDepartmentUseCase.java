@@ -8,6 +8,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.departments.domain.repository.
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.BusinessSequenceService;
 
 @Service
 public class CreateDepartmentUseCase {
@@ -15,17 +16,18 @@ public class CreateDepartmentUseCase {
     private final DepartmentPolicy policy;
     private final DepartmentChangeRecorder recorder;
     private final DepartmentMapper mapper;
+    private final BusinessSequenceService sequences;
 
     public CreateDepartmentUseCase(DepartmentRepository departments, DepartmentPolicy policy,
-                                   DepartmentChangeRecorder recorder, DepartmentMapper mapper) {
-        this.departments = departments; this.policy = policy; this.recorder = recorder; this.mapper = mapper;
+                                   DepartmentChangeRecorder recorder, DepartmentMapper mapper, BusinessSequenceService sequences) {
+        this.departments = departments; this.policy = policy; this.recorder = recorder; this.mapper = mapper; this.sequences = sequences;
     }
 
     @Transactional
     public DepartmentResponse execute(CreateDepartmentRequest request) {
         policy.assertOperational();
         policy.lockForWrite();
-        String code = policy.required(request.code(), 50, "code");
+        String code = sequences.nextCode("department");
         String name = policy.required(request.name(), 150, "name");
         policy.assertCodeAvailable(code, null);
         policy.validateReferences(null, request.parentDepartmentId(), request.managerEmployeeId());

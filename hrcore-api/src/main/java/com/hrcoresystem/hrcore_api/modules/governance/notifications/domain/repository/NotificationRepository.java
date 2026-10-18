@@ -15,4 +15,5 @@ public interface NotificationRepository {
     List<Notification> findInboxByUserIdOrderByCreatedAtDesc(UUID userId);
 
     long countUnreadInboxByUserId(UUID userId);
+    boolean existsByUserIdAndActionUrl(UUID userId, String actionUrl);
 }

@@ -11,6 +11,10 @@ public final class PaginationCompatibilitySupport {
   }
 
   public static boolean hasExplicitSpringPagingParameters(HttpServletRequest request) {
+    return hasExplicitPageSizeParameters(request);
+  }
+
+  public static boolean hasExplicitPageSizeParameters(HttpServletRequest request) {
     if (request == null) {
       return false;
     }
@@ -18,7 +22,7 @@ public final class PaginationCompatibilitySupport {
     Map<String, String[]> params = request.getParameterMap();
     return params.containsKey("page")
         || params.containsKey("size")
-        || params.containsKey("sort");
+        || params.containsKey("size");
   }
 
   public static Object adaptResponseData(Object data, HttpServletRequest request) {

@@ -58,3 +58,5 @@ CREATE TRIGGER trg_enforce_tenant_permission_assignment
 BEFORE INSERT OR UPDATE ON tenant_role_permissions
 FOR EACH ROW
 EXECUTE FUNCTION enforce_tenant_permission_assignment();
+
+

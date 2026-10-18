@@ -52,7 +52,7 @@ public class LeaveRepositoryAdapter implements LeaveStore {
 
     @Override public LeaveBalance save(LeaveBalance v) {
         var e = balances.findById(v.id()).orElseGet(LeaveBalanceEntity::new);
-        e.setId(v.id()); e.setEmployeeId(v.employeeId()); e.setLeaveTypeId(v.leaveTypeId());
+        e.setId(v.id()); e.setEmployeeId(v.employeeId()); e.setEmploymentPeriodId(v.employmentPeriodId()); e.setLeaveTypeId(v.leaveTypeId());
         e.setBalanceYear(v.balanceYear()); e.setOpeningDays(v.openingDays());
         e.setAccruedDays(v.accruedDays()); e.setUsedDays(v.usedDays());
         e.setAdjustedDays(v.adjustedDays()); return balance(balances.saveAndFlush(e));
@@ -61,8 +61,14 @@ public class LeaveRepositoryAdapter implements LeaveStore {
     @Override public Optional<LeaveBalance> lockedBalance(UUID employeeId, UUID typeId, int year) {
         return balances.lock(employeeId, typeId, year).map(this::balance);
     }
+    @Override public Optional<LeaveBalance> lockedBalanceByPeriod(UUID periodId, UUID typeId, int year) {
+        return balances.lockByPeriod(periodId, typeId, year).map(this::balance);
+    }
     @Override public boolean balanceExists(UUID employeeId, UUID typeId, int year) {
         return balances.existsByEmployeeIdAndLeaveTypeIdAndBalanceYear(employeeId, typeId, year);
+    }
+    @Override public boolean balanceExistsByPeriod(UUID periodId, UUID typeId, int year) {
+        return balances.existsByEmploymentPeriodIdAndLeaveTypeIdAndBalanceYear(periodId, typeId, year);
     }
     @Override public Page<LeaveBalance> balances(UUID employeeId, UUID typeId, Integer year, Pageable page) {
         Specification<LeaveBalanceEntity> spec = (root, query, cb) -> cb.and(
@@ -75,6 +81,9 @@ public class LeaveRepositoryAdapter implements LeaveStore {
         return requests.pending(employeeId, typeId, LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31),
                 RequestStatus.PENDING);
     }
+    @Override public BigDecimal pendingDaysByPeriod(UUID periodId, UUID typeId, LocalDate from, LocalDate to) {
+        return requests.pendingByPeriod(periodId, typeId, from, to, RequestStatus.PENDING);
+    }
     @Override public Map<UUID, BigDecimal> pendingDaysForBalances(List<LeaveBalance> values) {
         if (values.isEmpty()) return Map.of();
         Map<UUID, BigDecimal> result = new HashMap<>();
@@ -86,7 +95,7 @@ public class LeaveRepositoryAdapter implements LeaveStore {
     @Override public LeaveRequest save(LeaveRequest v) {
         var e = requests.findById(v.id()).orElseGet(LeaveRequestEntity::new);
         e.setId(v.id()); e.setEmployeeId(v.employeeId()); e.setLeaveTypeId(v.leaveTypeId());
-        e.setStartDate(v.startDate()); e.setEndDate(v.endDate());
+        e.setEmploymentPeriodId(v.employmentPeriodId()); e.setStartDate(v.startDate()); e.setEndDate(v.endDate());
         e.setStartTime(v.startTime()); e.setEndTime(v.endTime()); e.setRequestedDays(v.requestedDays());
         e.setReason(v.reason()); e.setStatus(v.status()); e.setRequestedBy(v.requestedBy());
         e.setSubmittedAt(v.submittedAt()); e.setReviewedBy(v.reviewedBy());
@@ -150,11 +159,11 @@ public class LeaveRepositoryAdapter implements LeaveStore {
                 e.getStatus(), e.getCreatedAt(), e.getUpdatedAt());
     }
     private LeaveBalance balance(LeaveBalanceEntity e) {
-        return new LeaveBalance(e.getId(), e.getEmployeeId(), e.getLeaveTypeId(), e.getBalanceYear(),
+        return new LeaveBalance(e.getId(), e.getEmployeeId(), e.getEmploymentPeriodId(), e.getLeaveTypeId(), e.getBalanceYear(),
                 e.getOpeningDays(), e.getAccruedDays(), e.getUsedDays(), e.getAdjustedDays(), e.getUpdatedAt());
     }
     private LeaveRequest request(LeaveRequestEntity e) {
-        return new LeaveRequest(e.getId(), e.getEmployeeId(), e.getLeaveTypeId(), e.getStartDate(),
+        return new LeaveRequest(e.getId(), e.getEmployeeId(), e.getEmploymentPeriodId(), e.getLeaveTypeId(), e.getStartDate(),
                 e.getEndDate(), e.getStartTime(), e.getEndTime(), e.getRequestedDays(), e.getReason(),
                 e.getStatus(), e.getRequestedBy(), e.getSubmittedAt(), e.getReviewedBy(), e.getReviewedAt(),
                 e.getReviewComment(), e.getCreatedAt(), e.getUpdatedAt());

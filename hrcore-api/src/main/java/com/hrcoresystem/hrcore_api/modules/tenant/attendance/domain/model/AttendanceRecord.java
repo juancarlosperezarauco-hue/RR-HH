@@ -5,7 +5,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record AttendanceRecord(UUID id, UUID employeeId, UUID shiftAssignmentId, LocalDate workDate,
+public record AttendanceRecord(UUID id, UUID employeeId, UUID employmentPeriodId, UUID shiftAssignmentId, LocalDate workDate,
         Instant expectedStartAt, Instant expectedEndAt, Instant actualFirstInAt, Instant actualLastOutAt,
         int workedMinutes, int lateMinutes, int earlyDepartureMinutes, AttendanceStatus status,
-        JsonNode calculationDetails, Instant calculatedAt, Instant createdAt, Instant updatedAt) { }
+        JsonNode calculationDetails, Instant calculatedAt, Instant createdAt, Instant updatedAt) {
+    public AttendanceRecord(UUID id, UUID employeeId, UUID shiftAssignmentId, LocalDate workDate,
+            Instant expectedStartAt, Instant expectedEndAt, Instant actualFirstInAt, Instant actualLastOutAt,
+            int workedMinutes, int lateMinutes, int earlyDepartureMinutes, AttendanceStatus status,
+            JsonNode calculationDetails, Instant calculatedAt, Instant createdAt, Instant updatedAt) {
+        this(id, employeeId, null, shiftAssignmentId, workDate, expectedStartAt, expectedEndAt,
+                actualFirstInAt, actualLastOutAt, workedMinutes, lateMinutes, earlyDepartureMinutes,
+                status, calculationDetails, calculatedAt, createdAt, updatedAt);
+    }
+}

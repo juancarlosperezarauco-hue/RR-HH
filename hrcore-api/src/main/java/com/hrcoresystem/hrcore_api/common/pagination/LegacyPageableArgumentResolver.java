@@ -14,6 +14,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.Map;
+import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 
 @Component
 public class LegacyPageableArgumentResolver implements HandlerMethodArgumentResolver {
@@ -40,12 +41,14 @@ public class LegacyPageableArgumentResolver implements HandlerMethodArgumentReso
     }
 
     Map<String, String[]> params = request.getParameterMap();
+    boolean hasLimit = params.containsKey("limit"); boolean hasOffset = params.containsKey("offset");
+    if ((hasLimit || hasOffset) && PaginationCompatibilitySupport.hasExplicitSpringPagingParameters(request)) throw new BusinessException("No combine page/size con limit/offset");
     if (PaginationCompatibilitySupport.hasExplicitSpringPagingParameters(request)) {
       return pageable;
     }
 
-    Integer limit = readPositiveInt(params.get("limit"));
-    Integer offset = readNonNegativeInt(params.get("offset"));
+    Integer limit = readPositiveInt(params.get("limit"), "limit", 100);
+    Integer offset = readNonNegativeInt(params.get("offset"), "offset", Integer.MAX_VALUE);
 
     if (limit == null && offset == null) {
       return pageable;
@@ -57,30 +60,24 @@ public class LegacyPageableArgumentResolver implements HandlerMethodArgumentReso
     }
 
     int safeOffset = offset != null ? offset : 0;
-    int page = size == 0 ? 0 : Math.max(safeOffset / size, 0);
-
-    return PageRequest.of(page, size, pageable.getSort());
+    return new OffsetPageable(safeOffset, size, pageable.getSort());
   }
 
-  private Integer readPositiveInt(@Nullable String[] values) {
-    Integer value = readInt(values);
-    return value != null && value > 0 ? value : null;
+  private Integer readPositiveInt(@Nullable String[] values, String name, int max) {
+    if (values == null) return null; Integer value = readInt(values, name); if(value<1||value>max) throw new BusinessException(name+" debe estar entre 1 y "+max); return value;
   }
 
-  private Integer readNonNegativeInt(@Nullable String[] values) {
-    Integer value = readInt(values);
-    return value != null && value >= 0 ? value : null;
+  private Integer readNonNegativeInt(@Nullable String[] values, String name, int max) {
+    if (values == null) return null; Integer value = readInt(values, name); if(value<0||value>max) throw new BusinessException(name+" debe ser un número no negativo"); return value;
   }
 
-  private Integer readInt(@Nullable String[] values) {
-    if (values == null || values.length == 0 || values[0] == null || values[0].isBlank()) {
-      return null;
-    }
+  private Integer readInt(@Nullable String[] values, String name) {
+    if (values == null || values.length == 0 || values[0] == null || values[0].isBlank()) throw new BusinessException(name+" debe ser numérico");
 
     try {
       return Integer.parseInt(values[0]);
     } catch (NumberFormatException ex) {
-      return null;
+      throw new BusinessException(name+" debe ser numérico");
     }
   }
 }

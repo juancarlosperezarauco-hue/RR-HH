@@ -10,4 +10,10 @@ public record WorkCalendarExceptionRequest(UUID employeeId, UUID departmentId,
                                            @NotNull LocalDate exceptionDate,
                                            @NotNull CalendarExceptionType exceptionType,
                                            String description,
-                                           @NotNull Boolean workRequired) { }
+                                           @NotNull Boolean workRequired,
+                                           UUID overrideShiftId) {
+    public WorkCalendarExceptionRequest(UUID employeeId, UUID departmentId, LocalDate exceptionDate,
+            CalendarExceptionType exceptionType, String description, Boolean workRequired) {
+        this(employeeId, departmentId, exceptionDate, exceptionType, description, workRequired, null);
+    }
+}

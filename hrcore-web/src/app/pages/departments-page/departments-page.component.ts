@@ -13,7 +13,9 @@ import { EmployeeSummary } from '../../entities/employees/model/employees.model'
 import { EmployeesService } from '../../entities/employees/api/employees.service';
 import { UserService } from '../../entities/user/api/user.service';
 
-@Component({ selector: 'app-departments-page', standalone: true, imports: [CommonModule, FormsModule, HasPermissionPipe, LucideAngularModule], templateUrl: './departments-page.component.html' })
+@Component({ selector: 'app-departments-page', standalone: true, imports: [CommonModule, FormsModule, HasPermissionPipe, LucideAngularModule], templateUrl: './departments-page.component.html', styles: [`
+  :host [role=dialog] form input,:host [role=dialog] form select,:host [role=dialog] form textarea{font-size:.875rem!important;font-weight:400!important;background:var(--muted)!important;border-color:var(--input)!important;color:var(--foreground)!important;border-radius:1rem!important}:host [role=dialog] form label>span{font-size:.875rem!important;font-weight:600!important;color:var(--muted-foreground)!important}:host [role=dialog] form input::placeholder,:host [role=dialog] form textarea::placeholder{color:var(--muted-foreground);font-weight:400}
+`] })
 export class DepartmentsPageComponent implements OnInit {
   private readonly service = inject(DepartmentsService);
   private readonly employeeService = inject(EmployeesService);
@@ -228,10 +230,10 @@ export class DepartmentsPageComponent implements OnInit {
     if (this.saving() || this.relatedLoading() || !this.permissions.hasPermission(`departments.${this.mode === 'create' ? 'create' : 'update'}`)) return;
     const f = this.form;
     if (this.employeeSearch.trim() && !f.managerEmployeeId) { this.panelError.set('Seleccione un empleado de las sugerencias o borre la búsqueda para dejar el responsable sin especificar.'); return; }
-    if (!f.code.trim() || f.code.length > 50 || !f.name.trim() || f.name.length > 150 || (f.costCenterCode?.length || 0) > 50) { this.panelError.set('Complete código (máximo 50) y nombre (máximo 150). Centro de costo: máximo 50.'); return; }
+    if (!f.name.trim() || f.name.length > 150 || (f.costCenterCode?.length || 0) > 50) { this.panelError.set('Complete el nombre (máximo 150). Centro de costo: máximo 50.'); return; }
     if ([f.parentDepartmentId, f.managerEmployeeId].some(id => id && !this.uuidPattern.test(id)) || (f.parentDepartmentId && f.parentDepartmentId === this.selected?.id)) { this.panelError.set('Las referencias deben ser UUID válidos; el departamento no puede ser su propio padre.'); return; }
     if (this.sensitiveChange() && !f.reason?.trim()) { this.panelError.set('Indique el motivo del cambio de superior o responsable.'); return; }
-    const request: DepartmentRequest = { code: f.code.trim(), name: f.name.trim(), description: f.description?.trim() || null, costCenterCode: f.costCenterCode?.trim() || null, parentDepartmentId: f.parentDepartmentId || null, managerEmployeeId: f.managerEmployeeId || null, reason: f.reason?.trim() || null };
+    const request: DepartmentRequest = { name: f.name.trim(), description: f.description?.trim() || null, costCenterCode: f.costCenterCode?.trim() || null, parentDepartmentId: f.parentDepartmentId || null, managerEmployeeId: f.managerEmployeeId || null, reason: f.reason?.trim() || null };
     this.mutate(this.mode === 'create' ? this.service.create(request) : this.service.update(this.selected!.id, request), () => { this.mode = null; this.load(0, true); });
   }
   transition(item: Department) {
@@ -258,7 +260,7 @@ export class DepartmentsPageComponent implements OnInit {
     this.saving.set(true); this.panelError.set('');
     operation.pipe(takeUntilDestroyed(this.destroy), finalize(() => this.saving.set(false))).subscribe({ next: () => { this.toast.success('Departamento actualizado correctamente.'); done(); }, error: e => { this.panelError.set(this.message(e)); this.toast.error(this.message(e)); } });
   }
-  private emptyForm(): DepartmentRequest { return { code: '', name: '', description: null, parentDepartmentId: null, managerEmployeeId: null, costCenterCode: null, reason: null }; }
-  private fromDepartment(d: Department): DepartmentRequest { return { code: d.code, name: d.name, description: d.description, parentDepartmentId: d.parentDepartmentId, managerEmployeeId: d.managerEmployeeId, costCenterCode: d.costCenterCode, reason: null }; }
+  private emptyForm(): DepartmentRequest { return { name: '', description: null, parentDepartmentId: null, managerEmployeeId: null, costCenterCode: null, reason: null }; }
+  private fromDepartment(d: Department): DepartmentRequest { return { name: d.name, description: d.description, parentDepartmentId: d.parentDepartmentId, managerEmployeeId: d.managerEmployeeId, costCenterCode: d.costCenterCode, reason: null }; }
   private message(e: unknown): string { return e instanceof HttpErrorResponse ? (e.status === 0 ? 'No se pudo conectar con el servidor.' : [e.error?.message || (e.status === 403 ? 'No tiene permiso para esta operación.' : 'No se pudo completar la operación.'), ...(Array.isArray(e.error?.errors) ? e.error.errors : [])].join(' · ')) : e instanceof Error ? e.message : 'No se pudo completar la operación.'; }
 }

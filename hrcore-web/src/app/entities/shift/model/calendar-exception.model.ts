@@ -29,6 +29,7 @@ export interface WorkCalendarExceptionResponse {
   exceptionType: CalendarExceptionType;
   description?: string | null;
   workRequired: boolean;                    // true si se debe trabajar, false si es asueto/feriado
+  overrideShiftId?: string | null;          // turno sustituto para excepciones con trabajo
   createdAt: string;                        // ISO Instant
 }
 
@@ -43,4 +44,5 @@ export interface WorkCalendarExceptionRequest {
   exceptionType: CalendarExceptionType;
   description?: string;
   workRequired: boolean;
+  overrideShiftId?: string | null;
 }

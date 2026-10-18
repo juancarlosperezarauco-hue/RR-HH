@@ -132,7 +132,7 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
           <!-- Selector de Archivo / Drop Area con Validación Inmediata -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Archivo Digital (PDF, JPG, PNG, DOCX - Máx 10 MB) *
+              Archivo Digital (PDF, JPG o PNG - Máx 10 MB) *
             </label>
             <div
               (dragover)="onDragOver($event)"
@@ -147,7 +147,7 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
               <input
                 type="file"
                 (change)="onFileSelected($event)"
-                accept=".pdf,.png,.jpg,.jpeg,.docx"
+                accept=".pdf,.png,.jpg,.jpeg"
                 class="absolute inset-0 cursor-pointer opacity-0" />
               
               <div *ngIf="!selectedFile" class="space-y-1.5 pointer-events-none">
@@ -160,7 +160,7 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
                 <p class="text-xs font-semibold text-accent-foreground">
                   {{ isDragging ? 'Suelta el archivo aquí...' : 'Arrastra un archivo aquí o haz clic para explorar' }}
                 </p>
-                <p class="text-[11px] text-muted-foreground">PDF, JPEG, PNG, DOCX hasta 10MB</p>
+                <p class="text-[11px] text-muted-foreground">PDF, JPEG o PNG hasta 10 MB</p>
               </div>
 
               <div *ngIf="selectedFile" class="flex items-center gap-3 text-left w-full bg-card p-3 rounded-xl border border-border">

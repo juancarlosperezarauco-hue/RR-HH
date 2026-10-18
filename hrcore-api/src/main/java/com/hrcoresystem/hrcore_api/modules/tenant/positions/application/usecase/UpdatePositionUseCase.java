@@ -22,7 +22,7 @@ public class UpdatePositionUseCase {
     public PositionResponse execute(UUID id, PositionRequest request) {
         policy.assertOperational();
         Position before = policy.requirePositionForUpdate(id);
-        Position after = policy.normalizedPosition(id, request, before, policy.actorId());
+        Position after = policy.normalizedPosition(id, before.code(), request, before, policy.actorId());
         if (policy.sameContent(before, after)) return mapper.toResponse(before);
         Position saved = positions.save(after);
         audit.position("UPDATED", before, saved);

@@ -27,3 +27,10 @@ export interface ScheduleResponse {
   reason?: string | null;             // Motivo (ej. "Feriado", "Turno regular")
   intervals: ScheduleInterval[];      // Intervalos de trabajo efectivos calculados
 }
+
+export interface ScheduleRangeResponse {
+  employeeId: string;
+  fromDate: string;
+  toDate: string;
+  days: ScheduleResponse[];
+}

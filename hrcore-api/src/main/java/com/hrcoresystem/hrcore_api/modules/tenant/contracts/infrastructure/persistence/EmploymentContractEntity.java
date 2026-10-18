@@ -15,6 +15,7 @@ import java.util.UUID;
 public class EmploymentContractEntity {
     @Id @GeneratedValue private UUID id;
     @Column(name = "employee_id", nullable = false) private UUID employeeId;
+    @Column(name = "employment_period_id", nullable = false) private UUID employmentPeriodId;
     @Column(name = "employee_assignment_id") private UUID employeeAssignmentId;
     @Column(name = "contract_number", nullable = false, length = 80) private String contractNumber;
     @Enumerated(EnumType.STRING) @Column(name = "contract_type", nullable = false, length = 30) private ContractType contractType;

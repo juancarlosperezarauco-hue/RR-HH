@@ -7,4 +7,18 @@ import java.util.UUID;
 public record EmployeeAssignment(UUID id, UUID employeeId, UUID departmentId, UUID positionId,
                                  UUID supervisorEmployeeId, LocalDate startDate, LocalDate endDate,
                                  AssignmentType assignmentType, String reason, UUID createdBy,
-                                 Instant createdAt, Instant updatedAt) { }
+                                 Instant createdAt, Instant updatedAt, EmployeeAssignmentStatus status, UUID employmentPeriodId) {
+    public EmployeeAssignment(UUID id, UUID employeeId, UUID departmentId, UUID positionId,
+                               UUID supervisorEmployeeId, LocalDate startDate, LocalDate endDate,
+                               AssignmentType assignmentType, String reason, UUID createdBy,
+                               Instant createdAt, Instant updatedAt) {
+        this(id, employeeId, departmentId, positionId, supervisorEmployeeId, startDate, endDate,
+                assignmentType, reason, createdBy, createdAt, updatedAt, EmployeeAssignmentStatus.ACTIVE, null);
+    }
+    public EmployeeAssignment(UUID id, UUID employeeId, UUID departmentId, UUID positionId, UUID supervisorEmployeeId,
+            LocalDate startDate, LocalDate endDate, AssignmentType assignmentType, String reason, UUID createdBy,
+            Instant createdAt, Instant updatedAt, EmployeeAssignmentStatus status) {
+        this(id, employeeId, departmentId, positionId, supervisorEmployeeId, startDate, endDate, assignmentType,
+                reason, createdBy, createdAt, updatedAt, status, null);
+    }
+}

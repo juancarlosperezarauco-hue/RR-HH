@@ -114,6 +114,34 @@ export class AbsenceService {
     );
   }
 
+  /** Autoservicio: el backend determina el empleado desde la sesión. */
+  getMyBalances(year = new Date().getFullYear(), page = 0, size = 25): Observable<ApiResponse<PageResponse<LeaveBalanceResponse>>> {
+    const params = new HttpParams().set('year', year.toString()).set('page', page.toString()).set('size', size.toString());
+    return this.http.get<ApiResponse<PageResponse<LeaveBalanceResponse>>>(`${environment.apiUrl}/api/me/leaves/balances`, { params });
+  }
+
+  listMyRequests(status?: LeaveStatus | 'ALL', page = 0, size = 25): Observable<ApiResponse<PageResponse<LeaveRequestResponse>>> {
+    let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+    if (status && status !== 'ALL') params = params.set('status', status);
+    return this.http.get<ApiResponse<PageResponse<LeaveRequestResponse>>>(`${environment.apiUrl}/api/me/leaves/requests`, { params });
+  }
+
+  createMyRequest(input: Omit<CreateLeaveRequestInput, 'employeeId'>): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.post<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests`, input);
+  }
+
+  updateMyRequest(id: string, input: Omit<CreateLeaveRequestInput, 'employeeId'>): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.put<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests/${id}`, input);
+  }
+
+  submitMyRequest(id: string): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.patch<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests/${id}/submit`, {});
+  }
+
+  cancelMyRequest(id: string, comment?: string): Observable<ApiResponse<LeaveRequestResponse>> {
+    return this.http.patch<ApiResponse<LeaveRequestResponse>>(`${environment.apiUrl}/api/me/leaves/requests/${id}/cancel`, { comment: comment ?? null });
+  }
+
   listBalances(filters?: {
     employeeId?: string;
     leaveTypeId?: string;

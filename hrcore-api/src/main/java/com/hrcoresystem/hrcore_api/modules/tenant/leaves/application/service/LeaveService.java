@@ -8,9 +8,14 @@ import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.se
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.model.TenantSettingKeys;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.repository.TenantSettingRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.EmploymentPeriodService;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.EmployeeSupervisionScopeService;
 import com.hrcoresystem.hrcore_api.modules.tenant.leaves.application.dto.LeaveDtos.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.leaves.domain.model.LeaveModels.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.leaves.domain.repository.LeaveStore;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.*;
 import java.math.*;
 import java.time.*;
 import java.util.*;
@@ -33,25 +38,33 @@ public class LeaveService {
     private final SecurityContextFacade security;
     private final AuditTrailService audit;
     private final LeaveAttendanceSync attendanceSync;
+    private final EmploymentPeriodService periods;
+    private final EmployeeSupervisionScopeService supervision;
+    private final NotificationPublisherPort notifications;
 
     @Autowired
     public LeaveService(LeaveStore store, EmployeeRepository employees, LeaveDayCalculator calculator,
             LeaveAttachmentService attachments,
             TenantSettingRepository settings,
             TenantPlanEnforcementService plans, SecurityContextFacade security,
-            AuditTrailService audit, LeaveAttendanceSync attendanceSync) {
+            AuditTrailService audit, LeaveAttendanceSync attendanceSync, EmploymentPeriodService periods,
+            EmployeeSupervisionScopeService supervision, NotificationPublisherPort notifications) {
         this.store = store; this.employees = employees; this.calculator = calculator;
         this.attachments = attachments;
         this.settings = settings; this.plans = plans; this.security = security; this.audit = audit;
         this.attendanceSync = attendanceSync;
+        this.periods = periods;
+        this.supervision = supervision;
+        this.notifications = notifications;
     }
 
     /** Constructor de compatibilidad para pruebas unitarias aisladas de HU18. */
     public LeaveService(LeaveStore store, EmployeeRepository employees, LeaveDayCalculator calculator,
             LeaveAttachmentService attachments, TenantSettingRepository settings,
             TenantPlanEnforcementService plans, SecurityContextFacade security, AuditTrailService audit) {
-        this(store, employees, calculator, attachments, settings, plans, security, audit,
-                (employeeId, startDate, endDate) -> { });
+        this.store = store; this.employees = employees; this.calculator = calculator; this.attachments = attachments;
+        this.settings = settings; this.plans = plans; this.security = security; this.audit = audit;
+        this.attendanceSync = (employeeId, startDate, endDate) -> { }; this.periods = null; this.supervision = null; this.notifications = null;
     }
 
     @Transactional public TypeResponse createType(TypeInput input) {
@@ -102,9 +115,11 @@ public class LeaveService {
         UUID type = Objects.requireNonNull(input.leaveTypeId(), "leaveTypeId");
         validateYear(input.balanceYear()); BigDecimal opening = days(input.openingDays(), false);
         lockEmployee(employee); requireType(type);
-        if (store.balanceExists(employee, type, input.balanceYear()))
+        UUID period = periods == null ? null : periodForYear(employee, input.balanceYear());
+        if ((periods != null && store.balanceExistsByPeriod(period, type, input.balanceYear()))
+                || (periods == null && store.balanceExists(employee, type, input.balanceYear())))
             throw new BusinessException("Annual leave balance already exists");
-        LeaveBalance saved = store.save(new LeaveBalance(UUID.randomUUID(), employee, type,
+        LeaveBalance saved = store.save(new LeaveBalance(UUID.randomUUID(), employee, period, type,
                 input.balanceYear(), opening, ZERO, ZERO, ZERO, null));
         event("LEAVE_BALANCE_CREATED", "LEAVE_BALANCE", saved.id(),
                 Map.of("employeeId", employee, "year", input.balanceYear(), "openingDays", opening));
@@ -135,7 +150,7 @@ public class LeaveService {
         if (adjusted.abs().compareTo(MAX) > 0 || available.signum() < 0
                 || available.subtract(store.pendingDays(old.employeeId(), old.leaveTypeId(), old.balanceYear())).signum() < 0)
             throw new BusinessException("Adjustment would overdraw the balance or pending commitments");
-        LeaveBalance saved = store.save(new LeaveBalance(id, old.employeeId(), old.leaveTypeId(),
+        LeaveBalance saved = store.save(new LeaveBalance(id, old.employeeId(), old.employmentPeriodId(), old.leaveTypeId(),
                 old.balanceYear(), old.openingDays(), old.accruedDays(), old.usedDays(), adjusted, old.updatedAt()));
         event("LEAVE_BALANCE_ADJUSTED", "LEAVE_BALANCE", id,
                 Map.of("actorId", who, "deltaDays", delta, "reason", reason,
@@ -144,11 +159,14 @@ public class LeaveService {
     }
 
     @Transactional public RequestResponse createRequest(RequestInput input) {
-        operational(); lockEmployee(input.employeeId());
+        operational(); assertSelfServiceIfOwn(input.employeeId()); lockEmployee(input.employeeId());
         LeaveType type = activeType(input.leaveTypeId());
         BigDecimal duration = duration(input, type);
         UUID actor = actor();
-        LeaveRequest saved = store.save(new LeaveRequest(UUID.randomUUID(), input.employeeId(),
+        UUID period = periods == null ? null : periods.requireForDate(input.employeeId(), input.startDate()).id();
+        if (periods != null && !period.equals(periods.requireForDate(input.employeeId(), input.endDate()).id()))
+            throw new BusinessException("La solicitud debe pertenecer a un solo período laboral");
+        LeaveRequest saved = store.save(new LeaveRequest(UUID.randomUUID(), input.employeeId(), period,
                 type.id(), input.startDate(), input.endDate(), input.startTime(), input.endTime(),
                 duration, required(input.reason(), 0, "reason"), RequestStatus.DRAFT,
                 actor, null, null, null, null, null, null));
@@ -170,7 +188,7 @@ public class LeaveService {
         if (old.status() != RequestStatus.DRAFT) throw new BusinessException("Only drafts can be edited");
         if (!old.employeeId().equals(input.employeeId())) throw new BusinessException("Employee cannot change");
         LeaveType type = activeType(input.leaveTypeId()); BigDecimal duration = duration(input, type);
-        LeaveRequest saved = store.save(new LeaveRequest(id, old.employeeId(), type.id(), input.startDate(),
+        LeaveRequest saved = store.save(new LeaveRequest(id, old.employeeId(), old.employmentPeriodId(), type.id(), input.startDate(),
                 input.endDate(), input.startTime(), input.endTime(), duration,
                 required(input.reason(), 0, "reason"), old.status(), old.requestedBy(), old.submittedAt(),
                 old.reviewedBy(), old.reviewedAt(), old.reviewComment(), old.createdAt(), old.updatedAt()));
@@ -184,7 +202,7 @@ public class LeaveService {
         LeaveType type = activeType(old.leaveTypeId()); validateRequest(old, type);
         if (type.deductsBalance()) {
             LeaveBalance balance = lockedBalance(old);
-            BigDecimal available = balance.available().subtract(store.pendingDays(old.employeeId(), type.id(), old.startDate().getYear()));
+        BigDecimal available = balance.available().subtract(pending(balance, old.startDate(), old.endDate()));
             if (available.compareTo(old.requestedDays()) < 0) throw new BusinessException("Insufficient uncommitted leave balance");
         }
         Instant now = Instant.now(); UUID who = actor();
@@ -192,6 +210,7 @@ public class LeaveService {
         pending = store.save(pending);
         history(id, RequestStatus.DRAFT, RequestStatus.PENDING, null, who);
         event("LEAVE_REQUEST_SUBMITTED", "LEAVE_REQUEST", id, Map.of());
+        notifyAfterCommit(pending.requestedBy(), NotificationType.LEAVE_REQUEST_SUBMITTED, "Solicitud de permiso enviada", "Tu solicitud de permiso quedó pendiente de revisión", id);
         if (type.requiresApproval()) return request(pending);
         return request(approveInternal(pending, type, null, true));
     }
@@ -203,6 +222,7 @@ public class LeaveService {
         LeaveType type = requireType(old.leaveTypeId());
         if (!type.requiresApproval()) throw new BusinessException("This leave type uses automatic approval");
         UUID who = actor();
+        authorizeReviewer(old.employeeId(), old.startDate(), who);
         if (old.requestedBy() == null || old.requestedBy().equals(who))
             throw new BusinessException("Requester cannot approve their own leave request");
         return request(approveInternal(old, type, comment, false));
@@ -212,10 +232,13 @@ public class LeaveService {
         operational(); LeaveRequest observed = requireRequest(id); lockEmployee(observed.employeeId());
         LeaveRequest old = lockedRequest(id);
         if (old.status() != RequestStatus.PENDING) throw new BusinessException("Only pending requests can be rejected");
-        String reason = required(comment, 0, "reviewComment"); UUID who = actor(); Instant now = Instant.now();
+        String reason = required(comment, 0, "reviewComment"); UUID who = actor();
+        authorizeReviewer(old.employeeId(), old.startDate(), who); Instant now = Instant.now();
         LeaveRequest saved = store.save(withStatus(old, RequestStatus.REJECTED, old.submittedAt(), who, now, reason));
         history(id, RequestStatus.PENDING, RequestStatus.REJECTED, reason, who);
-        event("LEAVE_REQUEST_REJECTED", "LEAVE_REQUEST", id, Map.of()); return request(saved);
+        event("LEAVE_REQUEST_REJECTED", "LEAVE_REQUEST", id, Map.of());
+        notifyAfterCommit(old.requestedBy(), NotificationType.LEAVE_REQUEST_REJECTED, "Permiso rechazado", "Tu solicitud de permiso fue rechazada", id);
+        return request(saved);
     }
 
     @Transactional public RequestResponse cancel(UUID id, String comment) {
@@ -232,7 +255,7 @@ public class LeaveService {
                 LeaveBalance balance = lockedBalance(old);
                 if (balance.usedDays().compareTo(old.requestedDays()) < 0)
                     throw new BusinessException("Recorded balance cannot be refunded safely");
-                store.save(new LeaveBalance(balance.id(), balance.employeeId(), balance.leaveTypeId(),
+                store.save(new LeaveBalance(balance.id(), balance.employeeId(), balance.employmentPeriodId(), balance.leaveTypeId(),
                         balance.balanceYear(), balance.openingDays(), balance.accruedDays(),
                         balance.usedDays().subtract(old.requestedDays()), balance.adjustedDays(), balance.updatedAt()));
                 event("LEAVE_BALANCE_RESTORED", "LEAVE_BALANCE", balance.id(),
@@ -265,7 +288,7 @@ public class LeaveService {
                 throw new BusinessException("Insufficient leave balance");
             if (balance.usedDays().add(old.requestedDays()).compareTo(MAX) > 0)
                 throw new BusinessException("Consumed days exceed balance precision");
-            store.save(new LeaveBalance(balance.id(), balance.employeeId(), balance.leaveTypeId(),
+            store.save(new LeaveBalance(balance.id(), balance.employeeId(), balance.employmentPeriodId(), balance.leaveTypeId(),
                     balance.balanceYear(), balance.openingDays(), balance.accruedDays(),
                     balance.usedDays().add(old.requestedDays()), balance.adjustedDays(), balance.updatedAt()));
             event("LEAVE_BALANCE_CONSUMED", "LEAVE_BALANCE", balance.id(),
@@ -277,6 +300,7 @@ public class LeaveService {
         history(old.id(), RequestStatus.PENDING, RequestStatus.APPROVED, comment, reviewer);
         event(automatic ? "LEAVE_REQUEST_AUTO_APPROVED" : "LEAVE_REQUEST_APPROVED", "LEAVE_REQUEST",
                 old.id(), Map.of("automatic", automatic));
+        notifyAfterCommit(old.requestedBy(), NotificationType.LEAVE_REQUEST_APPROVED, "Permiso aprobado", "Tu solicitud de permiso fue aprobada", old.id());
         attendanceSync.synchronize(saved.employeeId(), saved.startDate(), saved.endDate());
         return saved;
     }
@@ -326,12 +350,20 @@ public class LeaveService {
                 input.startTime(), input.endTime());
     }
     private LeaveBalance lockedBalance(LeaveRequest request) {
-        return store.lockedBalance(request.employeeId(), request.leaveTypeId(), request.startDate().getYear())
+        return (request.employmentPeriodId() == null
+                ? store.lockedBalance(request.employeeId(), request.leaveTypeId(), request.startDate().getYear())
+                : store.lockedBalanceByPeriod(request.employmentPeriodId(), request.leaveTypeId(), request.startDate().getYear()))
                 .orElseThrow(() -> new BusinessException("Annual leave balance must be initialized"));
     }
     private void lockEmployee(UUID id) {
         if (id == null || employees.findByIdForUpdate(id).isEmpty())
             throw new ResourceNotFoundException("Employee not found");
+    }
+    private UUID periodForYear(UUID employeeId, int year) {
+        LocalDate first = LocalDate.of(year, 1, 1), last = LocalDate.of(year, 12, 31);
+        return periods.list(employeeId).stream()
+                .filter(p -> !p.startDate().isAfter(last) && (p.endDate() == null || !p.endDate().isBefore(first)))
+                .findFirst().orElseThrow(() -> new BusinessException("El empleado no tiene un período laboral en el año indicado")).id();
     }
     private LeaveType requireType(UUID id) {
         return store.type(id).orElseThrow(() -> new ResourceNotFoundException("Leave type not found"));
@@ -367,7 +399,7 @@ public class LeaveService {
     }
     private LeaveRequest withStatus(LeaveRequest r, RequestStatus status, Instant submitted,
             UUID reviewer, Instant reviewed, String reviewComment) {
-        return new LeaveRequest(r.id(), r.employeeId(), r.leaveTypeId(), r.startDate(), r.endDate(),
+        return new LeaveRequest(r.id(), r.employeeId(), r.employmentPeriodId(), r.leaveTypeId(), r.startDate(), r.endDate(),
                 r.startTime(), r.endTime(), r.requestedDays(), r.reason(), status, r.requestedBy(),
                 submitted, reviewer, reviewed, reviewComment, r.createdAt(), r.updatedAt());
     }
@@ -375,12 +407,35 @@ public class LeaveService {
         store.save(new LeaveRequestHistory(UUID.randomUUID(), id, before, after, comment, actor, null));
     }
     private void operational() { plans.assertCanOperate(); }
+    private void assertSelfServiceIfOwn(UUID employeeId) {
+        if (supervision == null || settings.findByKey(TenantSettingKeys.LEAVE_SELF_SERVICE_ENABLED)
+                .map(v -> Boolean.parseBoolean(v.settingValue())).orElse(true)) return;
+        if (supervision.requireCurrentEmployeeId().equals(employeeId))
+            throw new BusinessException("El autoservicio de permisos está deshabilitado");
+    }
+    private void authorizeReviewer(UUID employeeId, LocalDate date, UUID reviewer) {
+        if (security.hasAuthority("leaves.requests.approve.global")) return;
+        boolean supervisorApproval = settings.findByKey(TenantSettingKeys.LEAVE_SUPERVISOR_APPROVAL_ENABLED)
+                .map(v -> Boolean.parseBoolean(v.settingValue())).orElse(true);
+        if (!supervisorApproval)
+            throw new org.springframework.security.access.AccessDeniedException("Se requiere autorización global de RR. HH. para revisar permisos");
+        if (supervision == null || !supervision.canSupervise(reviewer, employeeId, date))
+            throw new org.springframework.security.access.AccessDeniedException("El revisor no supervisa al empleado de la solicitud");
+    }
     private UUID actor() {
         try { return UUID.fromString(security.getCurrentSubject()); }
         catch (RuntimeException ex) { throw new BusinessException("Authenticated tenant user is required"); }
     }
     private void event(String action, String resource, UUID id, Object details) {
         audit.recordTenantEvent(action, resource, id.toString(), details);
+    }
+    private void notifyAfterCommit(UUID userId, NotificationType type, String title, String body, UUID requestId) {
+        if (notifications == null || userId == null) return;
+        NotificationPublishRequest payload = new NotificationPublishRequest(userId, type, NotificationCategory.SYSTEM,
+                NotificationPriority.NORMAL, title, body, null, null, "/me/leaves/requests/" + requestId, null);
+        // El publicador usa la misma transacción: si la operación laboral revierte,
+        // tampoco queda persistida una notificación de éxito.
+        notifications.publish(payload);
     }
     private String required(String value, int max, String field) {
         if (value == null || value.isBlank()) throw new BusinessException(field + " is required");
@@ -405,14 +460,20 @@ public class LeaveService {
                 v.requiresAttachment(), v.deductsBalance(), v.status(), v.createdAt(), v.updatedAt());
     }
     private BalanceResponse balance(LeaveBalance v) {
-        return balance(v, store.pendingDays(v.employeeId(), v.leaveTypeId(), v.balanceYear()));
+        return balance(v, pending(v, LocalDate.of(v.balanceYear(), 1, 1), LocalDate.of(v.balanceYear(), 12, 31)));
+    }
+
+    private BigDecimal pending(LeaveBalance balance, LocalDate from, LocalDate to) {
+        return balance.employmentPeriodId() == null
+                ? store.pendingDays(balance.employeeId(), balance.leaveTypeId(), balance.balanceYear())
+                : store.pendingDaysByPeriod(balance.employmentPeriodId(), balance.leaveTypeId(), from, to);
     }
     private BalanceResponse balance(LeaveBalance v, BigDecimal pending) {
-        return new BalanceResponse(v.id(), v.employeeId(), v.leaveTypeId(), v.balanceYear(), v.openingDays(),
+        return new BalanceResponse(v.id(), v.employeeId(), v.employmentPeriodId(), v.leaveTypeId(), v.balanceYear(), v.openingDays(),
                 v.accruedDays(), v.usedDays(), v.adjustedDays(), pending, v.available().subtract(pending), v.updatedAt());
     }
     private RequestResponse request(LeaveRequest v) {
-        return new RequestResponse(v.id(), v.employeeId(), v.leaveTypeId(), v.startDate(), v.endDate(),
+        return new RequestResponse(v.id(), v.employeeId(), v.employmentPeriodId(), v.leaveTypeId(), v.startDate(), v.endDate(),
                 v.startTime(), v.endTime(), v.requestedDays(), v.reason(), v.status(), v.requestedBy(),
                 v.submittedAt(), v.reviewedBy(), v.reviewedAt(), v.reviewComment(), v.createdAt(), v.updatedAt());
     }

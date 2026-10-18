@@ -16,8 +16,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 import java.util.Set;
+import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/departments")
@@ -31,19 +34,23 @@ public class DepartmentController {
     private final ActivateDepartmentUseCase activate;
     private final DeactivateDepartmentUseCase deactivate;
     private final ListDepartmentHistoryUseCase history;
+    private final GetDepartmentTreeUseCase tree;
+    private final ListDepartmentEmployeesUseCase employees;
 
     public DepartmentController(CreateDepartmentUseCase create, ListDepartmentsUseCase list,
                                 GetDepartmentUseCase get, UpdateDepartmentUseCase update,
                                 ActivateDepartmentUseCase activate, DeactivateDepartmentUseCase deactivate,
-                                ListDepartmentHistoryUseCase history) {
+                                ListDepartmentHistoryUseCase history, GetDepartmentTreeUseCase tree, ListDepartmentEmployeesUseCase employees) {
         this.create = create; this.list = list; this.get = get; this.update = update;
-        this.activate = activate; this.deactivate = deactivate; this.history = history;
+        this.activate = activate; this.deactivate = deactivate; this.history = history; this.tree = tree;
+        this.employees = employees;
     }
 
     @PostMapping
     @PreAuthorize("hasAuthority('departments.create')")
+    @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<DepartmentResponse> create(@Valid @RequestBody CreateDepartmentRequest request) {
-        return ApiResponse.success("Department created successfully", create.execute(request));
+        return ApiResponse.success("Departamento creado correctamente", create.execute(request));
     }
 
     @GetMapping
@@ -54,28 +61,35 @@ public class DepartmentController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID parentDepartmentId,
             @ParameterObject @PageableDefault(size = 50) Pageable pageable) {
-        return ApiResponse.success("Departments retrieved successfully",
+        return ApiResponse.success("Departamentos consultados correctamente",
                 list.execute(new DepartmentFilter(status, name, code, parentDepartmentId), checkedPage(pageable)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('departments.detail')")
     public ApiResponse<DepartmentResponse> get(@PathVariable UUID id) {
-        return ApiResponse.success("Department retrieved successfully", get.execute(id));
+        return ApiResponse.success("Departamento consultado correctamente", get.execute(id));
     }
+
+    @GetMapping("/tree") @PreAuthorize("hasAuthority('departments.list')")
+    public ApiResponse<List<DepartmentTreeResponse>> tree(@RequestParam(defaultValue = "false") boolean includeInactive) {
+        return ApiResponse.success("Estructura de departamentos consultada correctamente", tree.execute(includeInactive));
+    }
+    @GetMapping("/{id}/employees") @PreAuthorize("hasAuthority('employees.list')")
+    public ApiResponse<Page<OrganizationalEmployeeSummaryResponse>> employees(@PathVariable UUID id,@RequestParam(required=false) LocalDate date,@ParameterObject @PageableDefault(size=25) Pageable pageable){return ApiResponse.success("Empleados del departamento consultados correctamente",employees.execute(id,date,checkedPage(pageable)));}
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('departments.update')")
     public ApiResponse<DepartmentResponse> update(@PathVariable UUID id,
             @Valid @RequestBody UpdateDepartmentRequest request) {
-        return ApiResponse.success("Department updated successfully", update.execute(id, request));
+        return ApiResponse.success("Departamento actualizado correctamente", update.execute(id, request));
     }
 
     @PatchMapping("/{id}/activate")
     @PreAuthorize("hasAuthority('departments.activate')")
     public ApiResponse<DepartmentResponse> activate(@PathVariable UUID id,
             @RequestBody(required = false) DepartmentStatusRequest request) {
-        return ApiResponse.success("Department activated successfully",
+        return ApiResponse.success("Departamento activado correctamente",
                 activate.execute(id, request == null ? null : request.reason()));
     }
 
@@ -83,7 +97,7 @@ public class DepartmentController {
     @PreAuthorize("hasAuthority('departments.deactivate')")
     public ApiResponse<DepartmentResponse> deactivate(@PathVariable UUID id,
             @RequestBody(required = false) DepartmentStatusRequest request) {
-        return ApiResponse.success("Department deactivated successfully",
+        return ApiResponse.success("Departamento desactivado correctamente",
                 deactivate.execute(id, request == null ? null : request.reason()));
     }
 
@@ -94,7 +108,7 @@ public class DepartmentController {
         Pageable checked = checkedPage(pageable);
         Pageable chronological = PageRequest.of(checked.getPageNumber(), checked.getPageSize(),
                 Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
-        return ApiResponse.success("Department history retrieved successfully", history.execute(id, chronological));
+        return ApiResponse.success("Historial del departamento consultado correctamente", history.execute(id, chronological));
     }
 
     private Pageable checkedPage(Pageable pageable) {

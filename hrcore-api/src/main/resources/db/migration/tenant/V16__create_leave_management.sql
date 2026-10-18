@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS leave_balances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     employee_id UUID NOT NULL,
+    employment_period_id UUID NOT NULL,
     leave_type_id UUID NOT NULL,
 
     balance_year INTEGER NOT NULL,
@@ -71,12 +72,11 @@ CREATE TABLE IF NOT EXISTS leave_balances (
 
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT uq_leave_balances_employee_type_year
-        UNIQUE (
-            employee_id,
-            leave_type_id,
-            balance_year
-        ),
+    CONSTRAINT uq_leave_balances_period_type_year
+        UNIQUE (employment_period_id,leave_type_id,balance_year),
+    CONSTRAINT fk_leave_balances_period_employee
+        FOREIGN KEY (employment_period_id,employee_id)
+        REFERENCES employment_periods(id,employee_id) ON DELETE RESTRICT,
 
     CONSTRAINT fk_leave_balances_employee
         FOREIGN KEY (employee_id)
@@ -101,6 +101,28 @@ CREATE TABLE IF NOT EXISTS leave_balances (
 
 CREATE INDEX IF NOT EXISTS idx_leave_balances_employee
     ON leave_balances(employee_id);
+CREATE INDEX idx_leave_balances_period ON leave_balances(employment_period_id);
+
+-- Cuando se omite period_id, usa el último periodo abierto del empleado;
+-- el backend deberá enviar el periodo explícitamente para ajustes históricos.
+CREATE FUNCTION bind_leave_balance_period()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE inferred_period UUID;
+BEGIN
+    IF NEW.employment_period_id IS NULL THEN
+        SELECT id INTO inferred_period FROM employment_periods
+         WHERE employee_id=NEW.employee_id AND end_date IS NULL
+         ORDER BY period_number DESC LIMIT 1;
+        IF inferred_period IS NULL THEN
+            RAISE EXCEPTION 'No open employment period for leave balance' USING ERRCODE='23514';
+        END IF;
+        NEW.employment_period_id:=inferred_period;
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_bind_leave_balance_period
+BEFORE INSERT OR UPDATE OF employee_id, employment_period_id ON leave_balances
+FOR EACH ROW EXECUTE FUNCTION bind_leave_balance_period();
 
 
 -- ============================================================
@@ -111,6 +133,7 @@ CREATE TABLE IF NOT EXISTS leave_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     employee_id UUID NOT NULL,
+    employment_period_id UUID NOT NULL,
     leave_type_id UUID NOT NULL,
 
     start_date DATE NOT NULL,
@@ -141,6 +164,10 @@ CREATE TABLE IF NOT EXISTS leave_requests (
         FOREIGN KEY (employee_id)
         REFERENCES employees(id)
         ON DELETE RESTRICT,
+
+    CONSTRAINT fk_leave_requests_period_employee
+        FOREIGN KEY (employment_period_id,employee_id)
+        REFERENCES employment_periods(id,employee_id) ON DELETE RESTRICT,
 
     CONSTRAINT fk_leave_requests_type
         FOREIGN KEY (leave_type_id)
@@ -193,6 +220,10 @@ CREATE INDEX IF NOT EXISTS idx_leave_requests_status
 
 CREATE INDEX IF NOT EXISTS idx_leave_requests_dates
     ON leave_requests(start_date, end_date);
+CREATE INDEX idx_leave_requests_period ON leave_requests(employment_period_id);
+CREATE TRIGGER trg_bind_leave_request_period
+BEFORE INSERT OR UPDATE OF employee_id, employment_period_id, start_date ON leave_requests
+FOR EACH ROW EXECUTE FUNCTION bind_employee_employment_period('start_date');
 
 
 -- ============================================================
@@ -274,4 +305,26 @@ CREATE TABLE IF NOT EXISTS leave_attachments (
 
 CREATE INDEX IF NOT EXISTS idx_leave_attachments_request
     ON leave_attachments(leave_request_id);
+
+
+
+
+-- Catálogo inicial de ausencias reubicado desde V23.
+INSERT INTO leave_types (
+    id, code, name, description, paid,
+    requires_approval, requires_attachment, deducts_balance, status
+) VALUES
+    (gen_random_uuid(), 'LEAVE_VACATION', 'Vacación anual',
+     'Descanso anual sujeto al saldo disponible del empleado.', TRUE, TRUE, FALSE, TRUE, 'ACTIVE'),
+    (gen_random_uuid(), 'MEDICAL_LEAVE', 'Baja médica',
+     'Ausencia por enfermedad o incapacidad respaldada por certificado.', TRUE, TRUE, TRUE, FALSE, 'ACTIVE'),
+    (gen_random_uuid(), 'PERSONAL_PERMISSION', 'Permiso personal',
+     'Permiso solicitado por motivos personales.', FALSE, TRUE, FALSE, FALSE, 'ACTIVE'),
+    (gen_random_uuid(), 'MATERNITY_LEAVE', 'Licencia de maternidad',
+     'Licencia remunerada por maternidad con respaldo documental.', TRUE, TRUE, TRUE, FALSE, 'ACTIVE'),
+    (gen_random_uuid(), 'PATERNITY_LEAVE', 'Licencia de paternidad',
+     'Licencia remunerada por paternidad con respaldo documental.', TRUE, TRUE, TRUE, FALSE, 'ACTIVE'),
+    (gen_random_uuid(), 'UNPAID_LEAVE', 'Licencia sin goce de haberes',
+     'Ausencia autorizada sin remuneración.', FALSE, TRUE, FALSE, FALSE, 'ACTIVE')
+ON CONFLICT (code) DO NOTHING;
 

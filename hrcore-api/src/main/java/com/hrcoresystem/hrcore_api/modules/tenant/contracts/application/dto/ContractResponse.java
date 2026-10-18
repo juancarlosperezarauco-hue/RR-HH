@@ -13,5 +13,5 @@ public record ContractResponse(
         BigDecimal baseSalary, String currency, PaymentFrequency paymentFrequency,
         BigDecimal weeklyHours, LocalDate probationEndDate,
         LocalDate terminationDate, String terminationReason, String terms,
-        UUID renewedFromContractId, Instant createdAt, Instant updatedAt
+        UUID renewedFromContractId, Instant createdAt, Instant updatedAt, UUID employmentPeriodId
 ) { }

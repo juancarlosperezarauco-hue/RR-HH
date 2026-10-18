@@ -25,30 +25,35 @@ public class EmployeeAssignmentRepositoryAdapter implements EmployeeAssignmentRe
     public EmployeeAssignment save(EmployeeAssignment a) {
         EmployeeAssignmentEntity e = a.id() == null ? new EmployeeAssignmentEntity()
                 : jpa.findByIdAndEmployeeId(a.id(), a.employeeId()).orElseThrow();
-        e.setEmployeeId(a.employeeId()); e.setDepartmentId(a.departmentId()); e.setPositionId(a.positionId());
+        e.setEmployeeId(a.employeeId()); e.setEmploymentPeriodId(a.employmentPeriodId()); e.setDepartmentId(a.departmentId()); e.setPositionId(a.positionId());
         e.setSupervisorEmployeeId(a.supervisorEmployeeId()); e.setStartDate(a.startDate());
         e.setEndDate(a.endDate()); e.setAssignmentType(a.assignmentType()); e.setReason(a.reason());
+        e.setAssignmentStatus(a.status());
         e.setCreatedBy(a.createdBy());
         return toDomain(jpa.saveAndFlush(e));
     }
     @Override public Optional<EmployeeAssignment> findByIdAndEmployeeId(UUID id, UUID employeeId) {
         return jpa.findByIdAndEmployeeId(id, employeeId).map(this::toDomain);
     }
+    @Override public Optional<EmployeeAssignment> findCurrentPrimaryForUpdate(UUID employeeId, LocalDate asOfDate) {
+        var rows=jpa.findCurrentPrimaryForUpdate(employeeId,asOfDate); if(rows.size()>1) throw new com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException("El empleado tiene asignaciones primarias superpuestas que requieren regularización"); return rows.stream().findFirst().map(this::toDomain);
+    }
+    @Override public Optional<EmployeeAssignment> findCurrentPrimary(UUID employeeId, LocalDate asOfDate) {
+        var rows=jpa.findCurrentPrimary(employeeId,asOfDate); if(rows.size()>1) throw new com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException("El empleado tiene asignaciones primarias superpuestas que requieren regularización"); return rows.stream().findFirst().map(this::toDomain);
+    }
+    @Override public List<EmployeeAssignment> findAllByEmployeeIdForUpdate(UUID employeeId){return jpa.findAllByEmployeeIdForUpdate(employeeId).stream().map(this::toDomain).toList();}
     @Override public Page<EmployeeAssignment> findByEmployeeId(UUID employeeId, Pageable pageable) {
         return jpa.findByEmployeeId(employeeId, pageable).map(this::toDomain);
     }
-    @Override public boolean hasOpenOrFutureAssignments(UUID employeeId) {
-        Boolean found = jdbc.queryForObject("""
-                SELECT EXISTS (SELECT 1 FROM employee_assignments
-                 WHERE employee_id = ? AND (end_date IS NULL OR end_date >= CURRENT_DATE))
-                """, Boolean.class, employeeId);
-        return Boolean.TRUE.equals(found);
+    @Override public boolean hasOpenOrFutureAssignments(UUID employeeId, LocalDate asOfDate) {
+        Boolean found=jdbc.queryForObject("SELECT EXISTS (SELECT 1 FROM employee_assignments WHERE employee_id=? AND assignment_status='ACTIVE' AND (end_date IS NULL OR end_date>=?) )",Boolean.class,employeeId,asOfDate); return Boolean.TRUE.equals(found);
     }
     @Override public boolean hasOverlappingPrimary(UUID employeeId, UUID exceptId,
                                                      LocalDate startDate, LocalDate endDate) {
         StringBuilder sql = new StringBuilder("""
                 SELECT EXISTS (SELECT 1 FROM employee_assignments
                  WHERE employee_id = ? AND assignment_type = 'PRIMARY'
+                   AND assignment_status = 'ACTIVE'
                    AND (end_date IS NULL OR end_date >= ?)
                 """);
         List<Object> args = new ArrayList<>(List.of(employeeId, startDate));
@@ -67,6 +72,6 @@ public class EmployeeAssignmentRepositoryAdapter implements EmployeeAssignmentRe
     private EmployeeAssignment toDomain(EmployeeAssignmentEntity e) {
         return new EmployeeAssignment(e.getId(), e.getEmployeeId(), e.getDepartmentId(), e.getPositionId(),
                 e.getSupervisorEmployeeId(), e.getStartDate(), e.getEndDate(), e.getAssignmentType(),
-                e.getReason(), e.getCreatedBy(), e.getCreatedAt(), e.getUpdatedAt());
+                e.getReason(), e.getCreatedBy(), e.getCreatedAt(), e.getUpdatedAt(), e.getAssignmentStatus(), e.getEmploymentPeriodId());
     }
 }

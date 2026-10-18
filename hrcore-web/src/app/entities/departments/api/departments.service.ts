@@ -4,7 +4,7 @@ import { map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse } from '../../../shared/api';
 import { PageResponse } from '../../access';
-import { Department, DepartmentFilters, DepartmentHistory, DepartmentRequest } from '../model/departments.model';
+import { Department, DepartmentFilters, DepartmentHistory, DepartmentRequest, DepartmentTreeNode } from '../model/departments.model';
 
 @Injectable({ providedIn: 'root' })
 export class DepartmentsService {
@@ -14,6 +14,15 @@ export class DepartmentsService {
     let params = new HttpParams().set('page', page).set('size', size).set('sort', sort);
     for (const [key, value] of Object.entries(filters)) if (value?.trim()) params = params.set(key, value.trim());
     return this.http.get<ApiResponse<PageResponse<Department>>>(this.api, { params }).pipe(map(checked));
+  }
+  tree(includeInactive = false) {
+    const params = new HttpParams().set('includeInactive', includeInactive);
+    return this.http.get<ApiResponse<DepartmentTreeNode[]>>(`${this.api}/tree`, { params }).pipe(map(checked));
+  }
+  employees(id: string, page = 0, size = 25, sort = 'lastName,asc') {
+    return this.http.get<ApiResponse<PageResponse<unknown>>>(`${this.api}/${id}/employees`, {
+      params: new HttpParams().set('page', page).set('size', size).set('sort', sort)
+    }).pipe(map(checked));
   }
   get(id: string) { return this.http.get<ApiResponse<Department>>(`${this.api}/${id}`).pipe(map(checked)); }
   create(request: DepartmentRequest) { return this.http.post<ApiResponse<Department>>(this.api, request).pipe(map(checked)); }

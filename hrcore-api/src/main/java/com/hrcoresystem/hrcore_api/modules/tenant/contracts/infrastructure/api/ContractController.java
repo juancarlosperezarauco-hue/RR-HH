@@ -30,9 +30,10 @@ public class ContractController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('contracts.create')")
     public ApiResponse<ContractResponse> create(@Valid @RequestBody ContractRequest request) {
-        return ApiResponse.success("Contract created successfully", service.create(request));
+        return ApiResponse.success("Contrato creado correctamente", service.create(request));
     }
     @GetMapping
     @PreAuthorize("hasAuthority('contracts.list')")
@@ -42,35 +43,36 @@ public class ContractController {
             @RequestParam(required = false) LocalDate expiringBefore,
             @RequestParam(required = false) String search,
             @ParameterObject @PageableDefault(size = 25) Pageable pageable) {
-        return ApiResponse.success("Contracts retrieved successfully",
+        return ApiResponse.success("Contratos consultados correctamente",
                 service.list(new ContractFilter(employeeId, type, status, expiringBefore, search), checked(pageable)));
     }
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('contracts.detail')")
     public ApiResponse<ContractResponse> get(@PathVariable UUID id) {
-        return ApiResponse.success("Contract retrieved successfully", service.get(id));
+        return ApiResponse.success("Contrato consultado correctamente", service.get(id));
     }
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('contracts.update')")
     public ApiResponse<ContractResponse> update(@PathVariable UUID id, @Valid @RequestBody ContractRequest request) {
-        return ApiResponse.success("Contract updated successfully", service.update(id, request));
+        return ApiResponse.success("Contrato actualizado correctamente", service.update(id, request));
     }
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('contracts.status.update')")
     public ApiResponse<ContractResponse> changeStatus(@PathVariable UUID id,
             @Valid @RequestBody ContractStatusRequest request) {
-        return ApiResponse.success("Contract status updated successfully", service.changeStatus(id, request));
+        return ApiResponse.success("Estado contractual actualizado correctamente", service.changeStatus(id, request));
     }
     @PostMapping("/{id}/renew")
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('contracts.renew')")
     public ApiResponse<ContractResponse> renew(@PathVariable UUID id,
             @Valid @RequestBody ContractRenewalRequest request) {
-        return ApiResponse.success("Contract renewal created successfully", service.renew(id, request));
+        return ApiResponse.success("Renovación contractual creada correctamente", service.renew(id, request));
     }
     @GetMapping("/{id}/history")
     @PreAuthorize("hasAuthority('contracts.history.read')")
     public ApiResponse<List<ContractHistoryResponse>> history(@PathVariable UUID id) {
-        return ApiResponse.success("Contract history retrieved successfully", service.history(id));
+        return ApiResponse.success("Historial contractual consultado correctamente", service.history(id));
     }
     @GetMapping(value = "/{id}/document", produces = MediaType.APPLICATION_PDF_VALUE)
     @PreAuthorize("hasAuthority('contracts.document.download')")

@@ -26,7 +26,7 @@ describe('Salarios de cargos: decimales exactos NUMERIC(19,4)', () => {
   it('serializa números JSON exactos y escapa los demás campos', () => {
     const fields = { code: 'DEV', name: 'Cargo "especial"', description: 'Texto "salaryMin":123', responsibilities: null, organizationalLevel: 'OPERATIONAL' as const, currency: 'BOB' };
     const request: PositionRequest = { ...fields, salaryMin: '12345678901234.1234', salaryMax: '999999999999999.9999' };
-    expect(serializePosition(request)).toBe(`${JSON.stringify(fields).slice(0, -1)},"salaryMin":12345678901234.1234,"salaryMax":999999999999999.9999}`);
+    expect(serializePosition(request)).toBe(`${JSON.stringify({ name: fields.name, description: fields.description, responsibilities: fields.responsibilities, organizationalLevel: fields.organizationalLevel, currency: fields.currency }).slice(0, -1)},"salaryMin":12345678901234.1234,"salaryMax":999999999999999.9999}`);
     expect(serializePosition({ ...request, salaryMin: null, salaryMax: '' })).toContain('"salaryMin":null,"salaryMax":null');
   });
   it('lee salarios sin alterar textos, escapes, null ni números de paginación', () => {

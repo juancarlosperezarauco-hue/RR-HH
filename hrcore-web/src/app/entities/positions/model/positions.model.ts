@@ -4,7 +4,8 @@ export type OrganizationalLevel = typeof ORGANIZATIONAL_LEVELS[number];
 export type RequirementType = typeof REQUIREMENT_TYPES[number];
 export type PositionStatus = 'ACTIVE' | 'INACTIVE';
 export interface PositionRequest {
-  code: string; name: string; description: string | null; responsibilities: string | null;
+  /** Deprecated: el backend genera el código automáticamente. */
+  code?: string; name: string; description: string | null; responsibilities: string | null;
   organizationalLevel: OrganizationalLevel | null;
   // Decimal text in the frontend; the service sends these fields as JSON numbers.
   salaryMin: string | null; salaryMax: string | null; currency: string | null;

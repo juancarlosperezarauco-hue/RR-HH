@@ -11,7 +11,9 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
 import { ORGANIZATIONAL_LEVELS, REQUIREMENT_TYPES, Position, PositionFilters, PositionRequest, PositionRequirement, PositionRequirementRequest, PositionsService } from '../../entities/positions';
 import { compareSalaries, normalizeSalary } from '../../entities/positions/model/position-salary';
 
-@Component({ selector: 'app-positions-page', standalone: true, imports: [CommonModule, FormsModule, HasPermissionPipe, LucideAngularModule], templateUrl: './positions-page.component.html' })
+@Component({ selector: 'app-positions-page', standalone: true, imports: [CommonModule, FormsModule, HasPermissionPipe, LucideAngularModule], templateUrl: './positions-page.component.html', styles: [`
+  :host .positions-shell input,:host .positions-shell select,:host .positions-shell textarea{border-color:var(--input)!important;background:var(--card)!important;color:var(--foreground)!important}.positions-shell input::placeholder{color:var(--muted-foreground)}:host .positions-shell [role=dialog] form input,:host .positions-shell [role=dialog] form select,:host .positions-shell [role=dialog] form textarea{font-size:.875rem!important;font-weight:400!important;background:var(--background)!important;border-radius:1rem!important}:host .positions-shell [role=dialog] form label>span{font-size:.875rem!important;font-weight:600!important;color:var(--muted-foreground)!important}
+`] })
 export class PositionsPageComponent implements OnInit {
   private readonly service = inject(PositionsService);
   private readonly destroy = inject(DestroyRef);
@@ -68,13 +70,13 @@ export class PositionsPageComponent implements OnInit {
   save() {
     if (this.saving() || this.panelLoading() || !this.permissions.hasPermission(`positions.${this.mode === 'create' ? 'create' : 'update'}`)) return;
     const f = this.form;
-    if (!f.code.trim() || f.code.length > 50 || !f.name.trim() || f.name.length > 150) { this.panelError.set('Complete código (máximo 50) y nombre (máximo 150).'); return; }
+    if (!f.name.trim() || f.name.length > 150) { this.panelError.set('Complete el nombre (máximo 150).'); return; }
     let salaryMin: string | null, salaryMax: string | null;
     try { salaryMin = normalizeSalary(f.salaryMin); salaryMax = normalizeSalary(f.salaryMax); }
     catch (e) { this.panelError.set(this.message(e)); return; }
     if (salaryMin !== null && salaryMax !== null && compareSalaries(salaryMin, salaryMax) > 0) { this.panelError.set('El salario mínimo no puede superar al máximo.'); return; }
     if (f.currency?.trim() && !/^[A-Z]{3}$/.test(f.currency.trim())) { this.panelError.set('La moneda debe tener tres letras mayúsculas.'); return; }
-    const request: PositionRequest = { code: f.code.trim(), name: f.name.trim(), description: f.description?.trim() || null, responsibilities: f.responsibilities?.trim() || null, organizationalLevel: f.organizationalLevel, salaryMin, salaryMax, currency: f.currency?.trim() || null };
+    const request: PositionRequest = { name: f.name.trim(), description: f.description?.trim() || null, responsibilities: f.responsibilities?.trim() || null, organizationalLevel: f.organizationalLevel, salaryMin, salaryMax, currency: f.currency?.trim() || null };
     this.mutate(this.mode === 'create' ? this.service.create(request) : this.service.update(this.selected!.id, request), () => { this.mode = null; this.load(0, true); });
   }
   transition(item: Position) {
@@ -118,8 +120,8 @@ export class PositionsPageComponent implements OnInit {
     this.saving.set(true); this.panelError.set('');
     operation.pipe(takeUntilDestroyed(this.destroy), finalize(() => this.saving.set(false))).subscribe({ next: () => { this.toast.success('Operación realizada correctamente.'); done(); }, error: e => { this.panelError.set(this.message(e)); this.toast.error(this.message(e)); } });
   }
-  private emptyForm(): PositionRequest { return { code: '', name: '', description: null, responsibilities: null, organizationalLevel: 'OPERATIONAL', salaryMin: null, salaryMax: null, currency: null }; }
+  private emptyForm(): PositionRequest { return { name: '', description: null, responsibilities: null, organizationalLevel: 'OPERATIONAL', salaryMin: null, salaryMax: null, currency: null }; }
   private emptyRequirement(): PositionRequirementRequest { return { requirementType: 'EDUCATION', description: '', mandatory: true, minimumYearsExperience: null }; }
-  private fromPosition(p: Position): PositionRequest { return { code: p.code, name: p.name, description: p.description, responsibilities: p.responsibilities, organizationalLevel: p.organizationalLevel, salaryMin: p.salaryMin, salaryMax: p.salaryMax, currency: p.currency }; }
+  private fromPosition(p: Position): PositionRequest { return { name: p.name, description: p.description, responsibilities: p.responsibilities, organizationalLevel: p.organizationalLevel, salaryMin: p.salaryMin, salaryMax: p.salaryMax, currency: p.currency }; }
   private message(e: unknown): string { return e instanceof HttpErrorResponse ? (e.status === 0 ? 'No se pudo conectar con el servidor.' : [e.error?.message || (e.status === 403 ? 'No tiene permiso para esta operación.' : 'No se pudo completar la operación.'), ...(Array.isArray(e.error?.errors) ? e.error.errors : [])].join(' · ')) : e instanceof Error ? e.message : 'No se pudo completar la operación.'; }
 }

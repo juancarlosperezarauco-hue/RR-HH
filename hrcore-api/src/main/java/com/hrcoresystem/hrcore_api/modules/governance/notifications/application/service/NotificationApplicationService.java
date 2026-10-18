@@ -14,7 +14,6 @@ import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.
 import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
 
 import java.time.Instant;
 import java.util.List;
@@ -53,8 +52,11 @@ public class NotificationApplicationService implements NotificationPublisherPort
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void publish(NotificationPublishRequest request) {
+        if (request.actionUrl() != null && notificationRepository.existsByUserIdAndActionUrl(request.userId(), request.actionUrl())) {
+            return;
+        }
         Notification notification = notificationRepository.save(
                 new Notification(
                         null,

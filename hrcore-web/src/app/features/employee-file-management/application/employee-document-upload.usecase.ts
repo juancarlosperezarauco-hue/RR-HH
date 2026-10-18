@@ -19,24 +19,31 @@ export class EmployeeDocumentUploadUseCase {
   readonly ALLOWED_MIME_TYPES = [
     'application/pdf',
     'image/jpeg',
-    'image/png',
-    'image/jpg',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword'
+    'image/png'
   ];
   readonly MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
   validateFile(file: File): { isValid: boolean; message?: string } {
     const fileName = file.name || '';
     const ext = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
-    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.docx', '.doc'];
+    // Debe coincidir con DocumentVersionService del backend: PDF, JPEG y PNG
+    // con su firma binaria, extensión y MIME declarados correctamente.
+    const mimeByExtension: Record<string, string> = {
+      '.pdf': 'application/pdf',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png'
+    };
+    const expectedMime = mimeByExtension[ext];
     const isMimeValid = this.ALLOWED_MIME_TYPES.includes(file.type);
-    const isExtValid = allowedExtensions.includes(ext);
+    const isExtValid = Boolean(expectedMime);
 
-    if (!isMimeValid && !isExtValid) {
+    // El backend compara ambos valores; aceptar solo uno de los dos produce
+    // un 400 aunque el archivo parezca válido desde el navegador.
+    if (!isMimeValid || !isExtValid || file.type !== expectedMime) {
       return {
         isValid: false,
-        message: 'Formato no soportado. Se aceptan únicamente PDF, JPG, PNG o DOCX.'
+        message: 'Formato no soportado. Se aceptan únicamente archivos PDF, JPG o PNG.'
       };
     }
     if (file.size > this.MAX_FILE_SIZE_BYTES) {
@@ -55,12 +62,8 @@ export class EmployeeDocumentUploadUseCase {
     if (!employeeId) {
       throw new Error('Seleccione un empleado antes de adjuntar documentos.');
     }
-    // 1. Si el parámetro recibido es directamente un UUID de EmployeeFile existente
-    try {
-      const fileRes = await firstValueFrom(this.fileService.getFileById(employeeId));
-      if (fileRes?.data?.id) return fileRes.data.id;
-    } catch {}
-
+    // El formulario trabaja con employeeId; resolver siempre mediante el
+    // endpoint canónico /by-employee evita consultar un expediente por error.
     try {
       const res = await firstValueFrom(this.fileService.getFileByEmployee(employeeId));
       if (res?.data?.id) return res.data.id;
@@ -70,7 +73,6 @@ export class EmployeeDocumentUploadUseCase {
       const created = await firstValueFrom(
         this.fileService.createFile({
           employeeId,
-          fileNumber: `EXP-${employeeId.substring(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`,
           notes: 'Expediente digital aperturado automáticamente'
         })
       );

@@ -336,7 +336,7 @@ export class EmployeeFilesPageComponent implements OnInit {
   async createEmployeeFile(): Promise<void> {
     const employee = this.employees.find((item) => item.id === this.selectedEmployeeId);
     if (!employee) return;
-    await this.fileListUseCase.createFileForEmployee(employee.id, employee.employeeNumber);
+    await this.fileListUseCase.createFileForEmployee(employee.id);
   }
 
   getAudits() {

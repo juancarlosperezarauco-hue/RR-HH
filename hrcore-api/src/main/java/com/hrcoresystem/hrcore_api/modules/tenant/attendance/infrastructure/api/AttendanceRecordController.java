@@ -47,4 +47,10 @@ public class AttendanceRecordController {
     public ApiResponse<AttendanceResponses.Record> calculate(@Valid @RequestBody AttendanceRequests.Calculate request) {
         return ApiResponse.success("Attendance calculated", service.calculate(request.employeeId(), request.workDate()));
     }
+
+    @PostMapping("/process-range")
+    @PreAuthorize("hasAuthority('attendance.records.calculate')")
+    public ApiResponse<java.util.List<AttendanceResponses.Record>> calculateRange(@Valid @RequestBody AttendanceRequests.CalculateRange request) {
+        return ApiResponse.success("Asistencia calculada correctamente", service.calculateRange(request.employeeId(), request.from(), request.to()));
+    }
 }

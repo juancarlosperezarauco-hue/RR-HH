@@ -10,7 +10,7 @@ import java.util.UUID;
 public final class AttendanceResponses {
     private AttendanceResponses() { }
 
-    public record Record(UUID id, UUID employeeId, UUID shiftAssignmentId, LocalDate workDate,
+    public record Record(UUID id, UUID employeeId, UUID employmentPeriodId, UUID shiftAssignmentId, LocalDate workDate,
             Instant expectedStartAt, Instant expectedEndAt, Instant actualFirstInAt, Instant actualLastOutAt,
             int workedMinutes, int lateMinutes, int earlyDepartureMinutes, AttendanceStatus status,
             JsonNode calculationDetails, Instant calculatedAt, Instant createdAt, Instant updatedAt) { }
@@ -26,5 +26,12 @@ public final class AttendanceResponses {
 
     public record Overtime(UUID id, UUID attendanceRecordId, int requestedMinutes, Integer approvedMinutes,
             String reason, ReviewStatus status, UUID approvedBy, Instant approvedAt,
-            Instant createdAt, Instant updatedAt) { }
+            UUID requestedBy, Instant createdAt, Instant updatedAt) {
+        public Overtime(UUID id, UUID attendanceRecordId, int requestedMinutes, Integer approvedMinutes,
+                String reason, ReviewStatus status, UUID approvedBy, Instant approvedAt,
+                Instant createdAt, Instant updatedAt) {
+            this(id, attendanceRecordId, requestedMinutes, approvedMinutes, reason, status, approvedBy,
+                    approvedAt, null, createdAt, updatedAt);
+        }
+    }
 }

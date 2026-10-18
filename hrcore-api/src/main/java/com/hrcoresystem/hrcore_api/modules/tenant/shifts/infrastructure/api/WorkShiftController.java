@@ -14,6 +14,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/shifts")
@@ -28,75 +29,77 @@ public class WorkShiftController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('shifts.create')")
     public ApiResponse<WorkShiftResponse> create(@Valid @RequestBody WorkShiftRequest request) {
-        return ApiResponse.success("Shift created", shifts.create(request));
+        return ApiResponse.success("Turno creado correctamente", shifts.create(request));
     }
 
     @GetMapping
     @PreAuthorize("hasAuthority('shifts.list')")
     public ApiResponse<Page<WorkShiftResponse>> list(@RequestParam(required = false) String code,
             @RequestParam(required = false) String name, @RequestParam(required = false) ShiftStatus status,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int size,
             @RequestParam(defaultValue = "name") String sort, @RequestParam(defaultValue = "asc") String direction) {
-        return ApiResponse.success("Shifts retrieved", shifts.list(code, name, status, page, size, sort, direction));
+        return ApiResponse.success("Turnos consultados correctamente", shifts.list(code, name, status, page, size, sort, direction));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('shifts.detail')")
     public ApiResponse<WorkShiftResponse> detail(@PathVariable UUID id) {
-        return ApiResponse.success("Shift retrieved", shifts.detail(id));
+        return ApiResponse.success("Turno consultado correctamente", shifts.detail(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('shifts.update')")
     public ApiResponse<WorkShiftResponse> update(@PathVariable UUID id, @Valid @RequestBody WorkShiftRequest request) {
-        return ApiResponse.success("Shift updated", shifts.update(id, request));
+        return ApiResponse.success("Turno actualizado correctamente", shifts.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
     @PreAuthorize("hasAuthority('shifts.activate')")
     public ApiResponse<WorkShiftResponse> activate(@PathVariable UUID id) {
-        return ApiResponse.success("Shift activated", shifts.activate(id));
+        return ApiResponse.success("Turno activado correctamente", shifts.activate(id));
     }
 
     @PatchMapping("/{id}/deactivate")
     @PreAuthorize("hasAuthority('shifts.deactivate')")
     public ApiResponse<WorkShiftResponse> deactivate(@PathVariable UUID id) {
-        return ApiResponse.success("Shift deactivated", shifts.deactivate(id));
+        return ApiResponse.success("Turno desactivado correctamente", shifts.deactivate(id));
     }
 
     @PostMapping("/{id}/breaks")
+    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('shifts.breaks.create')")
     public ApiResponse<ShiftBreakResponse> createBreak(@PathVariable UUID id, @Valid @RequestBody ShiftBreakRequest request) {
-        return ApiResponse.success("Shift break created", breaks.create(id, request));
+        return ApiResponse.success("Descanso creado correctamente", breaks.create(id, request));
     }
 
     @GetMapping("/{id}/breaks")
     @PreAuthorize("hasAuthority('shifts.breaks.list')")
     public ApiResponse<Page<ShiftBreakResponse>> listBreaks(@PathVariable UUID id,
-            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "25") int size,
             @RequestParam(defaultValue = "startTime") String sort, @RequestParam(defaultValue = "asc") String direction) {
-        return ApiResponse.success("Shift breaks retrieved", breaks.list(id, page, size, sort, direction));
+        return ApiResponse.success("Descansos consultados correctamente", breaks.list(id, page, size, sort, direction));
     }
 
     @GetMapping("/{id}/breaks/{breakId}")
     @PreAuthorize("hasAuthority('shifts.breaks.detail')")
     public ApiResponse<ShiftBreakResponse> detailBreak(@PathVariable UUID id, @PathVariable UUID breakId) {
-        return ApiResponse.success("Shift break retrieved", breaks.detail(id, breakId));
+        return ApiResponse.success("Descanso consultado correctamente", breaks.detail(id, breakId));
     }
 
     @PutMapping("/{id}/breaks/{breakId}")
     @PreAuthorize("hasAuthority('shifts.breaks.update')")
     public ApiResponse<ShiftBreakResponse> updateBreak(@PathVariable UUID id, @PathVariable UUID breakId,
             @Valid @RequestBody ShiftBreakRequest request) {
-        return ApiResponse.success("Shift break updated", breaks.update(id, breakId, request));
+        return ApiResponse.success("Descanso actualizado correctamente", breaks.update(id, breakId, request));
     }
 
     @DeleteMapping("/{id}/breaks/{breakId}")
     @PreAuthorize("hasAuthority('shifts.breaks.delete')")
     public ApiResponse<Void> deleteBreak(@PathVariable UUID id, @PathVariable UUID breakId) {
         breaks.delete(id, breakId);
-        return ApiResponse.success("Shift break deleted", null);
+        return ApiResponse.success("Descanso eliminado correctamente", null);
     }
 }

@@ -2,6 +2,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.positions.application.service
 
 import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
+import com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException;
 import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.positions.application.dto.*;
@@ -19,10 +20,11 @@ public class PositionPolicy {
     private final PositionRequirementRepository requirements;
     private final TenantPlanEnforcementService plans;
     private final SecurityContextFacade security;
+    private final PositionCurrencyResolver currencies;
 
     public PositionPolicy(PositionRepository positions, PositionRequirementRepository requirements,
-                          TenantPlanEnforcementService plans, SecurityContextFacade security) {
-        this.positions = positions; this.requirements = requirements; this.plans = plans; this.security = security;
+                          TenantPlanEnforcementService plans, SecurityContextFacade security, PositionCurrencyResolver currencies) {
+        this.positions = positions; this.requirements = requirements; this.plans = plans; this.security = security; this.currencies = currencies;
     }
 
     public void assertOperational() { plans.assertCanOperate(); }
@@ -33,6 +35,11 @@ public class PositionPolicy {
 
     public Position requirePositionForUpdate(UUID id) {
         return positions.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException("Position not found: " + id));
+    }
+    public Position requireActivePosition(UUID id) {
+        Position position = requirePositionForUpdate(id);
+        if (position.status() != PositionStatus.ACTIVE) throw new BusinessConflictException("No se pueden modificar requisitos de un cargo inactivo");
+        return position;
     }
 
     public PositionRequirement requireRequirement(UUID positionId, UUID requirementId) {
@@ -45,19 +52,17 @@ public class PositionPolicy {
         catch (RuntimeException ex) { throw new BusinessException("Authenticated tenant user is required"); }
     }
 
-    public Position normalizedPosition(UUID id, PositionRequest request, Position before, UUID actor) {
-        String code = required(request.code(), 50, "code");
+    public Position normalizedPosition(UUID id, String code, PositionRequest request, Position before, UUID actor) {
         String name = required(request.name(), 150, "name");
         if (positions.existsByCodeOtherThan(code, id)) throw new BusinessException("Position code already exists");
         BigDecimal min = salary(request.salaryMin(), "salaryMin");
         BigDecimal max = salary(request.salaryMax(), "salaryMax");
         if (min != null && max != null && min.compareTo(max) > 0)
             throw new BusinessException("salaryMin must not exceed salaryMax");
-        String currency = optional(request.currency());
-        if (currency != null && !currency.matches("[A-Z]{3}"))
-            throw new BusinessException("currency must contain three uppercase letters");
+        String currency = currencies.resolve(request.currency(), min != null || max != null);
+        if (request.organizationalLevel() == null) throw new BusinessException("organizationalLevel es obligatorio");
         return new Position(id, code, name, optional(request.description()), optional(request.responsibilities()),
-                request.organizationalLevel() == null ? OrganizationalLevel.OPERATIONAL : request.organizationalLevel(),
+                request.organizationalLevel(),
                 min, max, currency, before == null ? PositionStatus.ACTIVE : before.status(),
                 before == null ? actor : before.createdBy(), actor,
                 before == null ? null : before.createdAt(), before == null ? null : before.updatedAt());

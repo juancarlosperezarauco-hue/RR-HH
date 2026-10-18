@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 public interface AttendanceStore {
     AttendanceRecord save(AttendanceRecord value);
     AttendanceRecord lockOrCreate(UUID employeeId, LocalDate workDate);
+    AttendanceRecord lockOrCreate(UUID employeeId, LocalDate workDate, UUID employmentPeriodId);
     Optional<AttendanceRecord> record(UUID id);
     Optional<AttendanceRecord> record(UUID employeeId, LocalDate date);
     Page<AttendanceRecord> records(UUID employeeId, LocalDate from, LocalDate to, AttendanceStatus status, Pageable page);
@@ -37,6 +38,8 @@ public interface AttendanceStore {
     List<AttendanceOvertime> overtimeForRecord(UUID recordId);
     Page<AttendanceOvertime> overtime(UUID recordId, ReviewStatus status, LocalDate from,
             LocalDate to, Pageable page);
+    default Page<AttendanceOvertime> overtimeByRequester(UUID requesterId, ReviewStatus status, LocalDate from,
+            LocalDate to, Pageable page) { return overtime(null, status, from, to, page); }
 
     Optional<UUID> employeeForUser(UUID tenantUserId);
     List<UUID> overtimeRequestActors(UUID overtimeId);

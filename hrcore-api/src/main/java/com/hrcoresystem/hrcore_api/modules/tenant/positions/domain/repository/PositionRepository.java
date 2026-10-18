@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDate;
 
 public interface PositionRepository {
     Position save(Position position);
@@ -12,5 +13,5 @@ public interface PositionRepository {
     Optional<Position> findByIdForUpdate(UUID id);
     boolean existsByCodeOtherThan(String code, UUID id);
     Page<Position> findAll(PositionFilter filter, Pageable pageable);
-    boolean hasCurrentAssignments(UUID positionId);
+    boolean hasCurrentOrFutureAssignments(UUID positionId, LocalDate asOfDate);
 }

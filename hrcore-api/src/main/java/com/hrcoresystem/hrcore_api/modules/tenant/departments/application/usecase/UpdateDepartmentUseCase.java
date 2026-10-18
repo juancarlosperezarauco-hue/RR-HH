@@ -27,7 +27,7 @@ public class UpdateDepartmentUseCase {
         policy.assertOperational();
         policy.lockForWrite();
         Department before = policy.require(id);
-        String code = policy.required(request.code(), 50, "code");
+        String code = before.code();
         String name = policy.required(request.name(), 150, "name");
         policy.assertCodeAvailable(code, id);
         policy.validateReferences(id, request.parentDepartmentId(), request.managerEmployeeId());

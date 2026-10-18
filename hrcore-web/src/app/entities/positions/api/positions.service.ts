@@ -26,6 +26,11 @@ export class PositionsService {
   changeStatus(id: string, activate: boolean) {
     return this.http.patch(`${this.api}/${id}/${activate ? 'activate' : 'deactivate'}`, null, { responseType: 'text' }).pipe(positionResponse<Position>());
   }
+  employees(id: string, page = 0, size = 25, sort = 'lastName,asc') {
+    return this.http.get<ApiResponse<PageResponse<unknown>>>(`${this.api}/${id}/employees`, {
+      params: new HttpParams().set('page', page).set('size', size).set('sort', sort)
+    }).pipe(map(checked));
+  }
   requirements(id: string, page = 0) {
     return this.http.get<ApiResponse<PageResponse<PositionRequirement>>>(`${this.api}/${id}/requirements`, {
       params: new HttpParams().set('page', page).set('size', 25).set('sort', 'createdAt,asc')

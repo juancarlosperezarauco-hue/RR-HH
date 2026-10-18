@@ -6,8 +6,10 @@ import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.positions.application.dto.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.positions.application.service.PositionPolicy;
+import com.hrcoresystem.hrcore_api.modules.tenant.positions.application.service.PositionCurrencyResolver;
 import com.hrcoresystem.hrcore_api.modules.tenant.positions.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.positions.domain.repository.*;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.domain.repository.TenantSettingRepository;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -19,31 +21,32 @@ class PositionPolicyTest {
     private final PositionRepository positions = mock(PositionRepository.class);
     private final PositionRequirementRepository requirements = mock(PositionRequirementRepository.class);
     private final PositionPolicy policy = new PositionPolicy(positions, requirements,
-            mock(TenantPlanEnforcementService.class), mock(SecurityContextFacade.class));
+            mock(TenantPlanEnforcementService.class), mock(SecurityContextFacade.class),
+            new PositionCurrencyResolver(mock(TenantSettingRepository.class)));
 
     @Test
     void validatesCodeNameSalaryAndCurrency() {
         UUID actor = UUID.randomUUID();
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
                 request(" ", "Analyst", null, null, null), null, actor));
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
                 request("P1", " ", null, null, null), null, actor));
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
-                request("P1", "Analyst", new BigDecimal("-1"), null, "USD"), null, actor));
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
-                request("P1", "Analyst", new BigDecimal("2"), BigDecimal.ONE, "USD"), null, actor));
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
-                request("P1", "Analyst", new BigDecimal("1.00001"), null, "USD"), null, actor));
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
-                request("P1", "Analyst", null, null, "usd"), null, actor));
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
+                request("P1", "Analyst", new BigDecimal("-1"), null, "BOB"), null, actor));
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
+                request("P1", "Analyst", new BigDecimal("2"), BigDecimal.ONE, "BOB"), null, actor));
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
+                request("P1", "Analyst", new BigDecimal("1.00001"), null, "BOB"), null, actor));
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
+                request("P1", "Analyst", null, null, "USDX"), null, actor));
         when(positions.existsByCodeOtherThan("P1", null)).thenReturn(true);
-        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null,
+        assertThrows(BusinessException.class, () -> policy.normalizedPosition(null, "P1",
                 request("P1", "Analyst", null, null, null), null, actor));
     }
 
     @Test
     void createsActivePositionWithSchemaDefaultLevel() {
-        Position p = policy.normalizedPosition(null, request(" P1 ", " Analyst ", BigDecimal.ZERO, null, null),
+        Position p = policy.normalizedPosition(null, "P1", request(" P1 ", " Analyst ", BigDecimal.ZERO, null, "BOB"),
                 null, UUID.randomUUID());
         assertEquals("P1", p.code());
         assertEquals("Analyst", p.name());

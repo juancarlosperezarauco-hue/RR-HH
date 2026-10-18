@@ -35,6 +35,8 @@ public class WorkCalendarExceptionEntity {
     private String description;
     @Column(name = "work_required", nullable = false)
     private boolean workRequired;
+    @Column(name = "override_shift_id")
+    private UUID overrideShiftId;
     @Column(name = "created_by", updatable = false)
     private UUID createdBy;
     @Column(name = "created_at", nullable = false, updatable = false)

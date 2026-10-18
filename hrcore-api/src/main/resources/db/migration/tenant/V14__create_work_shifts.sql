@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS employee_shift_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     employee_id UUID NOT NULL,
+    employment_period_id UUID NOT NULL,
     shift_id UUID NOT NULL,
 
     start_date DATE NOT NULL,
@@ -132,6 +133,11 @@ CREATE TABLE IF NOT EXISTS employee_shift_assignments (
         FOREIGN KEY (employee_id)
         REFERENCES employees(id)
         ON DELETE RESTRICT,
+
+    CONSTRAINT uq_shift_assignment_id_employee UNIQUE(id,employee_id),
+    CONSTRAINT fk_employee_shift_assignments_period_employee
+        FOREIGN KEY (employment_period_id,employee_id)
+        REFERENCES employment_periods(id,employee_id) ON DELETE RESTRICT,
 
     CONSTRAINT fk_employee_shift_assignments_shift
         FOREIGN KEY (shift_id)
@@ -159,8 +165,10 @@ CREATE TABLE IF NOT EXISTS employee_shift_assignments (
     CONSTRAINT chk_employee_shift_weekdays_not_empty
         CHECK (CARDINALITY(weekdays) BETWEEN 1 AND 7),
 
-    CONSTRAINT chk_employee_shift_weekdays_range
-        CHECK (weekdays <@ ARRAY[1,2,3,4,5,6,7]::SMALLINT[])
+    CONSTRAINT chk_employee_shift_weekdays_range CHECK (
+        weekdays <@ ARRAY[1,2,3,4,5,6,7]::SMALLINT[]
+        AND CARDINALITY(ARRAY_REMOVE(weekdays,NULL)) = CARDINALITY(weekdays)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_employee_shift_assignments_employee
@@ -168,6 +176,11 @@ CREATE INDEX IF NOT EXISTS idx_employee_shift_assignments_employee
 
 CREATE INDEX IF NOT EXISTS idx_employee_shift_assignments_shift
     ON employee_shift_assignments(shift_id);
+CREATE INDEX idx_employee_shift_assignment_period ON employee_shift_assignments(employment_period_id);
+CREATE TRIGGER trg_bind_shift_assignment_period
+BEFORE INSERT OR UPDATE OF employee_id, employment_period_id, start_date ON employee_shift_assignments
+FOR EACH ROW EXECUTE FUNCTION bind_employee_employment_period('start_date');
+
 
 
 -- ============================================================
@@ -234,3 +247,35 @@ CREATE INDEX IF NOT EXISTS idx_calendar_exceptions_employee
 CREATE INDEX IF NOT EXISTS idx_calendar_exceptions_department
     ON work_calendar_exceptions(department_id);
 
+
+
+
+CREATE FUNCTION has_distinct_iso_weekdays(days SMALLINT[])
+RETURNS BOOLEAN LANGUAGE SQL IMMUTABLE PARALLEL SAFE AS $$
+    SELECT COALESCE(CARDINALITY(days) = COUNT(DISTINCT day_value), FALSE)
+      FROM UNNEST(days) AS t(day_value);
+$$;
+ALTER TABLE employee_shift_assignments ADD CONSTRAINT chk_shift_unique_weekdays
+    CHECK (has_distinct_iso_weekdays(weekdays));
+
+-- Un empleado no puede tener dos asignaciones ACTIVE sobre el mismo día ISO
+-- en intervalos de fechas solapados. Bloquea la fila de empleado para serializar.
+CREATE FUNCTION reject_overlapping_shift_assignments()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.status <> 'ACTIVE' THEN RETURN NEW; END IF;
+    PERFORM 1 FROM employees WHERE id=NEW.employee_id FOR UPDATE;
+    IF EXISTS (
+        SELECT 1 FROM employee_shift_assignments a
+         WHERE a.employee_id=NEW.employee_id AND a.id <> NEW.id
+           AND a.status='ACTIVE' AND a.weekdays && NEW.weekdays
+           AND daterange(a.start_date,COALESCE(a.end_date,'infinity'::DATE),'[]') &&
+               daterange(NEW.start_date,COALESCE(NEW.end_date,'infinity'::DATE),'[]')
+    ) THEN
+        RAISE EXCEPTION 'Employee shift assignments overlap on a weekday' USING ERRCODE='23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_reject_overlapping_shift_assignments
+BEFORE INSERT OR UPDATE OF employee_id, shift_id, weekdays, start_date, end_date, status
+ON employee_shift_assignments FOR EACH ROW EXECUTE FUNCTION reject_overlapping_shift_assignments();

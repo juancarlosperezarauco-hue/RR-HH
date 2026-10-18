@@ -1,0 +1,7 @@
+export type IncidentType = 'MEMORANDUM'|'WARNING'|'DISCIPLINARY'|'MISCONDUCT'|'PERFORMANCE'|'SAFETY'|'RECOGNITION'|'OTHER';
+export type IncidentSeverity = 'LOW'|'MEDIUM'|'HIGH'|'CRITICAL';
+export type IncidentStatus = 'OPEN'|'UNDER_REVIEW'|'RESOLVED'|'CLOSED'|'CANCELLED';
+export interface IncidentResponse { id:string; employeeId:string; employmentPeriodId:string; incidentNumber:string; incidentType:IncidentType; severity:IncidentSeverity; title:string; description:string; occurredAt:string; location?:string|null; status:IncidentStatus; reportedBy?:string; assignedTo?:string|null; employeeResponse?:string|null; employeeResponseAt?:string|null; resolution?:string|null; resolvedAt?:string|null; closedAt?:string|null; createdAt:string; updatedAt?:string; }
+export interface CreateIncidentInput { employeeId:string; incidentType:IncidentType; severity:IncidentSeverity; title:string; description:string; occurredAt:string; location?:string|null; assignedTo?:string|null; }
+export interface IncidentAction { id:string; incidentId:string; actionType:string; description:string; actionDate:string; status:'PENDING'|'IN_PROGRESS'|'COMPLETED'|'CANCELLED'; responsibleUserId?:string|null; completedAt?:string|null; notes?:string|null; createdAt:string; updatedAt?:string; }
+export interface IncidentHistory { id:string; incidentId:string; action:string; previousStatus?:string|null; newStatus?:string|null; comment?:string|null; performedBy?:string|null; createdAt:string; }
