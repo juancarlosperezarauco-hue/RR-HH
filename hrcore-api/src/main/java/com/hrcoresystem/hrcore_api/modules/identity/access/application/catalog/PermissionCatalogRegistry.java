@@ -22,7 +22,8 @@ public final class PermissionCatalogRegistry {
         add(list,"leaves","types.create","types.list","types.detail","types.update","types.activate","types.deactivate","balances.list","balances.detail","balances.create","balances.adjust","requests.create","requests.list","requests.detail","requests.update","requests.submit","requests.approve","requests.approve.global","requests.reject","requests.cancel","history.read","attachments.upload","attachments.list","attachments.download");
         add(list,"leaves","team.read");
         add(list,"incidents","create","list","detail","update","assign","review","resolve","close","cancel","actions.create","actions.list","actions.update","attachments.upload","attachments.list","attachments.download","history.read");
-        add(list,"audit","events.read"); add(list,"notifications","templates.read","templates.detail","deliveries.read");
+        list.add(new PermissionDefinition("audit.events.read","audit","Read tenant audit events",PermissionScope.TENANT,false,true));
+        add(list,"notifications","templates.read","templates.detail","deliveries.read");
         add(list,"hr.reports","employees.read","contracts.read","attendance.read","leaves.read","incidents.read","export");
         list.add(new PermissionDefinition("tenant-settings.read","tenantsettings","tenant settings read",PermissionScope.TENANT,true,true));
         list.add(new PermissionDefinition("tenant-settings.update","tenantsettings","tenant settings update",PermissionScope.TENANT,false,true));

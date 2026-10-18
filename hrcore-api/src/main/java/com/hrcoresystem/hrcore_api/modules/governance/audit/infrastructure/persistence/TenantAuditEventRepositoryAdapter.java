@@ -3,12 +3,18 @@ package com.hrcoresystem.hrcore_api.modules.governance.audit.infrastructure.pers
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.TenantAuditEvent;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.repository.TenantAuditEventRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
 public class TenantAuditEventRepositoryAdapter implements TenantAuditEventRepository {
+
+    private static final Sort AUDIT_SORT = Sort.by(
+            Sort.Order.desc("createdAt"),
+            Sort.Order.desc("id")
+    );
 
     private final TenantAuditEventJpaRepository jpaRepository;
 
@@ -25,7 +31,7 @@ public class TenantAuditEventRepositoryAdapter implements TenantAuditEventReposi
 
     @Override
     public List<TenantAuditEvent> findAll() {
-        return jpaRepository.findAll()
+        return jpaRepository.findAll(AUDIT_SORT)
                 .stream()
                 .map(this::toDomain)
                 .toList();
@@ -33,7 +39,8 @@ public class TenantAuditEventRepositoryAdapter implements TenantAuditEventReposi
 
     @Override
     public List<TenantAuditEvent> findRecent(int limit) {
-        return jpaRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit))
+        int safeLimit = Math.min(Math.max(limit, 1), 200);
+        return jpaRepository.findAllByOrderByCreatedAtDescIdDesc(PageRequest.of(0, safeLimit))
                 .stream()
                 .map(this::toDomain)
                 .toList();

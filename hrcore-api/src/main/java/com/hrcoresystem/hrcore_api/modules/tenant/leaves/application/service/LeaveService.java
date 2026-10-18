@@ -110,19 +110,30 @@ public class LeaveService {
     }
 
     @Transactional public BalanceResponse createBalance(BalanceInput input) {
-        operational(); UUID employee = Objects.requireNonNull(input.employeeId(), "employeeId");
-        actor();
+        operational();
+        if (input == null) throw new BusinessException("Los datos del saldo son obligatorios");
+        UUID employee = Objects.requireNonNull(input.employeeId(), "employeeId");
         UUID type = Objects.requireNonNull(input.leaveTypeId(), "leaveTypeId");
-        validateYear(input.balanceYear()); BigDecimal opening = days(input.openingDays(), false);
-        lockEmployee(employee); requireType(type);
-        UUID period = periods == null ? null : periodForYear(employee, input.balanceYear());
-        if ((periods != null && store.balanceExistsByPeriod(period, type, input.balanceYear()))
-                || (periods == null && store.balanceExists(employee, type, input.balanceYear())))
+        UUID periodId = Objects.requireNonNull(input.employmentPeriodId(), "employmentPeriodId");
+        actor();
+        validateYear(input.balanceYear());
+        BigDecimal opening = days(input.openingDays(), false);
+        lockEmployee(employee);
+        requireType(type);
+        if (periods == null) throw new IllegalStateException("EmploymentPeriodService is required to create leave balances");
+        var period = periods.require(employee, periodId);
+        LocalDate yearStart = LocalDate.of(input.balanceYear(), 1, 1);
+        LocalDate yearEnd = LocalDate.of(input.balanceYear(), 12, 31);
+        boolean intersectsYear = !period.startDate().isAfter(yearEnd)
+                && (period.endDate() == null || !period.endDate().isBefore(yearStart));
+        if (!intersectsYear) throw new BusinessException("El período laboral no corresponde al año solicitado");
+        if (store.balanceExistsByPeriod(periodId, type, input.balanceYear()))
             throw new BusinessException("Annual leave balance already exists");
-        LeaveBalance saved = store.save(new LeaveBalance(UUID.randomUUID(), employee, period, type,
+        LeaveBalance saved = store.save(new LeaveBalance(UUID.randomUUID(), employee, periodId, type,
                 input.balanceYear(), opening, ZERO, ZERO, ZERO, null));
         event("LEAVE_BALANCE_CREATED", "LEAVE_BALANCE", saved.id(),
-                Map.of("employeeId", employee, "year", input.balanceYear(), "openingDays", opening));
+                Map.of("employeeId", employee, "employmentPeriodId", periodId,
+                        "year", input.balanceYear(), "openingDays", opening));
         return balance(saved);
     }
 
@@ -138,21 +149,28 @@ public class LeaveService {
     }
 
     @Transactional public BalanceResponse adjustBalance(UUID id, BalanceAdjustment input) {
-        operational(); LeaveBalance observed = requireBalance(id);
+        operational();
+        if (id == null) throw new BusinessException("El identificador del saldo es obligatorio");
+        if (input == null) throw new BusinessException("Los datos del ajuste son obligatorios");
+        LeaveBalance observed = requireBalance(id);
         UUID who = actor();
         lockEmployee(observed.employeeId());
-        LeaveBalance old = store.lockedBalance(observed.employeeId(), observed.leaveTypeId(), observed.balanceYear())
+        LeaveBalance old = store.lockedBalanceById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave balance not found"));
         BigDecimal delta = days(input.deltaDays(), true);
         if (delta.signum() == 0) throw new BusinessException("Adjustment must not be zero");
         String reason = required(input.reason(), 0, "reason");
-        BigDecimal adjusted = old.adjustedDays().add(delta), available = old.available().add(delta);
-        if (adjusted.abs().compareTo(MAX) > 0 || available.signum() < 0
-                || available.subtract(store.pendingDays(old.employeeId(), old.leaveTypeId(), old.balanceYear())).signum() < 0)
+        BigDecimal adjusted = old.adjustedDays().add(delta);
+        BigDecimal available = old.available().add(delta);
+        LocalDate firstDay = LocalDate.of(old.balanceYear(), 1, 1);
+        LocalDate lastDay = LocalDate.of(old.balanceYear(), 12, 31);
+        BigDecimal pendingDays = pending(old, firstDay, lastDay);
+        BigDecimal uncommittedDays = available.subtract(pendingDays);
+        if (adjusted.abs().compareTo(MAX) > 0 || available.signum() < 0 || uncommittedDays.signum() < 0)
             throw new BusinessException("Adjustment would overdraw the balance or pending commitments");
-        LeaveBalance saved = store.save(new LeaveBalance(id, old.employeeId(), old.employmentPeriodId(), old.leaveTypeId(),
+        LeaveBalance saved = store.save(new LeaveBalance(old.id(), old.employeeId(), old.employmentPeriodId(), old.leaveTypeId(),
                 old.balanceYear(), old.openingDays(), old.accruedDays(), old.usedDays(), adjusted, old.updatedAt()));
-        event("LEAVE_BALANCE_ADJUSTED", "LEAVE_BALANCE", id,
+        event("LEAVE_BALANCE_ADJUSTED", "LEAVE_BALANCE", saved.id(),
                 Map.of("actorId", who, "deltaDays", delta, "reason", reason,
                         "before", old.adjustedDays(), "after", adjusted));
         return balance(saved);
@@ -182,17 +200,36 @@ public class LeaveService {
     }
     @Transactional(readOnly = true) public RequestResponse request(UUID id) { operational(); return request(requireRequest(id)); }
 
-    @Transactional public RequestResponse updateRequest(UUID id, RequestInput input) {
-        operational(); LeaveRequest observed = requireRequest(id); lockEmployee(observed.employeeId());
+    @Transactional
+    public RequestResponse updateRequest(UUID id, RequestInput input) {
+        operational();
+        LeaveRequest observed = requireRequest(id);
+        lockEmployee(observed.employeeId());
         LeaveRequest old = lockedRequest(id);
         if (old.status() != RequestStatus.DRAFT) throw new BusinessException("Only drafts can be edited");
+        if (input == null) throw new BusinessException("Request data is required");
         if (!old.employeeId().equals(input.employeeId())) throw new BusinessException("Employee cannot change");
-        LeaveType type = activeType(input.leaveTypeId()); BigDecimal duration = duration(input, type);
-        LeaveRequest saved = store.save(new LeaveRequest(id, old.employeeId(), old.employmentPeriodId(), type.id(), input.startDate(),
-                input.endDate(), input.startTime(), input.endTime(), duration,
+        if (input.startDate() == null || input.endDate() == null) throw new BusinessException("Dates are required");
+        if (input.endDate().isBefore(input.startDate())) throw new BusinessException("End date cannot precede start date");
+
+        if (periods != null) {
+            UUID startPeriodId = periods.requireForDate(old.employeeId(), input.startDate()).id();
+            UUID endPeriodId = periods.requireForDate(old.employeeId(), input.endDate()).id();
+            if (!startPeriodId.equals(endPeriodId))
+                throw new BusinessException("La solicitud debe pertenecer a un solo período laboral");
+            if (!startPeriodId.equals(old.employmentPeriodId()))
+                throw new BusinessException("No se puede trasladar una solicitud existente a otro período laboral");
+        }
+
+        LeaveType type = activeType(input.leaveTypeId());
+        BigDecimal requestedDays = duration(input, type);
+        LeaveRequest updated = new LeaveRequest(old.id(), old.employeeId(), old.employmentPeriodId(), type.id(),
+                input.startDate(), input.endDate(), input.startTime(), input.endTime(), requestedDays,
                 required(input.reason(), 0, "reason"), old.status(), old.requestedBy(), old.submittedAt(),
-                old.reviewedBy(), old.reviewedAt(), old.reviewComment(), old.createdAt(), old.updatedAt()));
-        event("LEAVE_REQUEST_UPDATED", "LEAVE_REQUEST", id, Map.of()); return request(saved);
+                old.reviewedBy(), old.reviewedAt(), old.reviewComment(), old.createdAt(), old.updatedAt());
+        LeaveRequest saved = store.save(updated);
+        event("LEAVE_REQUEST_UPDATED", "LEAVE_REQUEST", id, Map.of());
+        return request(saved);
     }
 
     @Transactional public RequestResponse submit(UUID id) {
@@ -306,6 +343,13 @@ public class LeaveService {
     }
 
     private void validateRequest(LeaveRequest request, LeaveType type) {
+        LeaveDayCalculator.validateDateRange(request.startDate(), request.endDate());
+        if (periods != null) {
+            UUID startPeriodId = periods.requireForDate(request.employeeId(), request.startDate()).id();
+            UUID endPeriodId = periods.requireForDate(request.employeeId(), request.endDate()).id();
+            if (!startPeriodId.equals(endPeriodId) || !startPeriodId.equals(request.employmentPeriodId()))
+                throw new BusinessException("La solicitud no corresponde a un único período laboral válido");
+        }
         if (type.deductsBalance() && request.startDate().getYear() != request.endDate().getYear())
             throw new BusinessException("Balance-deducting leave cannot cross calendar years");
         if (type.requiresAttachment()) attachments.requireStoredAttachment(request.id());
@@ -343,9 +387,16 @@ public class LeaveService {
     }
 
     private BigDecimal duration(RequestInput input, LeaveType type) {
-        if (input.startDate() == null || input.endDate() == null) throw new BusinessException("Dates are required");
+        if (input == null) throw new BusinessException("Los datos de la solicitud son obligatorios");
+        LeaveDayCalculator.validateDateRange(input.startDate(), input.endDate());
         if (type.deductsBalance() && input.startDate().getYear() != input.endDate().getYear())
             throw new BusinessException("Balance-deducting leave cannot cross calendar years");
+        if (periods != null) {
+            UUID startPeriodId = periods.requireForDate(input.employeeId(), input.startDate()).id();
+            UUID endPeriodId = periods.requireForDate(input.employeeId(), input.endDate()).id();
+            if (!startPeriodId.equals(endPeriodId))
+                throw new BusinessException("La solicitud debe pertenecer a un solo período laboral");
+        }
         return calculator.calculate(input.employeeId(), input.startDate(), input.endDate(),
                 input.startTime(), input.endTime());
     }
@@ -358,12 +409,6 @@ public class LeaveService {
     private void lockEmployee(UUID id) {
         if (id == null || employees.findByIdForUpdate(id).isEmpty())
             throw new ResourceNotFoundException("Employee not found");
-    }
-    private UUID periodForYear(UUID employeeId, int year) {
-        LocalDate first = LocalDate.of(year, 1, 1), last = LocalDate.of(year, 12, 31);
-        return periods.list(employeeId).stream()
-                .filter(p -> !p.startDate().isAfter(last) && (p.endDate() == null || !p.endDate().isBefore(first)))
-                .findFirst().orElseThrow(() -> new BusinessException("El empleado no tiene un período laboral en el año indicado")).id();
     }
     private LeaveType requireType(UUID id) {
         return store.type(id).orElseThrow(() -> new ResourceNotFoundException("Leave type not found"));

@@ -68,6 +68,11 @@ public class EmployeeAssignmentRepositoryAdapter implements EmployeeAssignmentRe
                 (rs, rowNum) -> rs.getObject(1, LocalDate.class), employeeId);
         return Optional.ofNullable(earliest);
     }
+    @Override public Optional<LocalDate> earliestStartDateInPeriod(UUID employeeId, UUID employmentPeriodId) {
+        LocalDate earliest = jdbc.queryForObject("SELECT MIN(start_date) FROM employee_assignments WHERE employee_id = ? AND employment_period_id = ?",
+                (rs, rowNum) -> rs.getObject(1, LocalDate.class), employeeId, employmentPeriodId);
+        return Optional.ofNullable(earliest);
+    }
 
     private EmployeeAssignment toDomain(EmployeeAssignmentEntity e) {
         return new EmployeeAssignment(e.getId(), e.getEmployeeId(), e.getDepartmentId(), e.getPositionId(),

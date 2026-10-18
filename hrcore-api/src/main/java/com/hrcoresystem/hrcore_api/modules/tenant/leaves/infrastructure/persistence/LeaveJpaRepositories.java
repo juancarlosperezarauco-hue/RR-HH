@@ -29,6 +29,9 @@ interface LeaveBalanceJpaRepository extends JpaRepository<LeaveBalanceEntity, UU
             "where b.id in (:ids) and t.deducts_balance=true group by b.id", nativeQuery = true)
     List<Object[]> pendingForBalances(@Param("ids") List<UUID> ids);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select b from LeaveBalanceEntity b where b.id=:id")
+    Optional<LeaveBalanceEntity> lockById(@Param("id") UUID id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from LeaveBalanceEntity b where b.employeeId=:employee and b.leaveTypeId=:type and b.balanceYear=:year")
     Optional<LeaveBalanceEntity> lock(@Param("employee") UUID employee, @Param("type") UUID type, @Param("year") int year);
     boolean existsByEmploymentPeriodIdAndLeaveTypeIdAndBalanceYear(UUID period, UUID type, int year);

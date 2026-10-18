@@ -1,5 +1,6 @@
 package com.hrcoresystem.hrcore_api.modules.tenant.employees.infrastructure.persistence;
 
+import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
 import jakarta.persistence.criteria.Predicate;
@@ -7,6 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -17,6 +22,8 @@ import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.s
 public class EmployeeRepositoryAdapter implements EmployeeRepository {
     private final EmployeeJpaRepository jpa;
     private final TenantTimezoneService timezone;
+    @PersistenceContext
+    private EntityManager entityManager;
     public EmployeeRepositoryAdapter(EmployeeJpaRepository jpa, TenantTimezoneService timezone) { this.jpa = jpa; this.timezone = timezone; }
 
     @Override
@@ -35,6 +42,15 @@ public class EmployeeRepositoryAdapter implements EmployeeRepository {
 
     @Override public Optional<Employee> findById(UUID id) { return jpa.findById(id).map(this::toDomain); }
     @Override public Optional<Employee> findByIdForUpdate(UUID id) { return jpa.findByIdForUpdate(id).map(this::toDomain); }
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Employee refresh(UUID employeeId) {
+        if (employeeId == null) throw new IllegalArgumentException("employeeId is required");
+        EmployeeEntity entity = entityManager.find(EmployeeEntity.class, employeeId);
+        if (entity == null) throw new ResourceNotFoundException("Employee not found: " + employeeId);
+        entityManager.refresh(entity);
+        return toDomain(entity);
+    }
     @Override public Optional<Employee> findByTenantUserId(UUID tenantUserId) { return jpa.findByTenantUserId(tenantUserId).map(this::toDomain); }
     @Override public boolean existsNumberOtherThan(String number, UUID id) {
         return id == null ? jpa.existsByEmployeeNumber(number) : jpa.existsByEmployeeNumberAndIdNot(number, id);

@@ -27,18 +27,35 @@ public class AssignmentPolicy {
     private final EmployeePolicy employeePolicy;
     private final TenantTimezoneService timezone;
     private final EmploymentPeriodService periods;
+    private final OrganizationalReportingService reporting;
 
     @Autowired
     public AssignmentPolicy(EmployeeAssignmentRepository assignments, EmployeeRepository employees,
-                            DepartmentRepository departments, PositionRepository positions, EmployeePolicy employeePolicy, TenantTimezoneService timezone, EmploymentPeriodService periods) {
+                            DepartmentRepository departments, PositionRepository positions, EmployeePolicy employeePolicy,
+                            TenantTimezoneService timezone, EmploymentPeriodService periods,
+                            OrganizationalReportingService reporting) {
         this.assignments = assignments; this.employees = employees; this.departments = departments;
-        this.positions = positions; this.employeePolicy = employeePolicy; this.timezone = timezone; this.periods = periods;
+        this.positions = positions; this.employeePolicy = employeePolicy; this.timezone = timezone;
+        this.periods = periods; this.reporting = reporting;
+    }
+    public AssignmentPolicy(EmployeeAssignmentRepository assignments, EmployeeRepository employees,
+            DepartmentRepository departments, PositionRepository positions, EmployeePolicy employeePolicy,
+            TenantTimezoneService timezone, EmploymentPeriodService periods) {
+        this(assignments, employees, departments, positions, employeePolicy, timezone, periods, null);
     }
     /** Compatibilidad para pruebas aisladas; el contenedor usa el constructor completo. */
     public AssignmentPolicy(EmployeeAssignmentRepository assignments, EmployeeRepository employees,
             DepartmentRepository departments, PositionRepository positions, EmployeePolicy employeePolicy,
             TenantTimezoneService timezone) {
         this(assignments, employees, departments, positions, employeePolicy, timezone, null);
+    }
+    public void lockForWrite() { departments.lockHierarchy(); }
+
+    public void validateReportingAfterChange(LocalDate effectiveDate) {
+        if (reporting == null) return;
+        LocalDate today = timezone.today();
+        reporting.validateNoCycles(today);
+        if (effectiveDate != null && !effectiveDate.equals(today)) reporting.validateNoCycles(effectiveDate);
     }
     public EmployeeAssignment require(UUID employeeId, UUID assignmentId) {
         return assignments.findByIdAndEmployeeId(assignmentId, employeeId)
@@ -59,10 +76,12 @@ public class AssignmentPolicy {
                 .filter(p -> p.status() == PositionStatus.ACTIVE).isEmpty())
             throw new BusinessException("Active position is required");
         if (r.supervisorEmployeeId() != null) {
-            if (r.supervisorEmployeeId().equals(employee.id()))
+            UUID supervisorId = r.supervisorEmployeeId();
+            if (supervisorId.equals(employee.id()))
                 throw new BusinessException("Employee cannot supervise their own assignment");
-            if (employees.findById(r.supervisorEmployeeId())
-                    .filter(e -> e.employmentStatus() == EmploymentStatus.ACTIVE).isEmpty())
+            Employee supervisor = employees.findByIdForUpdate(supervisorId)
+                    .orElseThrow(() -> new BusinessException("Supervisor employee does not exist"));
+            if (supervisor.employmentStatus() != EmploymentStatus.ACTIVE)
                 throw new BusinessException("Active supervisor is required");
         }
         if (r.startDate() == null || r.startDate().isBefore(employee.hireDate()))

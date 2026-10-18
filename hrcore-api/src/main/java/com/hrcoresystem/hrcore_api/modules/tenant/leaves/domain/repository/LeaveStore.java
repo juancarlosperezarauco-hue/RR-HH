@@ -21,6 +21,7 @@ public interface LeaveStore {
 
     LeaveBalance save(LeaveBalance value);
     Optional<LeaveBalance> balance(UUID id);
+    Optional<LeaveBalance> lockedBalanceById(UUID id);
     Optional<LeaveBalance> lockedBalance(UUID employeeId, UUID typeId, int year);
     default Optional<LeaveBalance> lockedBalanceByPeriod(UUID periodId, UUID typeId, int year) { return lockedBalance(null, typeId, year); }
     boolean balanceExists(UUID employeeId, UUID typeId, int year);

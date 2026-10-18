@@ -45,6 +45,7 @@ public class UpdateDepartmentUseCase {
                 after.managerEmployeeId(), after.costCenterCode(), after.status(), before.createdBy(), actor,
                 before.createdAt(), before.updatedAt());
         Department saved = departments.save(after);
+        policy.validateReportingAfterChange();
         recorder.record(before, saved, recorder.updateAction(before, saved), reason, actor);
         return mapper.toResponse(saved);
     }

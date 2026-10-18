@@ -19,4 +19,14 @@ export interface TenantAuditEventResponse {
   resourceId: string;
   ipAddress?: string | null;
   createdAt: string;
+  actorSubject?: string | null;
+  tenantSlug?: string | null;
+  eventDetails?: string | null;
+  userAgent?: string | null;
+  requestId?: string | null;
+  correlationId?: string | null;
+  source?: string | null;
+  outcome?: string | null;
+  beforeState?: string | null;
+  afterState?: string | null;
 }

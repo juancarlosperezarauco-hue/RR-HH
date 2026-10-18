@@ -43,7 +43,7 @@ export class SidebarComponent {
       { id: 'organization', label: 'Organización', icon: 'building-2', ids: ['users', 'departments', 'positions', 'organization-chart', 'my-team', 'employees'] },
       { id: 'operations', label: 'Gestión laboral', icon: 'briefcase', ids: ['contracts', 'dossiers', 'shifts', 'attendance', 'absences', 'incidents'] },
       { id: 'personal', label: 'Mi espacio', icon: 'user-circle-2', ids: ['profile', 'my-employment', 'notifications'] },
-      { id: 'administration', label: 'Administración', icon: 'shield-check', ids: ['roles', 'permissions', 'subscription', 'hr-reports', 'company-settings', 'backups', 'security', 'settings'] }
+      { id: 'administration', label: 'Administración', icon: 'shield-check', ids: ['roles', 'permissions', 'subscription', 'hr-reports', 'company-settings', 'audit', 'backups', 'security', 'settings'] }
     ],
     PLATFORM: [
       { id: 'platform', label: 'Plataforma', icon: 'building-2', ids: ['tenants', 'plans', 'subscriptions', 'audit', 'backups'] },

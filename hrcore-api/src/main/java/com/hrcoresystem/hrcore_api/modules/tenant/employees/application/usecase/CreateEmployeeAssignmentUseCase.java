@@ -22,8 +22,10 @@ public class CreateEmployeeAssignmentUseCase {
     @Transactional
     public EmployeeAssignmentResponse execute(UUID employeeId, EmployeeAssignmentRequest request) {
         employees.assertOperational();
+        policy.lockForWrite();
         Employee employee = employees.requireForUpdate(employeeId);
         EmployeeAssignment saved = assignments.save(policy.normalized(employee, request, null, employees.actorId()));
+        policy.validateReportingAfterChange(saved.startDate());
         audit.record("EMPLOYEE_ASSIGNMENT", "CREATED", saved.id(), List.of());
         return mapper.toResponse(saved);
     }

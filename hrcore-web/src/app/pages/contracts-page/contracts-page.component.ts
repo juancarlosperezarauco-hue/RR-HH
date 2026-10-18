@@ -141,8 +141,8 @@ export class ContractsPageComponent implements OnInit {
     if (target === 'TERMINATED') {
       reason = window.prompt('Motivo de terminación del contrato:')?.trim() || null;
       if (!reason) return;
-      effectiveDate = window.prompt('Fecha efectiva (AAAA-MM-DD):', new Date().toISOString().slice(0, 10)) || null;
-      if (!effectiveDate) return;
+      // El backend solo permite terminar en la fecha empresarial actual.
+      effectiveDate = new Date().toISOString().slice(0, 10);
     }
     const label = this.statusLabel(target);
     if (!window.confirm(`¿Confirmar cambio del contrato ${contract.contractNumber} a ${label}?`)) return;
@@ -219,8 +219,8 @@ export class ContractsPageComponent implements OnInit {
   }
   private addDay(date: string): string { const d = new Date(`${date}T12:00:00`); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
   private handleError(error: unknown, fallback: string): void {
-    const message = error instanceof HttpErrorResponse
-      ? (error.error?.message || error.error?.error || fallback) : fallback;
+    const body = error instanceof HttpErrorResponse ? error.error : null;
+    const message = body?.errors?.[0] || body?.message || body?.error || fallback;
     this.toast.error(String(message));
   }
 }

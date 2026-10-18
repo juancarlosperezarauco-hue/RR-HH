@@ -10,6 +10,7 @@ public interface EmployeeRepository {
     Employee save(Employee employee);
     Optional<Employee> findById(UUID id);
     Optional<Employee> findByIdForUpdate(UUID id);
+    Employee refresh(UUID employeeId);
     Optional<Employee> findByTenantUserId(UUID tenantUserId);
     Page<Employee> findAll(EmployeeFilter filter, Pageable pageable);
     boolean existsNumberOtherThan(String number, UUID id);

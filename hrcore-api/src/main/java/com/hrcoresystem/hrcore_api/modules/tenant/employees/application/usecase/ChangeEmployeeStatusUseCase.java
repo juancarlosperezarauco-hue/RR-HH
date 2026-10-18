@@ -23,6 +23,7 @@ public class ChangeEmployeeStatusUseCase {
     public EmployeeResponse execute(UUID id, EmploymentStatus status) {
         return execute(id, status, null);
     }
+    @Transactional
     public EmployeeResponse execute(UUID id, EmploymentStatus status, String reason) {
         policy.assertOperational();
         Employee before = policy.requireForUpdate(id);

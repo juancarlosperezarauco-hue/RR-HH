@@ -71,15 +71,18 @@ export class AbsenceService {
    * Consulta saldo canónico desde Spring Boot:
    * GET /api/leaves/balances?employeeId={id}&year={year}
    */
-  getEmployeeBalance(employeeId: string, year = new Date().getFullYear()): Observable<ApiResponse<LeaveBalanceResponse>> {
-    let params = new HttpParams().set('year', year.toString()).set('size', '1');
+  getEmployeeBalance(employeeId: string, year = new Date().getFullYear(), employmentPeriodId?: string): Observable<ApiResponse<LeaveBalanceResponse>> {
+    let params = new HttpParams().set('year', year.toString()).set('size', '100');
     if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
 
     return this.http.get<ApiResponse<PageResponse<any>>>(`${this.baseUrl}/balances`, { params }).pipe(
       map((res) => {
-        const item = res.data?.content?.[0];
+        const balances = res.data?.content ?? [];
+        const item = employmentPeriodId
+          ? balances.find((candidate: LeaveBalanceResponse) => candidate?.employmentPeriodId === employmentPeriodId)
+          : balances[0];
         const entitled = item?.openingDays != null ? Number(item.openingDays) : 0;
         const used = item?.usedDays != null ? Number(item.usedDays) : 0;
         const pending = item?.pendingDays != null ? Number(item.pendingDays) : 0;
@@ -88,6 +91,7 @@ export class AbsenceService {
         const mapped: LeaveBalanceResponse = {
           id: item?.id || `bal-${employeeId}`,
           employeeId: item?.employeeId || employeeId,
+          employmentPeriodId: item?.employmentPeriodId ?? null,
           leaveTypeId: item?.leaveTypeId || '',
           leaveTypeName: 'Vacación Anual LGT',
           balanceYear: item?.balanceYear || year,

@@ -87,5 +87,12 @@ export class LandingBenefitsComponent {
       accent: 'primary',
       bullets: ['RBAC', 'Permisos granulares', 'Auditoría', 'Sesiones seguras']
     },
+    {
+      icon: 'check-circle',
+      title: 'Procesos laborales conectados',
+      description: 'Acompaña cada etapa del ciclo laboral con información consistente y disponible para los equipos de RR. HH.',
+      accent: 'secondary',
+      bullets: ['Expedientes centralizados', 'Seguimiento de contratos', 'Asistencia y ausencias', 'Historial trazable']
+    },
   ];
 }

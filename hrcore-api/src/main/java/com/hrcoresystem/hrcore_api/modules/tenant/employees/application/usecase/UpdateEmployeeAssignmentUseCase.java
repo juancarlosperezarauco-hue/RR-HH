@@ -22,12 +22,14 @@ public class UpdateEmployeeAssignmentUseCase {
     @Transactional
     public EmployeeAssignmentResponse execute(UUID employeeId, UUID assignmentId, EmployeeAssignmentRequest request) {
         employees.assertOperational();
+        policy.lockForWrite();
         Employee employee = employees.requireForUpdate(employeeId);
         EmployeeAssignment before = policy.require(employeeId, assignmentId);
         EmployeeAssignment after = policy.normalized(employee, request, before, employees.actorId());
         List<String> changed = policy.changedFields(before, after);
         if (changed.isEmpty()) return mapper.toResponse(before);
         EmployeeAssignment saved = assignments.save(after);
+        policy.validateReportingAfterChange(saved.startDate());
         audit.record("EMPLOYEE_ASSIGNMENT", "UPDATED", saved.id(), changed);
         return mapper.toResponse(saved);
     }

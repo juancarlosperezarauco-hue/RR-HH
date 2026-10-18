@@ -51,6 +51,7 @@ export class EmployeesPageComponent implements OnInit {
   readonly contacts = signal<EmergencyContact[]>([]);
   readonly periods = signal<EmploymentPeriod[]>([]);
   readonly terminations = signal<EmployeeTermination[]>([]);
+  readonly userActivationRequired = signal(false);
   readonly departments = signal<DepartmentOption[]>([]);
   readonly positions = signal<PositionOption[]>([]);
   readonly tenantUsers = signal<TenantUserResponse[]>([]);
@@ -181,7 +182,7 @@ export class EmployeesPageComponent implements OnInit {
 
   openProfile(id: string): void {
     this.service.get(id).subscribe({
-      next: response => { this.selected.set(response.data); this.showProfile.set(true); this.loadRelations(id); },
+      next: response => { this.selected.set(response.data); this.userActivationRequired.set(false); this.showProfile.set(true); this.loadRelations(id); },
       error: error => this.handleError(error, 'No se pudo consultar la ficha del empleado')
     });
   }
@@ -201,7 +202,18 @@ export class EmployeesPageComponent implements OnInit {
       if (!reason || !date) return;
       this.saving.set(true);
       this.service.rehire(employee.id, { startDate: date, reason, assignment: null }).subscribe({
-        next: response => { this.saving.set(false); this.selected.set(response.data.employee); this.loadRelations(employee.id); this.load(this.currentPage()); this.toast.success('Empleado recontratado correctamente.'); },
+        next: response => {
+          this.saving.set(false);
+          this.selected.set(response.data.employee);
+          this.userActivationRequired.set(response.data.userActivationRequired === true);
+          this.loadRelations(employee.id);
+          this.load(this.currentPage());
+          if (response.data.userActivationRequired) {
+            this.toast.warning('Empleado recontratado. Un administrador debe activar la cuenta vinculada para permitir el acceso.');
+          } else {
+            this.toast.success('Empleado recontratado correctamente.');
+          }
+        },
         error: error => { this.saving.set(false); this.handleError(error, 'No se pudo recontratar al empleado'); }
       });
     });
@@ -326,5 +338,9 @@ export class EmployeesPageComponent implements OnInit {
     date.setDate(date.getDate() + days);
     return date.toISOString().slice(0, 10);
   }
-  private handleError(error: unknown, fallback: string): void { const message = error instanceof HttpErrorResponse ? (error.error?.message || error.error?.error || fallback) : fallback; this.toast.error(String(message)); }
+  private handleError(error: unknown, fallback: string): void {
+    const body = error instanceof HttpErrorResponse ? error.error : null;
+    const message = body?.errors?.[0] || body?.message || body?.error || fallback;
+    this.toast.error(String(message));
+  }
 }

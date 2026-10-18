@@ -18,6 +18,10 @@ export const routes: Routes = [
     path: 'prices',
     loadComponent: () => import('./pages/prices-page/prices-page.component').then(m => m.PricesPageComponent)
   },
+  {
+    path: 'manual',
+    loadComponent: () => import('./pages/manual-page/manual-page.component').then(m => m.ManualPageComponent)
+  },
   
   // Login de tenant
   { path: 'login', loadComponent: () => import('./pages/login-page/login-page.component').then(m => m.LoginPageComponent) },
@@ -57,6 +61,11 @@ export const routes: Routes = [
       { path: 'home', loadComponent: () => import('./pages/tenant-home-page/tenant-home-page.component').then(m => m.TenantHomePageComponent) },
       { path: 'company-setup', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/company-setup-page/company-setup-page.component').then(m => m.CompanySetupPageComponent) },
       { path: 'company-settings', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/company-settings-page/company-settings-page.component').then(m => m.CompanySettingsPageComponent) },
+      {
+        path: 'audit',
+        canActivate: [tenantRoleGuard('OWNER_ADMIN', '/dashboard/access-denied'), permissionGuard(TENANT_ROUTE_PERMISSIONS.audit)],
+        loadComponent: () => import('./pages/tenant-audit-page/tenant-audit-page.component').then(m => m.TenantAuditPageComponent)
+      },
       { path: 'organization-chart', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/organization-chart-page/organization-chart-page.component').then(m => m.OrganizationChartPageComponent) },
       { path: 'my-team', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/my-team-page/my-team-page.component').then(m => m.MyTeamPageComponent) },
       { path: 'access-denied', loadComponent: () => import('./pages/tenant-access-denied-page/tenant-access-denied-page.component').then(m => m.TenantAccessDeniedPageComponent) },

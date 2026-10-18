@@ -61,11 +61,13 @@ import { LucideAngularModule } from 'lucide-angular';
               <lucide-icon name="download" class="h-4 w-4"></lucide-icon>
             </a>
 
+            <!--
             <a
               href="#tutoriales"
               class="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-black text-accent-foreground shadow-sm transition-colors hover:bg-background">
               Ver tutoriales
             </a>
+            -->
           </div>
         </div>
 
