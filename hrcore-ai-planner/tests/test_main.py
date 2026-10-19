@@ -26,7 +26,7 @@ def request(question: str):
             },
             "attendance.daily": {
                 "aggregate": True, "detail": False,
-                "dimensions": ["department.id", "department.name"],
+                "dimensions": ["department.id", "department.name", "attendance.work_date"],
                 "metrics": ["attendance.late_days", "attendance.late_minutes_total"],
             },
         },

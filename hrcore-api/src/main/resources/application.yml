@@ -36,6 +36,7 @@ app:
     planner:
       url: ${AI_PLANNER_URL:}
       service-token: ${AI_PLANNER_SERVICE_TOKEN:}
+      mode: ${AI_PLANNER_MODE:mock}
   billing:
     stripe:
       secret-key: ${STRIPE_SECRET_KEY:}

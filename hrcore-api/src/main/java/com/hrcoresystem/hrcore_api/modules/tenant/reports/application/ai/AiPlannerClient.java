@@ -6,10 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -24,19 +26,34 @@ public final class AiPlannerClient {
     private static final Set<String> CLARIFICATION_FIELDS = Set.of("status", "question", "reasonCode");
     private static final Set<String> UNSUPPORTED_FIELDS = Set.of("status", "message", "reasonCode");
     private static final Set<String> UNSUPPORTED_REASONS = Set.of(
-            "DATASET_NOT_AVAILABLE", "CAPABILITY_NOT_AVAILABLE", "UNRECOGNIZED_REQUEST");
+            "DATASET_NOT_AVAILABLE", "CAPABILITY_NOT_AVAILABLE", "UNRECOGNIZED_REQUEST",
+            "PERSONAL_IDENTIFIER_NOT_ALLOWED");
+    private static final Set<String> CLARIFICATION_REASONS = Set.of(
+            "MISSING_DATE_RANGE", "AMBIGUOUS_REQUEST", "MISSING_INFORMATION");
 
     public record Request(String contractVersion, String question, String catalogVersion,
-                          Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities) {}
-    public record Reply(String status, JsonNode plan, String reasonCode) {}
+                          Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities,
+                          Map<String, Object> semanticContext) {
+        public Request(String contractVersion, String question, String catalogVersion,
+                       Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities) {
+            this(contractVersion, question, catalogVersion, capabilities, Map.of());
+        }
+    }
+    public record Reply(String status, JsonNode plan, String reasonCode, String question) {
+        public Reply(String status, JsonNode plan, String reasonCode) {
+            this(status, plan, reasonCode, null);
+        }
+    }
 
     private final String url;
     private final String credential;
     private final RestClient rest;
     private final ObjectMapper mapper;
 
+    @Autowired
     public AiPlannerClient(@Value("${app.ai.planner.url:}") String url,
                            @Value("${app.ai.planner.service-token:}") String credential,
+                           @Value("${app.ai.planner.mode:mock}") String mode,
                            ObjectMapper mapper) {
         this.url = url == null ? "" : url.trim().replaceAll("/+$", "");
         this.credential = credential == null ? "" : credential;
@@ -46,8 +63,12 @@ public final class AiPlannerClient {
                 .connectTimeout(Duration.ofSeconds(1))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http);
-        factory.setReadTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds("gemini".equals(mode) ? 15 : 3));
         this.rest = RestClient.builder().requestFactory(factory).build();
+    }
+
+    public AiPlannerClient(String url, String credential, ObjectMapper mapper) {
+        this(url, credential, "mock", mapper);
     }
 
     public Reply plan(Request request) {
@@ -58,6 +79,10 @@ public final class AiPlannerClient {
                     .header("X-Internal-Service-Token", credential)
                     .body(request)
                     .exchange((sent, response) -> {
+                        if (response.getStatusCode().value() == 504)
+                            throw new AiFlowException(AiFlowException.Code.PLANNER_TIMEOUT);
+                        if (response.getStatusCode().value() == 502)
+                            throw invalid();
                         if (!response.getStatusCode().is2xxSuccessful())
                             throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
                         MediaType contentType = response.getHeaders().getContentType();
@@ -75,6 +100,10 @@ public final class AiPlannerClient {
                 throw invalid();
             }
         } catch (RestClientException | IllegalArgumentException failure) {
+            for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                if (cause instanceof HttpTimeoutException || cause instanceof java.net.SocketTimeoutException)
+                    throw new AiFlowException(AiFlowException.Code.PLANNER_TIMEOUT);
+            }
             throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
         }
     }
@@ -106,8 +135,9 @@ public final class AiPlannerClient {
             case "needs_clarification" -> {
                 exactFields(root, CLARIFICATION_FIELDS);
                 text(root, "question");
-                if (!"MISSING_DATE_RANGE".equals(text(root, "reasonCode"))) throw invalid();
-                yield new Reply(status, null, "MISSING_DATE_RANGE");
+                String reason = text(root, "reasonCode");
+                if (!CLARIFICATION_REASONS.contains(reason)) throw invalid();
+                yield new Reply(status, null, reason, text(root, "question"));
             }
             case "unsupported" -> {
                 exactFields(root, UNSUPPORTED_FIELDS);

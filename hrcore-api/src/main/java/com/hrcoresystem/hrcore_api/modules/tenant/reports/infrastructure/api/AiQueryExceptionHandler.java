@@ -24,8 +24,11 @@ public final class AiQueryExceptionHandler {
 
     @ExceptionHandler(AiFlowException.class)
     public ResponseEntity<Error> flow(AiFlowException failure) {
-        HttpStatus status = failure.code() == AiFlowException.Code.INVALID_QUESTION
-                ? HttpStatus.BAD_REQUEST : HttpStatus.BAD_GATEWAY;
+        HttpStatus status = switch (failure.code()) {
+            case INVALID_QUESTION -> HttpStatus.BAD_REQUEST;
+            case INVALID_PLANNER_RESPONSE -> HttpStatus.BAD_GATEWAY;
+            case PLANNER_TIMEOUT -> HttpStatus.GATEWAY_TIMEOUT;
+        };
         return ResponseEntity.status(status).body(new Error(failure.code().name(), failure.getMessage()));
     }
 

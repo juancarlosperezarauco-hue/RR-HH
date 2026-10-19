@@ -1,10 +1,13 @@
 package com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.api.AiQueryController;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.api.AiQueryExceptionHandler;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,7 +31,9 @@ class AiQueryFlowTest {
                 "UNRECOGNIZED_REQUEST"));
         assertEquals("unsupported", controller.query("{\"question\":\"  ejemplo  \"}").status());
         verify(planner).plan(argThat(request -> "ejemplo".equals(request.question())
-                && request.capabilities().containsKey("employees.roster")));
+                && request.capabilities().containsKey("employees.roster")
+                && request.semanticContext().containsKey("datasets")
+                && !request.semanticContext().toString().contains("permissions")));
 
         for (String invalid : List.of("{}", "[]", "{broken", "{\"question\":\"\"}",
                 "{\"question\":\"a\",\"sql\":\"SELECT 1\"}",
@@ -50,10 +55,51 @@ class AiQueryFlowTest {
                         java.util.Set.of("department.id"), java.util.Set.of("attendance.late_days"))));
         when(planner.plan(any())).thenReturn(new AiPlannerClient.Reply(
                         "needs_clarification", null, "MISSING_DATE_RANGE"),
-                new AiPlannerClient.Reply("unsupported", null, "DATASET_NOT_AVAILABLE"));
+                new AiPlannerClient.Reply("unsupported", null, "DATASET_NOT_AVAILABLE"),
+                new AiPlannerClient.Reply("unsupported", null, "PERSONAL_IDENTIFIER_NOT_ALLOWED"));
         assertEquals("needs_clarification", orchestrator.query("retrasos").status());
         assertEquals("unsupported", orchestrator.query("nómina").status());
+        assertEquals("PERSONAL_IDENTIFIER_NOT_ALLOWED", orchestrator.query("identificador").reasonCode());
         verifyNoInteractions(queries);
+    }
+
+    @Test
+    void semanticProjectionContainsOnlyAllowedFields() {
+        when(authorization.authorizedCatalog()).thenReturn(Map.of("attendance.daily",
+                new AnalyticAuthorizationPolicy.DatasetCapabilities(true, false,
+                        java.util.Set.of("attendance.work_date"), java.util.Set.of("attendance.late_days"))));
+        when(planner.plan(any())).thenReturn(new AiPlannerClient.Reply(
+                "needs_clarification", null, "MISSING_INFORMATION", "¿Qué año?"));
+        assertEquals("¿Qué año?", orchestrator.query("septiembre").question());
+        verify(planner).plan(argThat(request -> {
+            String metadata = request.semanticContext().toString();
+            return metadata.contains("attendance.work_date") && metadata.contains("attendance.late_days")
+                    && !metadata.contains("employee.full_name") && !metadata.contains("hr.reports")
+                    && !metadata.contains("tenant") && !metadata.contains("schema");
+        }));
+        verifyNoInteractions(queries);
+    }
+
+    @Test
+    void configuredBusinessClockAndOperatorsReachPlanner() {
+        TenantTimezoneService zone = mock(TenantTimezoneService.class);
+        when(zone.requiredZone()).thenReturn(ZoneId.of("America/La_Paz"));
+        AiQueryOrchestrator withZone = new AiQueryOrchestrator(
+                authorization, planner, queries, new SemanticCatalogV1(), zone);
+        when(authorization.authorizedCatalog()).thenReturn(Map.of("attendance.daily",
+                new AnalyticAuthorizationPolicy.DatasetCapabilities(true, true,
+                        java.util.Set.of("attendance.work_date"), java.util.Set.of("attendance.late_days"))));
+        when(planner.plan(any())).thenReturn(new AiPlannerClient.Reply(
+                "unsupported", null, "UNRECOGNIZED_REQUEST"));
+        withZone.query("ejemplo");
+        verify(planner).plan(argThat(request -> {
+            Map<String, Object> context = request.semanticContext();
+            return "America/La_Paz".equals(context.get("businessTimezone"))
+                    && LocalDate.now(ZoneId.of("America/La_Paz")).toString().equals(context.get("businessDate"))
+                    && context.toString().contains("between")
+                    && context.toString().contains("temporalRelations")
+                    && context.toString().contains("maxPageSize=100");
+        }));
     }
 
     @Test
@@ -75,6 +121,8 @@ class AiQueryFlowTest {
         assertEquals(400, handler.flow(new AiFlowException(AiFlowException.Code.INVALID_QUESTION))
                 .getStatusCode().value());
         assertEquals(502, handler.flow(new AiFlowException(AiFlowException.Code.INVALID_PLANNER_RESPONSE))
+                .getStatusCode().value());
+        assertEquals(504, handler.flow(new AiFlowException(AiFlowException.Code.PLANNER_TIMEOUT))
                 .getStatusCode().value());
         assertEquals(403, handler.query(new QueryPlanException(QueryPlanException.Code.QUERY_NOT_ALLOWED))
                 .getStatusCode().value());

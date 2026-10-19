@@ -57,6 +57,7 @@ class AiPlannerClientTest {
         var client = new AiPlannerClient("http://127.0.0.1:" + server.getAddress().getPort(),
                 TOKEN, new ObjectMapper());
         assertEquals("needs_clarification", client.plan(request()).status());
+        assertEquals("¿Cuándo?", client.plan(request()).question());
         assertEquals(TOKEN, token.get());
         assertFalse(body.get().contains("tenantSlug"));
         assertFalse(body.get().contains("Authorization"));
@@ -78,6 +79,12 @@ class AiPlannerClientTest {
         status.set(401);
         assertEquals(QueryPlanException.Code.SERVICE_UNAVAILABLE,
                 assertThrows(QueryPlanException.class, () -> client.plan(request())).code());
+        status.set(502);
+        assertEquals(AiFlowException.Code.INVALID_PLANNER_RESPONSE,
+                assertThrows(AiFlowException.class, () -> client.plan(request())).code());
+        status.set(504);
+        assertEquals(AiFlowException.Code.PLANNER_TIMEOUT,
+                assertThrows(AiFlowException.class, () -> client.plan(request())).code());
         status.set(200);
         reply.set("x".repeat(128 * 1024 + 1));
         assertEquals(AiFlowException.Code.INVALID_PLANNER_RESPONSE,

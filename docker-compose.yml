@@ -79,6 +79,7 @@ services:
     environment:
       AI_PLANNER_URL: ${AI_PLANNER_URL:-}
       AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
+      AI_PLANNER_MODE: ${AI_PLANNER_MODE:-mock}
       PG_DUMP_PATH: /usr/lib/postgresql/16/bin/pg_dump
       PG_RESTORE_PATH: /usr/lib/postgresql/16/bin/pg_restore
       PSQL_PATH: /usr/lib/postgresql/16/bin/psql
@@ -101,8 +102,10 @@ services:
       context: ./hrcore-ai-planner
     environment:
       APP_ENV: ${APP_ENV:-production}
-      AI_PLANNER_MODE: mock
+      AI_PLANNER_MODE: ${AI_PLANNER_MODE:-mock}
       AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
+      GEMINI_ENABLED: ${GEMINI_ENABLED:-false}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
     expose:
       - "8000"
     networks:
