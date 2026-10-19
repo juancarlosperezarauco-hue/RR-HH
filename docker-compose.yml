@@ -77,6 +77,8 @@ services:
     env_file:
       - .env
     environment:
+      AI_PLANNER_URL: ${AI_PLANNER_URL:-}
+      AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
       PG_DUMP_PATH: /usr/lib/postgresql/16/bin/pg_dump
       PG_RESTORE_PATH: /usr/lib/postgresql/16/bin/pg_restore
       PSQL_PATH: /usr/lib/postgresql/16/bin/psql
@@ -90,6 +92,19 @@ services:
       - maven_cache:/root/.m2
       - ./backups:/storage/backups
     working_dir: /app
+    networks:
+      - hrcore-net
+
+  serv-hrcore-ai-planner:
+    profiles: ["ai-reports"]
+    build:
+      context: ./hrcore-ai-planner
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      AI_PLANNER_MODE: mock
+      AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
+    expose:
+      - "8000"
     networks:
       - hrcore-net
 

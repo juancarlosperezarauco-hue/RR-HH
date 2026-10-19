@@ -32,6 +32,10 @@ logging:
     org.flywaydb.core.internal.sqlscript.DefaultSqlScriptExecutor: WARN
 
 app:
+  ai:
+    planner:
+      url: ${AI_PLANNER_URL:}
+      service-token: ${AI_PLANNER_SERVICE_TOKEN:}
   billing:
     stripe:
       secret-key: ${STRIPE_SECRET_KEY:}
