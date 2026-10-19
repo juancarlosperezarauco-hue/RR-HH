@@ -75,6 +75,8 @@ class AiQueryHttpIntegrationTest {
 
     @MockitoBean private PlatformBootstrapRunner bootstrap;
     @MockitoBean private S3Client documentS3Client;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private AiPlannerClient plannerClient;
     @Autowired private JwtTokenService tokens;
     @Autowired private AiConversationTurnPersistence turnPersistence;
     @LocalServerPort private int port;
@@ -441,6 +443,67 @@ class AiQueryHttpIntegrationTest {
                 assertEquals(1, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?",
                         concurrentConversationId));
             }
+        }
+    }
+
+    @Test
+    void historicalReportRefreshAndPaginationUseCurrentDataWithoutPlanner() throws Exception {
+        String owner = session(schemaB, slugB, userB, ALL);
+        UUID conversationId = UUID.fromString(conversation(slugB, owner, "POST",
+                "/api/hr/ai/conversations", null).body().at("/data/id").asText());
+        String path = "/api/hr/ai/conversations/" + conversationId;
+        String body = mapper.writeValueAsString(java.util.Map.of("clientMessageId", UUID.randomUUID(),
+                "message", "listar empleados al 2026-01-15"));
+        Reply first = conversation(slugB, owner, "POST", path + "/messages", body);
+        assertEquals(200, first.status(), first.body().toPrettyString());
+        UUID sourceRun = UUID.fromString(first.body().at("/data/reportRunId").asText());
+        org.mockito.Mockito.clearInvocations(plannerClient);
+        Reply nextTurn = conversation(slugB, owner, "POST", path + "/messages",
+                mapper.writeValueAsString(java.util.Map.of("clientMessageId", UUID.randomUUID(),
+                        "message", "retrasos por departamento desde 2026-01-01 hasta antes de 2026-02-01")));
+        assertEquals(200, nextTurn.status());
+        org.mockito.Mockito.verify(plannerClient).plan(org.mockito.ArgumentMatchers.argThat(request ->
+                request.conversationContext() != null && request.conversationContext().hasUsablePlan()));
+        org.mockito.Mockito.clearInvocations(plannerClient);
+        UUID extra = UUID.randomUUID();
+        try {
+            Reply history = conversation(slugB, owner, "GET", path + "/messages?page=0&size=50", null);
+            assertEquals(sourceRun.toString(), history.body().at("/data/content/1/reportRunId").asText());
+            assertFalse(history.body().toString().contains("Bora Tenant"));
+            String refresh = path + "/reports/" + sourceRun + "/refresh";
+            Reply before = conversation(slugB, owner, "POST", refresh + "?page=0&size=1", null);
+            assertEquals(200, before.status());
+            assertFalse(before.body().at("/data/result/hasMore").asBoolean());
+            try (Connection tenant = connection(schemaB)) {
+                execute(tenant, "INSERT INTO employees(id,employee_number,first_name,last_name,"
+                                + "document_type,document_number,hire_date) VALUES (?,?,?,?,?,?,?)",
+                        extra, extra.toString(), "Zeta", "Synthetic", "CI", extra.toString(), LocalDate.of(2026, 1, 1));
+            }
+            Reply changed = conversation(slugB, owner, "POST", refresh + "?page=0&size=1", null);
+            assertEquals(200, changed.status(), changed.body().toPrettyString());
+            assertTrue(changed.body().at("/data/result/hasMore").asBoolean());
+            Reply secondPage = conversation(slugB, owner, "POST", refresh + "?page=1&size=1", null);
+            assertEquals(200, secondPage.status(), secondPage.body().toPrettyString());
+            assertEquals("Zeta Synthetic", secondPage.body().at("/data/result/rows/0/employee.full_name").asText());
+            UUID pagedRun = UUID.fromString(secondPage.body().at("/data/reportRunId").asText());
+            try (Connection tenant = connection(schemaB)) {
+                assertEquals(1, scalarLong(tenant, "SELECT (query_plan->'page'->>'number')::int FROM ai_report_runs WHERE id=?", pagedRun));
+                assertEquals(1, scalarLong(tenant, "SELECT (query_plan->'page'->>'size')::int FROM ai_report_runs WHERE id=?", pagedRun));
+                assertFalse(scalarText(tenant, "SELECT result_metadata::text FROM ai_report_runs WHERE id=?", pagedRun).contains("Zeta"));
+            }
+            Reply reopened = conversation(slugB, owner, "GET", path + "/messages?page=0&size=50", null);
+            assertEquals(pagedRun.toString(), reopened.body().at("/data/content/1/reportRunId").asText());
+            for (String invalid : List.of("page=-1", "page=1001", "size=0", "size=101"))
+                assertEquals(400, conversation(slugB, owner, "POST", refresh + "?" + invalid, null).status());
+            assertEquals(404, conversation(slugA, session(schemaA, slugA, userA, ALL), "POST", refresh, null).status());
+            assertEquals(403, conversation(slugB, session(schemaB, slugB, userB, "employees.list"), "POST", refresh, null).status());
+            org.mockito.Mockito.verifyNoInteractions(plannerClient);
+        } finally {
+            try (Connection tenant = connection(schemaB)) {
+                execute(tenant, "DELETE FROM employment_periods WHERE employee_id=?", extra);
+                execute(tenant, "DELETE FROM employees WHERE id=?", extra);
+            }
+            conversation(slugB, owner, "DELETE", path, null);
         }
     }
 

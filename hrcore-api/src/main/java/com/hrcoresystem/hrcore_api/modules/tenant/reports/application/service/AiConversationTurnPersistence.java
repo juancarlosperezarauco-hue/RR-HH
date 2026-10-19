@@ -172,7 +172,7 @@ public class AiConversationTurnPersistence {
                 .orElseThrow(() -> new ResourceNotFoundException("Reporte no encontrado"));
         Instant finished = Instant.now();
         AiReportRunEntity refreshed = newRun(conversationId, original.getRequestMessageId(),
-                original.getQueryPlan(), result, durationMillis, finished);
+                source.plan(), result, durationMillis, finished);
         reportRuns.saveAndFlush(refreshed);
         conversation.setLastMessageAt(finished);
         conversations.save(conversation);

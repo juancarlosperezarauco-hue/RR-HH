@@ -10,5 +10,10 @@ public record AiConversationMessageResponse(
         String messageType,
         String state,
         Instant createdAt,
-        Instant completedAt) {
+        Instant completedAt,
+        UUID reportRunId) {
+    public AiConversationMessageResponse(UUID id, String role, String content, String messageType,
+                                         String state, Instant createdAt, Instant completedAt) {
+        this(id, role, content, messageType, state, createdAt, completedAt, null);
+    }
 }

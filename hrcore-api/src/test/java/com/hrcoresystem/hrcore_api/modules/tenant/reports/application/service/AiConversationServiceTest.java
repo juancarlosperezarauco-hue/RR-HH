@@ -39,13 +39,14 @@ class AiConversationServiceTest {
             new AnalyticAuthorizationPolicy(security, new SemanticCatalogV1());
     @Mock private AiConversationJpaRepository repository;
     @Mock private AiMessageJpaRepository messages;
+    @Mock private com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiReportRunJpaRepository reportRuns;
     private AiConversationService service;
     private UUID ownerId;
 
     @BeforeEach
     void setUp() {
         ownerId = UUID.randomUUID();
-        service = new AiConversationService(repository, messages, security, authorization);
+        service = new AiConversationService(repository, messages, reportRuns, security, authorization);
         authenticate("hr.reports.employees.read");
     }
 
@@ -119,6 +120,28 @@ class AiConversationServiceTest {
         service.delete(conversationId);
 
         verify(repository).delete(entity);
+    }
+
+    @Test
+    void historyResolvesReportIdsInOneConversationScopedProjectionWithoutLoadingPlans() {
+        UUID conversationId = UUID.randomUUID(), requestId = UUID.randomUUID(), runId = UUID.randomUUID();
+        var conversation = new AiConversationEntity();
+        when(repository.findByIdAndOwnerUserId(conversationId, ownerId)).thenReturn(Optional.of(conversation));
+        var user = new com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiMessageEntity();
+        user.setId(requestId); user.setRole("USER"); user.setMessageType("TEXT");
+        var report = new com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiMessageEntity();
+        report.setRole("ASSISTANT"); report.setMessageType("REPORT"); report.setInReplyToMessageId(requestId);
+        when(messages.findAllByConversationId(eq(conversationId), any(Pageable.class)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(user, report)));
+        var projection = mock(com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiReportRunJpaRepository.LatestRun.class);
+        when(projection.getRequestMessageId()).thenReturn(requestId);
+        when(projection.getReportRunId()).thenReturn(runId);
+        when(reportRuns.findLatestRuns(conversationId, List.of(requestId))).thenReturn(List.of(projection));
+        var history = service.messages(conversationId, Pageable.ofSize(50));
+        assertNull(history.getContent().getFirst().reportRunId());
+        assertEquals(runId, history.getContent().get(1).reportRunId());
+        verify(reportRuns).findLatestRuns(conversationId, List.of(requestId));
+        verifyNoMoreInteractions(reportRuns);
     }
 
     private AiConversationEntity captureSaved() {

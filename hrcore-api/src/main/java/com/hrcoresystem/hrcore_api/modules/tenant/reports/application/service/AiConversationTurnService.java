@@ -111,7 +111,13 @@ public class AiConversationTurnService {
     }
 
     public AiReportRefreshResponse refresh(UUID conversationId, UUID reportRunId) {
+        return refresh(conversationId, reportRunId, null, null);
+    }
+
+    public AiReportRefreshResponse refresh(UUID conversationId, UUID reportRunId, Integer page, Integer size) {
         UUID ownerId = requireAuthorizedOwner();
+        if ((page != null && (page < 0 || page > 1000)) || (size != null && (size < 1 || size > 100)))
+            throw new com.hrcoresystem.hrcore_api.common.exception.BusinessException("Paginación no válida");
         AiConversationTurnPersistence.RunSnapshot source = persistence.loadRun(conversationId, ownerId, reportRunId);
         JsonNode plan = source.plan();
         if (!"1".equals(source.planVersion())
@@ -120,6 +126,15 @@ public class AiConversationTurnService {
                 || !source.catalogVersion().equals(plan.path("catalogVersion").asText()))
             throw new BusinessConflictException("El reporte no es compatible con el catálogo actual.");
 
+        if (page != null || size != null) {
+            var effective = (com.fasterxml.jackson.databind.node.ObjectNode) plan.deepCopy();
+            var pagination = effective.withObject("/page");
+            if (page != null) pagination.put("number", page);
+            if (size != null) pagination.put("size", size);
+            plan = effective;
+            source = new AiConversationTurnPersistence.RunSnapshot(source.id(), source.requestMessageId(),
+                    plan, source.planVersion(), source.catalogVersion());
+        }
         long started = System.nanoTime();
         QueryResultV1 result = queries.execute(plan.toString());
         long durationMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();

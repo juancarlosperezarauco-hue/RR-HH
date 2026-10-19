@@ -9,6 +9,10 @@ import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persist
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiConversationJpaRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiMessageEntity;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiMessageJpaRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiReportRunJpaRepository;
+import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,15 +31,18 @@ public class AiConversationService {
 
     private final AiConversationJpaRepository conversations;
     private final AiMessageJpaRepository messages;
+    private final AiReportRunJpaRepository reportRuns;
     private final SecurityContextFacade security;
     private final AnalyticAuthorizationPolicy authorization;
 
     public AiConversationService(AiConversationJpaRepository conversations,
                                  AiMessageJpaRepository messages,
+                                 AiReportRunJpaRepository reportRuns,
                                  SecurityContextFacade security,
                                  AnalyticAuthorizationPolicy authorization) {
         this.conversations = conversations;
         this.messages = messages;
+        this.reportRuns = reportRuns;
         this.security = security;
         this.authorization = authorization;
     }
@@ -67,8 +74,16 @@ public class AiConversationService {
     public Page<AiConversationMessageResponse> messages(UUID conversationId, Pageable pageable) {
         UUID ownerId = requireAuthorizedOwner();
         requireOwned(conversationId, ownerId);
-        return messages.findAllByConversationId(conversationId, boundedMessages(pageable))
-                .map(AiConversationService::toMessageResponse);
+        Page<AiMessageEntity> page = messages.findAllByConversationId(conversationId, boundedMessages(pageable));
+        List<UUID> requestIds = page.stream()
+                .filter(message -> "ASSISTANT".equals(message.getRole()) && "REPORT".equals(message.getMessageType()))
+                .map(AiMessageEntity::getInReplyToMessageId).filter(java.util.Objects::nonNull).distinct().toList();
+        Map<UUID, UUID> runs = requestIds.isEmpty() ? Map.of() : reportRuns.findLatestRuns(conversationId, requestIds)
+                .stream().collect(Collectors.toMap(AiReportRunJpaRepository.LatestRun::getRequestMessageId,
+                        AiReportRunJpaRepository.LatestRun::getReportRunId));
+        return page.map(message -> toMessageResponse(message,
+                "REPORT".equals(message.getMessageType()) && message.getInReplyToMessageId() != null
+                        ? runs.get(message.getInReplyToMessageId()) : null));
     }
 
     @Transactional
@@ -101,9 +116,9 @@ public class AiConversationService {
                 entity.getCreatedAt(), entity.getUpdatedAt(), entity.getLastMessageAt(), entity.getVersion());
     }
 
-    private static AiConversationMessageResponse toMessageResponse(AiMessageEntity entity) {
+    private static AiConversationMessageResponse toMessageResponse(AiMessageEntity entity, UUID reportRunId) {
         return new AiConversationMessageResponse(entity.getId(), entity.getRole(), entity.getContent(),
-                entity.getMessageType(), entity.getState(), entity.getCreatedAt(), entity.getCompletedAt());
+                entity.getMessageType(), entity.getState(), entity.getCreatedAt(), entity.getCompletedAt(), reportRunId);
     }
 
     private static Pageable bounded(Pageable pageable) {

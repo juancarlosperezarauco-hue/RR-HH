@@ -199,6 +199,35 @@ class AiConversationTurnServiceTest {
         verifyNoInteractions(persistence, orchestrator, queries);
     }
 
+    @Test
+    void refreshPaginationExecutesAndPersistsTheCopiedPlanAndNeverPlansAgain() {
+        UUID sourceId = UUID.randomUUID();
+        when(persistence.loadRun(conversationId, ownerId, sourceId)).thenReturn(
+                new AiConversationTurnPersistence.RunSnapshot(sourceId, UUID.randomUUID(), plan, "1", "1"));
+        when(queries.execute(anyString())).thenReturn(result);
+        when(persistence.saveRefresh(any(), any(), any(), any(), anyLong())).thenReturn(
+                new AiConversationTurnPersistence.StoredRun(UUID.randomUUID(), Instant.now()));
+        service.refresh(conversationId, sourceId, 1, 10);
+        var snapshot = org.mockito.ArgumentCaptor.forClass(AiConversationTurnPersistence.RunSnapshot.class);
+        verify(persistence).saveRefresh(eq(conversationId), eq(ownerId), snapshot.capture(), eq(result), anyLong());
+        assertEquals(1, snapshot.getValue().plan().at("/page/number").asInt());
+        assertEquals(10, snapshot.getValue().plan().at("/page/size").asInt());
+        assertEquals(0, plan.at("/page/number").asInt(), "source plan must not be mutated");
+        verify(queries).execute(snapshot.getValue().plan().toString());
+        verifyNoInteractions(orchestrator);
+    }
+
+    @Test
+    void invalidRefreshPagesAreRejectedBeforeReadingOrExecutingPlans() {
+        for (int page : new int[] {-1, 1001})
+            assertThrows(com.hrcoresystem.hrcore_api.common.exception.BusinessException.class,
+                    () -> service.refresh(conversationId, UUID.randomUUID(), page, 20));
+        for (int size : new int[] {0, 101})
+            assertThrows(com.hrcoresystem.hrcore_api.common.exception.BusinessException.class,
+                    () -> service.refresh(conversationId, UUID.randomUUID(), 0, size));
+        verifyNoInteractions(persistence, queries, orchestrator);
+    }
+
     private AiMessageEntity message(UUID id, String role, String content, String type,
                                     String state, UUID replyTo) {
         AiMessageEntity result = new AiMessageEntity();
