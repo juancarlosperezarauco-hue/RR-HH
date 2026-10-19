@@ -78,7 +78,7 @@ public class AiConversationTurnService {
         long started = System.nanoTime();
         AiQueryOrchestrator.PlannedQuery planned;
         try {
-            planned = orchestrator.queryWithPlan(request.message());
+            planned = orchestrator.queryWithPlan(request.message(), reservation.conversationContext());
         } catch (RuntimeException failure) {
             try {
                 persistence.fail(conversationId, ownerId, reservation.request().getId(),

@@ -1,6 +1,7 @@
 package com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import java.time.LocalDate;
@@ -8,6 +9,7 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,16 +24,26 @@ public final class AiQueryOrchestrator {
     private final AnalyticQueryService queries;
     private final SemanticCatalogV1 catalog;
     private final TenantTimezoneService timezone;
+    private final QueryPlanValidationService planValidator;
 
     @Autowired
     public AiQueryOrchestrator(AnalyticAuthorizationPolicy authorization, AiPlannerClient planner,
                                AnalyticQueryService queries, SemanticCatalogV1 catalog,
-                               TenantTimezoneService timezone) {
+                               TenantTimezoneService timezone,
+                               QueryPlanValidationService planValidator) {
         this.authorization = authorization;
         this.planner = planner;
         this.queries = queries;
         this.catalog = catalog;
         this.timezone = timezone;
+        this.planValidator = planValidator;
+    }
+
+    public AiQueryOrchestrator(AnalyticAuthorizationPolicy authorization, AiPlannerClient planner,
+                               AnalyticQueryService queries, SemanticCatalogV1 catalog,
+                               TenantTimezoneService timezone) {
+        this(authorization, planner, queries, catalog, timezone,
+                new QueryPlanValidationService(new ObjectMapper(), catalog));
     }
 
     public AiQueryOrchestrator(AnalyticAuthorizationPolicy authorization, AiPlannerClient planner,
@@ -40,18 +52,24 @@ public final class AiQueryOrchestrator {
     }
 
     public AiQueryResponse query(String question) {
-        return queryWithPlan(question).response();
+        return queryWithPlan(question, null).response();
     }
 
     /** Returns a plan only after the existing query service has validated, authorized and executed it. */
     public PlannedQuery queryWithPlan(String question) {
+        return queryWithPlan(question, null);
+    }
+
+    /** Plans a conversational turn using only a compatible, currently authorized prior plan. */
+    public PlannedQuery queryWithPlan(String question, AiPlannerClient.ConversationContext conversationContext) {
         Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities =
                 new TreeMap<>(authorization.authorizedCatalog());
         if (capabilities.isEmpty())
             throw new QueryPlanException(QueryPlanException.Code.QUERY_NOT_ALLOWED);
 
         AiPlannerClient.Reply reply = planner.plan(new AiPlannerClient.Request(
-                "1", question, SemanticCatalogV1.VERSION, capabilities, semanticContext(capabilities)));
+                "1", question, SemanticCatalogV1.VERSION, capabilities, semanticContext(capabilities),
+                safeConversationContext(conversationContext)));
         return switch (reply.status()) {
             case "query_plan" -> {
                 JsonNode plan = reply.plan().deepCopy();
@@ -64,6 +82,36 @@ public final class AiQueryOrchestrator {
                     reply.reasonCode()), null);
             default -> throw new AiFlowException(AiFlowException.Code.INVALID_PLANNER_RESPONSE);
         };
+    }
+
+    private AiPlannerClient.ConversationContext safeConversationContext(
+            AiPlannerClient.ConversationContext context) {
+        if (context == null || !context.hasUsablePlan() || context.lastSuccessfulPlan() == null)
+            return context == null ? null : context.withoutPlan();
+        if (!"1".equals(context.planVersion())
+                || !SemanticCatalogV1.VERSION.equals(context.catalogVersion())
+                || !context.planVersion().equals(context.lastSuccessfulPlan().path("version").asText())
+                || !context.catalogVersion().equals(context.lastSuccessfulPlan().path("catalogVersion").asText())
+                || containsPersonalFilter(context.lastSuccessfulPlan()))
+            return context.withoutPlan();
+        try {
+            var validated = planValidator.validate(context.lastSuccessfulPlan().toString());
+            authorization.authorize(validated, AnalyticAuthorizationPolicy.Action.QUERY);
+            return context;
+        } catch (QueryPlanException incompatibleOrUnauthorized) {
+            return context.withoutPlan();
+        }
+    }
+
+    private static boolean containsPersonalFilter(JsonNode plan) {
+        JsonNode filters = plan.path("filters");
+        if (!filters.isArray()) return false;
+        for (JsonNode filter : filters) {
+            String field = filter.path("field").asText();
+            if (Set.of("employee.id", "employee.full_name", "employment_period.id").contains(field))
+                return true;
+        }
+        return false;
     }
 
     private Map<String, Object> semanticContext(

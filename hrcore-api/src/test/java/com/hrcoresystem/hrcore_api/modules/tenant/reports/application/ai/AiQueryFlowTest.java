@@ -116,6 +116,66 @@ class AiQueryFlowTest {
     }
 
     @Test
+    void conversationalContextRequiresCompatibleAuthorizedPlanAndDropsPersonalFilters() throws Exception {
+        when(authorization.authorizedCatalog()).thenReturn(Map.of("employees.roster",
+                new AnalyticAuthorizationPolicy.DatasetCapabilities(true, true,
+                        java.util.Set.of("employee.full_name", "department.id", "department.name"),
+                        java.util.Set.of("employees.distinct_count"))));
+        when(planner.plan(any())).thenReturn(new AiPlannerClient.Reply(
+                "unsupported", null, "UNRECOGNIZED_REQUEST"));
+        var safePlan = mapper.readTree(QueryPlanValidationServiceTest.ROSTER);
+        var metadata = List.of(new AiPlannerClient.MessageMetadata("USER", "TEXT", "COMPLETED"));
+        var safeContext = new AiPlannerClient.ConversationContext(true, safePlan, "1", "1", metadata);
+
+        orchestrator.queryWithPlan("ordénalos por departamento", safeContext);
+
+        verify(planner).plan(argThat(request -> request.conversationContext() != null
+                && request.conversationContext().hasUsablePlan()
+                && request.conversationContext().lastSuccessfulPlan().equals(safePlan)
+                && request.conversationContext().recentMessages().equals(metadata)));
+        verify(authorization).authorize(any(), eq(AnalyticAuthorizationPolicy.Action.QUERY));
+
+        var personalPlan = safePlan.deepCopy();
+        ((com.fasterxml.jackson.databind.node.ObjectNode) personalPlan).set("filters", mapper.createArrayNode()
+                .add(mapper.createObjectNode().put("field", "employee.full_name")
+                        .put("op", "eq").put("value", "Synthetic Person")));
+        var personalContext = new AiPlannerClient.ConversationContext(true, personalPlan,
+                "1", "1", metadata);
+        orchestrator.queryWithPlan("ordénalos", personalContext);
+
+        verify(planner).plan(argThat(request -> request.conversationContext() != null
+                && !request.conversationContext().hasUsablePlan()
+                && request.conversationContext().lastSuccessfulPlan() == null));
+    }
+
+    @Test
+    void staleCatalogAndRevokedPermissionsRemoveThePriorPlanBeforePlanning() throws Exception {
+        when(authorization.authorizedCatalog()).thenReturn(Map.of("employees.roster",
+                new AnalyticAuthorizationPolicy.DatasetCapabilities(true, true,
+                        java.util.Set.of("employee.full_name"), java.util.Set.of("employees.distinct_count"))));
+        when(planner.plan(any())).thenReturn(new AiPlannerClient.Reply(
+                "unsupported", null, "UNRECOGNIZED_REQUEST"));
+        var safePlan = mapper.readTree(QueryPlanValidationServiceTest.ROSTER);
+        var metadata = List.of(new AiPlannerClient.MessageMetadata("USER", "TEXT", "COMPLETED"));
+
+        orchestrator.queryWithPlan("ordénalos", new AiPlannerClient.ConversationContext(
+                true, safePlan, "1", "0", metadata));
+        verify(planner).plan(argThat(request -> request.conversationContext() != null
+                && !request.conversationContext().hasUsablePlan()));
+
+        reset(planner);
+        when(planner.plan(any())).thenReturn(new AiPlannerClient.Reply(
+                "unsupported", null, "UNRECOGNIZED_REQUEST"));
+        doThrow(new QueryPlanException(QueryPlanException.Code.QUERY_NOT_ALLOWED))
+                .when(authorization).authorize(any(), eq(AnalyticAuthorizationPolicy.Action.QUERY));
+        orchestrator.queryWithPlan("ordénalos", new AiPlannerClient.ConversationContext(
+                true, safePlan, "1", "1", metadata));
+        verify(planner).plan(argThat(request -> request.conversationContext() != null
+                && !request.conversationContext().hasUsablePlan()
+                && request.conversationContext().recentMessages().equals(metadata)));
+    }
+
+    @Test
     void endpointSpecificErrorsHaveStableCodesAndStatuses() {
         AiQueryExceptionHandler handler = new AiQueryExceptionHandler();
         assertEquals(400, handler.flow(new AiFlowException(AiFlowException.Code.INVALID_QUESTION))

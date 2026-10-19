@@ -23,4 +23,7 @@ public interface AiMessageJpaRepository extends JpaRepository<AiMessageEntity, U
     boolean existsByConversationIdAndRoleAndState(UUID conversationId, String role, String state);
 
     Page<AiMessageEntity> findAllByConversationId(UUID conversationId, Pageable pageable);
+
+    Page<AiMessageEntity> findAllByConversationIdOrderByCreatedAtDescIdDesc(
+            UUID conversationId, Pageable pageable);
 }

@@ -84,9 +84,12 @@ class AiConversationTurnServiceTest {
         AiMessageEntity response = message(UUID.randomUUID(), "ASSISTANT", "Reporte ejecutado correctamente.",
                 "REPORT", "COMPLETED", request.getId());
         UUID reportRunId = UUID.randomUUID();
+        var context = new com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai.AiPlannerClient.ConversationContext(
+                true, plan, "1", "1", List.of(new com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai.AiPlannerClient.MessageMetadata(
+                        "USER", "TEXT", "COMPLETED")));
         when(persistence.reserve(conversationId, ownerId, clientMessageId, content, Duration.ofMinutes(2)))
-                .thenReturn(new AiConversationTurnPersistence.Reservation(request, null, null, 5, false));
-        when(orchestrator.queryWithPlan(content)).thenReturn(
+                .thenReturn(new AiConversationTurnPersistence.Reservation(request, null, null, 5, false, context));
+        when(orchestrator.queryWithPlan(content, context)).thenReturn(
                 new AiQueryOrchestrator.PlannedQuery(AiQueryResponse.ok(result), plan));
         when(persistence.complete(eq(conversationId), eq(ownerId), eq(request.getId()), eq(5),
                 eq("COMPLETED"), eq("REPORT"), eq("Reporte ejecutado correctamente."),
@@ -99,6 +102,7 @@ class AiConversationTurnServiceTest {
         assertEquals("ok", actual.status());
         assertEquals(reportRunId, actual.reportRunId());
         assertEquals(result, actual.result());
+        verify(orchestrator).queryWithPlan(content, context);
         verify(persistence).complete(eq(conversationId), eq(ownerId), eq(request.getId()), eq(5),
                 eq("COMPLETED"), eq("REPORT"), anyString(), eq(plan), eq(result), anyLong());
     }
@@ -130,7 +134,7 @@ class AiConversationTurnServiceTest {
                 "UNSUPPORTED", "COMPLETED", request.getId());
         when(persistence.reserve(any(), any(), any(), anyString(), any()))
                 .thenReturn(new AiConversationTurnPersistence.Reservation(request, null, null, 2, false));
-        when(orchestrator.queryWithPlan(content)).thenReturn(new AiQueryOrchestrator.PlannedQuery(
+        when(orchestrator.queryWithPlan(content, null)).thenReturn(new AiQueryOrchestrator.PlannedQuery(
                 AiQueryResponse.unsupported("No se admite.", "UNRECOGNIZED_REQUEST"), null));
         when(persistence.complete(any(), any(), any(), anyInt(), eq("COMPLETED"), eq("UNSUPPORTED"),
                 eq("No se admite."), isNull(), isNull(), anyLong()))
@@ -150,7 +154,7 @@ class AiConversationTurnServiceTest {
         AiMessageEntity request = message(UUID.randomUUID(), "USER", "listar empleados", "TEXT", "PENDING", null);
         when(persistence.reserve(any(), any(), any(), anyString(), any()))
                 .thenReturn(new AiConversationTurnPersistence.Reservation(request, null, null, 11, false));
-        when(orchestrator.queryWithPlan("listar empleados"))
+        when(orchestrator.queryWithPlan("listar empleados", null))
                 .thenThrow(new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE));
         AiMessageEntity error = message(UUID.randomUUID(), "ASSISTANT", "No se pudo completar la consulta.",
                 "ERROR", "COMPLETED", request.getId());

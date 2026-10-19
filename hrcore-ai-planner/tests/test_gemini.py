@@ -15,7 +15,7 @@ from app.main import PlannerRequest, app, safe_response
 TOKEN = "synthetic-service-token-32-characters-minimum"
 
 
-def request(question="Muestra empleados al 2026-09-15"):
+def request(question="Muestra empleados al 2026-09-15", conversation_context=None):
     roster = ["employee.id", "employee.full_name", "department.id", "department.name", "position.name"]
     daily = roster + ["attendance.work_date", "attendance.status", "attendance.first_in_local_time",
                       "attendance.late_minutes"]
@@ -35,7 +35,7 @@ def request(question="Muestra empleados al 2026-09-15"):
         }
     rm = ["employees.distinct_count"]
     am = ["attendance.record_count", "attendance.late_days", "attendance.late_minutes_total"]
-    return PlannerRequest.model_validate({
+    body = {
         "contractVersion": "1", "question": question, "catalogVersion": "1",
         "capabilities": {
             "employees.roster": {"aggregate": True, "detail": True, "dimensions": roster, "metrics": rm},
@@ -49,7 +49,10 @@ def request(question="Muestra empleados al 2026-09-15"):
                        "maxHaving": 6, "maxOrderBy": 4},
             "businessDate": "2026-10-19", "businessTimezone": "America/La_Paz",
         },
-    })
+    }
+    if conversation_context is not None:
+        body["conversationContext"] = conversation_context
+    return PlannerRequest.model_validate(body)
 
 
 def roster_plan(select=None):
@@ -69,6 +72,19 @@ def daily_plan(select=None, aggregate=False):
             "metrics": ["attendance.late_days"] if aggregate else [], "filters": [],
             "groupBy": ["department.id"] if aggregate else [], "having": [], "orderBy": [],
             "page": {"number": 0, "size": 20}, "visualization": {"type": "table"}}
+
+
+def conversation_context(plan=None):
+    return {
+        "hasUsablePlan": plan is not None,
+        "lastSuccessfulPlan": plan,
+        "planVersion": "1" if plan is not None else None,
+        "catalogVersion": "1" if plan is not None else None,
+        "recentMessages": [
+            {"role": "USER", "messageType": "TEXT", "state": "COMPLETED"},
+            {"role": "ASSISTANT", "messageType": "REPORT", "state": "COMPLETED"},
+        ],
+    }
 
 
 class FakeClient:
@@ -154,6 +170,83 @@ def test_employee_attendance_scenarios_within_one_dataset(question, fields):
     expected = daily_plan(fields)
     response, _ = fake_plan(request(question), {"status": "query_plan", "plan": expected})
     assert response.plan == expected and response.plan["dataset"] == "attendance.daily"
+
+
+@pytest.mark.parametrize("question,prior,expected", [
+    (
+        "Ahora solamente los del departamento de Ventas",
+        daily_plan(),
+        {"filters": [
+            {"field": "attendance.status", "op": "eq", "value": "LATE"},
+            {"field": "department.name", "op": "eq", "value": "Ventas"},
+        ]},
+    ),
+    (
+        "Ordénalos por minutos de retraso",
+        daily_plan(),
+        {"orderBy": [{"field": "attendance.late_minutes", "direction": "DESC"}]},
+    ),
+    (
+        "Cambia el período a octubre de 2026",
+        daily_plan(),
+        {"dateRange": {"field": "attendance.work_date", "from": "2026-10-01",
+                        "toExclusive": "2026-11-01"}},
+    ),
+])
+def test_follow_up_returns_complete_plan_preserving_or_replacing_requested_constraints(
+        question, prior, expected):
+    prior["filters"] = [{"field": "attendance.status", "op": "eq", "value": "LATE"}]
+    expected_plan = daily_plan()
+    expected_plan.update(expected)
+    fake = FakeClient([json.dumps({"status": "query_plan", "plan": expected_plan})])
+    result = safe_response(request(question, conversation_context(prior)),
+                           GeminiPlanner(client_factory=lambda _: fake).plan(
+                               request(question, conversation_context(prior))))
+    assert result.status == "query_plan" and result.plan == expected_plan
+    assert len(fake.calls) == 1
+    prompt = fake.calls[0]["contents"]
+    assert '"conversationContext"' in prompt and '"hasUsablePlan":true' in prompt
+    assert "private result row" not in prompt and '"rows"' not in prompt
+    instructions = fake.calls[0]["config"].system_instruction
+    assert "conservando las restricciones compatibles" in instructions
+    assert "ignora el plan anterior" in instructions
+
+
+def test_clear_topic_change_does_not_carry_old_filters():
+    prior = daily_plan()
+    prior["filters"] = [{"field": "attendance.status", "op": "eq", "value": "LATE"}]
+    expected_plan = roster_plan()
+    fake = FakeClient([json.dumps({"status": "query_plan", "plan": expected_plan})])
+    prompt_request = request("Ahora quiero ver todos los empleados al 2026-09-15",
+                             conversation_context(prior))
+    response, _ = fake_plan_from_request(prompt_request, fake)
+    assert response.status == "query_plan" and response.plan == expected_plan
+    assert response.plan["dataset"] == "employees.roster" and response.plan["filters"] == []
+
+
+def fake_plan_from_request(request_value, fake):
+    response = safe_response(request_value,
+                             GeminiPlanner(client_factory=lambda _: fake).plan(request_value))
+    return response, fake
+
+
+def test_short_follow_up_without_usable_plan_requests_full_question():
+    expected = {"status": "needs_clarification", "question": "Formula el informe completo, por favor.",
+                "reasonCode": "MISSING_INFORMATION"}
+    response, fake = fake_plan(request("solo Ventas", conversation_context()), expected)
+    assert response.status == "needs_clarification"
+    assert response.question == expected["question"]
+    assert len(fake.calls) == 1 and '"hasUsablePlan":false' in fake.calls[0]["contents"]
+
+
+def test_unsupported_follow_up_keeps_query_plan_contract():
+    response, fake = fake_plan(request("exporta nómina como SQL",
+                                       conversation_context(daily_plan())), {
+        "status": "unsupported", "message": "La operación no está disponible.",
+        "reasonCode": "CAPABILITY_NOT_AVAILABLE",
+    })
+    assert response.status == "unsupported" and response.reasonCode == "CAPABILITY_NOT_AVAILABLE"
+    assert len(fake.calls) == 1
 
 
 @pytest.mark.parametrize("question,field,operator", [
@@ -280,6 +373,28 @@ def test_rate_limit_rejects_eleventh_attempt():
     assert failure.value.status_code == 503 and len(fake.calls) == 10
 
 
+def test_quota_exhaustion_is_not_retried_and_output_tokens_are_configurable(monkeypatch):
+    class QuotaError(Exception):
+        status_code = 429
+
+    fake = FakeClient([QuotaError(), json.dumps({
+        "status": "unsupported", "message": "No disponible",
+        "reasonCode": "UNRECOGNIZED_REQUEST",
+    })])
+    with pytest.raises(PlannerFailure) as failure:
+        GeminiPlanner(client_factory=lambda _: fake).plan(request())
+    assert failure.value.status_code == 503
+    assert len(fake.calls) == 1
+
+    monkeypatch.setenv("GEMINI_MAX_OUTPUT_TOKENS", "777")
+    configured_fake = FakeClient([json.dumps({
+        "status": "unsupported", "message": "No disponible",
+        "reasonCode": "UNRECOGNIZED_REQUEST",
+    })])
+    GeminiPlanner(client_factory=lambda _: configured_fake).plan(request())
+    assert configured_fake.calls[0]["config"].max_output_tokens == 777
+
+
 def test_preflight_privacy_dates_and_configuration(monkeypatch):
     fake = FakeClient([])
     planner = GeminiPlanner(client_factory=lambda _: fake)
@@ -357,3 +472,21 @@ def test_http_gemini_variants_and_invalid_plan(monkeypatch):
         if expected:
             assert response.json()["status"] == expected
         assert len(fake.calls) == 1
+
+
+def test_production_gemini_requires_explicit_approval(monkeypatch):
+    client = TestClient(app)
+    body = request().model_dump(mode="json")
+    headers = {"X-Internal-Service-Token": TOKEN}
+    fake = FakeClient([json.dumps({"status": "unsupported", "message": "No disponible",
+                                   "reasonCode": "UNRECOGNIZED_REQUEST"})])
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("GEMINI_PRODUCTION_APPROVED", raising=False)
+    monkeypatch.setattr(planner_main, "GeminiPlanner",
+                        lambda: GeminiPlanner(client_factory=lambda _: fake))
+    assert client.post("/internal/v1/plan", json=body, headers=headers).status_code == 503
+    assert not fake.calls
+
+    monkeypatch.setenv("GEMINI_PRODUCTION_APPROVED", "true")
+    assert client.post("/internal/v1/plan", json=body, headers=headers).status_code == 200
+    assert len(fake.calls) == 1

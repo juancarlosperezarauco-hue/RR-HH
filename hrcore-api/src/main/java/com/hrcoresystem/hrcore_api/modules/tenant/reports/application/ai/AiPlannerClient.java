@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,10 +34,37 @@ public final class AiPlannerClient {
 
     public record Request(String contractVersion, String question, String catalogVersion,
                           Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities,
-                          Map<String, Object> semanticContext) {
+                          Map<String, Object> semanticContext,
+                          ConversationContext conversationContext) {
+        public Request(String contractVersion, String question, String catalogVersion,
+                       Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities,
+                       Map<String, Object> semanticContext) {
+            this(contractVersion, question, catalogVersion, capabilities, semanticContext, null);
+        }
+
         public Request(String contractVersion, String question, String catalogVersion,
                        Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities) {
-            this(contractVersion, question, catalogVersion, capabilities, Map.of());
+            this(contractVersion, question, catalogVersion, capabilities, Map.of(), null);
+        }
+
+        public Request withConversationContext(ConversationContext context) {
+            return new Request(contractVersion, question, catalogVersion, capabilities,
+                    semanticContext, context);
+        }
+    }
+
+    public record MessageMetadata(String role, String messageType, String state) {}
+
+    public record ConversationContext(boolean hasUsablePlan, JsonNode lastSuccessfulPlan,
+                                      String planVersion, String catalogVersion,
+                                      List<MessageMetadata> recentMessages) {
+        public ConversationContext {
+            lastSuccessfulPlan = lastSuccessfulPlan == null ? null : lastSuccessfulPlan.deepCopy();
+            recentMessages = recentMessages == null ? List.of() : List.copyOf(recentMessages);
+        }
+
+        public ConversationContext withoutPlan() {
+            return new ConversationContext(false, null, null, null, recentMessages);
         }
     }
     public record Reply(String status, JsonNode plan, String reasonCode, String question) {
@@ -49,14 +77,19 @@ public final class AiPlannerClient {
     private final String credential;
     private final RestClient rest;
     private final ObjectMapper mapper;
+    private final int maxConversationContextChars;
 
     @Autowired
     public AiPlannerClient(@Value("${app.ai.planner.url:}") String url,
                            @Value("${app.ai.planner.service-token:}") String credential,
                            @Value("${app.ai.planner.mode:mock}") String mode,
-                           ObjectMapper mapper) {
+                           ObjectMapper mapper,
+                           @Value("${app.ai.conversations.context-max-chars:4000}") int maxConversationContextChars) {
+        if (maxConversationContextChars < 1 || maxConversationContextChars > 32_000)
+            throw new IllegalArgumentException("AI conversation context size must be between 1 and 32000");
         this.url = url == null ? "" : url.trim().replaceAll("/+$", "");
         this.credential = credential == null ? "" : credential;
+        this.maxConversationContextChars = maxConversationContextChars;
         this.mapper = mapper.copy();
         this.mapper.getFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
         HttpClient http = HttpClient.newBuilder()
@@ -67,17 +100,22 @@ public final class AiPlannerClient {
         this.rest = RestClient.builder().requestFactory(factory).build();
     }
 
+    public AiPlannerClient(String url, String credential, String mode, ObjectMapper mapper) {
+        this(url, credential, mode, mapper, 4000);
+    }
+
     public AiPlannerClient(String url, String credential, ObjectMapper mapper) {
-        this(url, credential, "mock", mapper);
+        this(url, credential, "mock", mapper, 4000);
     }
 
     public Reply plan(Request request) {
         if (!configured()) throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
         try {
+            Request boundedRequest = boundedContext(request);
             byte[] body = rest.post().uri(url + "/internal/v1/plan")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Internal-Service-Token", credential)
-                    .body(request)
+                    .body(boundedRequest)
                     .exchange((sent, response) -> {
                         if (response.getStatusCode().value() == 504)
                             throw new AiFlowException(AiFlowException.Code.PLANNER_TIMEOUT);
@@ -105,6 +143,25 @@ public final class AiPlannerClient {
                     throw new AiFlowException(AiFlowException.Code.PLANNER_TIMEOUT);
             }
             throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private Request boundedContext(Request request) {
+        ConversationContext context = request.conversationContext();
+        if (context == null || contextLength(context) <= maxConversationContextChars) return request;
+
+        ConversationContext withoutPlan = context.withoutPlan();
+        if (contextLength(withoutPlan) <= maxConversationContextChars)
+            return request.withConversationContext(withoutPlan);
+        return request.withConversationContext(null);
+    }
+
+    private int contextLength(ConversationContext context) {
+        try {
+            String json = mapper.writeValueAsString(context);
+            return json.codePointCount(0, json.length());
+        } catch (IOException serializationFailure) {
+            return Integer.MAX_VALUE;
         }
     }
 

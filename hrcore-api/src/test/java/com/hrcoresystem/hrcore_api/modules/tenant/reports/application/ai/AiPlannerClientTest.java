@@ -1,6 +1,7 @@
 package com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -93,6 +94,43 @@ class AiPlannerClientTest {
         server = null;
         assertEquals(QueryPlanException.Code.SERVICE_UNAVAILABLE,
                 assertThrows(QueryPlanException.class, () -> client.plan(request())).code());
+    }
+
+    @Test
+    void oversizedConversationContextDropsThePlanAndRetainsOnlyBoundedMetadata() throws Exception {
+        AtomicReference<String> body = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/internal/v1/plan", exchange -> {
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] bytes = "{\"status\":\"unsupported\",\"message\":\"No disponible\","
+                    .concat("\"reasonCode\":\"UNRECOGNIZED_REQUEST\"}")
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (var output = exchange.getResponseBody()) { output.write(bytes); }
+        });
+        server.start();
+
+        ObjectMapper mapper = new ObjectMapper();
+        var client = new AiPlannerClient("http://127.0.0.1:" + server.getAddress().getPort(),
+                TOKEN, "mock", mapper, 200);
+        JsonNode plan = mapper.readTree("""
+                {"version":"1","catalogVersion":"1","dataset":"employees.roster",
+                 "mode":"detail","asOfDate":"2026-10-01","select":["employee.full_name"],
+                 "metrics":[],"filters":[{"field":"department.name","op":"eq","value":"Synthetic Department"}],
+                 "groupBy":[],"having":[],"orderBy":[],"page":{"number":0,"size":20},
+                 "visualization":{"type":"table"}}
+                """);
+        var context = new AiPlannerClient.ConversationContext(true, plan, "1", "1",
+                java.util.List.of(new AiPlannerClient.MessageMetadata("USER", "TEXT", "COMPLETED")));
+        client.plan(request().withConversationContext(context));
+
+        JsonNode sent = mapper.readTree(body.get()).path("conversationContext");
+        assertFalse(sent.path("hasUsablePlan").asBoolean());
+        assertTrue(sent.path("lastSuccessfulPlan").isNull());
+        assertEquals(1, sent.path("recentMessages").size());
+        assertFalse(body.get().contains("Synthetic Department"));
+        assertFalse(body.get().contains("rows"));
     }
 
     private static AiPlannerClient.Request request() {

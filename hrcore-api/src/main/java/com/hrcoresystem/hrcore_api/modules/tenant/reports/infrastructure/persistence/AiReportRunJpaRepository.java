@@ -5,6 +5,9 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AiReportRunJpaRepository extends JpaRepository<AiReportRunEntity, UUID> {
+    Optional<AiReportRunEntity> findFirstByConversationIdAndStateOrderByFinishedAtDescIdDesc(
+            UUID conversationId, String state);
+
     Optional<AiReportRunEntity> findFirstByConversationIdAndRequestMessageIdAndStateOrderByFinishedAtDescIdDesc(
             UUID conversationId, UUID requestMessageId, String state);
 

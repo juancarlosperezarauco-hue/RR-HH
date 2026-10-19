@@ -40,6 +40,8 @@ app:
     conversations:
       message-max-length: ${AI_CONVERSATION_MESSAGE_MAX_LENGTH:4000}
       pending-timeout: ${AI_CONVERSATION_PENDING_TIMEOUT:PT2M}
+      context-message-count: ${AI_CONVERSATION_CONTEXT_MAX_MESSAGES:4}
+      context-max-chars: ${AI_CONVERSATION_CONTEXT_MAX_CHARS:4000}
   billing:
     stripe:
       secret-key: ${STRIPE_SECRET_KEY:}

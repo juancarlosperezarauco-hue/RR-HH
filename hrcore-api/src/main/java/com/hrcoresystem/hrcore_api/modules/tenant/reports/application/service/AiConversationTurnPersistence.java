@@ -2,6 +2,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.reports.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai.AiPlannerClient;
 import com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException;
 import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai.QueryResultV1;
@@ -17,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +34,12 @@ public class AiConversationTurnPersistence {
     private static final String GENERIC_FAILURE = "No se pudo completar la consulta.";
 
     public record Reservation(AiMessageEntity request, AiMessageEntity response,
-                              UUID reportRunId, int conversationVersion, boolean replay) {
+                              UUID reportRunId, int conversationVersion, boolean replay,
+                              AiPlannerClient.ConversationContext conversationContext) {
+        public Reservation(AiMessageEntity request, AiMessageEntity response,
+                           UUID reportRunId, int conversationVersion, boolean replay) {
+            this(request, response, reportRunId, conversationVersion, replay, null);
+        }
     }
 
     public record RunSnapshot(UUID id, UUID requestMessageId, JsonNode plan,
@@ -43,15 +51,20 @@ public class AiConversationTurnPersistence {
     private final AiMessageJpaRepository messages;
     private final AiReportRunJpaRepository reportRuns;
     private final ObjectMapper mapper;
+    private final int maxContextMessages;
 
     public AiConversationTurnPersistence(AiConversationJpaRepository conversations,
                                          AiMessageJpaRepository messages,
                                          AiReportRunJpaRepository reportRuns,
-                                         ObjectMapper mapper) {
+                                         ObjectMapper mapper,
+                                         @Value("${app.ai.conversations.context-message-count:4}") int maxContextMessages) {
+        if (maxContextMessages < 0 || maxContextMessages > 20)
+            throw new IllegalArgumentException("AI conversation context message count must be between 0 and 20");
         this.conversations = conversations;
         this.messages = messages;
         this.reportRuns = reportRuns;
         this.mapper = mapper;
+        this.maxContextMessages = maxContextMessages;
     }
 
     @Transactional
@@ -76,10 +89,12 @@ public class AiConversationTurnPersistence {
         conversation.setLastMessageAt(now);
         conversations.saveAndFlush(conversation); // @Version serializes reservations across instances.
 
+        AiPlannerClient.ConversationContext context = captureContext(conversationId);
+
         AiMessageEntity request = newMessage(conversationId, clientMessageId, USER, content,
                 "TEXT", PENDING, null);
         messages.saveAndFlush(request);
-        return new Reservation(request, null, null, conversation.getVersion(), false);
+        return new Reservation(request, null, null, conversation.getVersion(), false, context);
     }
 
     @Transactional(readOnly = true)
@@ -171,6 +186,25 @@ public class AiConversationTurnPersistence {
                         conversationId, request.getId(), "SUCCEEDED")
                 .map(AiReportRunEntity::getId).orElse(null);
         return new Reservation(request, response, runId, version, true);
+    }
+
+    private AiPlannerClient.ConversationContext captureContext(UUID conversationId) {
+        AiReportRunEntity latest = reportRuns.findFirstByConversationIdAndStateOrderByFinishedAtDescIdDesc(
+                conversationId, "SUCCEEDED").orElse(null);
+        List<AiPlannerClient.MessageMetadata> recentMessages = maxContextMessages == 0 ? List.of()
+                : messages.findAllByConversationIdOrderByCreatedAtDescIdDesc(
+                                conversationId, PageRequest.of(0, maxContextMessages))
+                        .getContent().stream()
+                        .map(message -> new AiPlannerClient.MessageMetadata(
+                                message.getRole(), message.getMessageType(), message.getState()))
+                        .toList();
+        java.util.ArrayList<AiPlannerClient.MessageMetadata> chronological =
+                new java.util.ArrayList<>(recentMessages);
+        java.util.Collections.reverse(chronological);
+        if (latest == null)
+            return new AiPlannerClient.ConversationContext(false, null, null, null, chronological);
+        return new AiPlannerClient.ConversationContext(true, latest.getQueryPlan(),
+                latest.getPlanVersion(), latest.getCatalogVersion(), chronological);
     }
 
     private void recoverAbandoned(UUID conversationId, Instant cutoff) {

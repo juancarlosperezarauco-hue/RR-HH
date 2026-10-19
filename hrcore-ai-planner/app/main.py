@@ -1,6 +1,7 @@
 """Authenticated internal planner. It has no database or user JWT access."""
 
 import hmac
+import json
 import os
 import re
 from datetime import date
@@ -83,12 +84,66 @@ class SemanticContext(StrictModel):
         return self
 
 
+class ConversationMessageMetadata(StrictModel):
+    role: Literal["USER", "ASSISTANT"]
+    messageType: Literal["TEXT", "REPORT", "CLARIFICATION", "UNSUPPORTED", "ERROR"]
+    state: Literal["PENDING", "COMPLETED", "FAILED"]
+
+
+class ConversationContext(StrictModel):
+    hasUsablePlan: bool
+    lastSuccessfulPlan: dict[str, Any] | None = None
+    planVersion: str | None = None
+    catalogVersion: str | None = None
+    recentMessages: list[ConversationMessageMetadata] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def bounded_and_consistent(self):
+        try:
+            max_messages = int(os.getenv("AI_CONVERSATION_CONTEXT_MAX_MESSAGES", "4"))
+            max_chars = int(os.getenv("AI_CONVERSATION_CONTEXT_MAX_CHARS", "4000"))
+        except ValueError as error:
+            raise ValueError("Invalid conversation context limits") from error
+        if not 0 <= max_messages <= 20 or not 1 <= max_chars <= 32_000:
+            raise ValueError("Invalid conversation context limits")
+        if len(self.recentMessages) > max_messages:
+            raise ValueError("Too many recent messages")
+        if self.hasUsablePlan:
+            if self.lastSuccessfulPlan is None or not self.planVersion or not self.catalogVersion:
+                raise ValueError("Incomplete successful plan context")
+            if (self.lastSuccessfulPlan.get("version") != self.planVersion
+                    or self.lastSuccessfulPlan.get("catalogVersion") != self.catalogVersion):
+                raise ValueError("Inconsistent successful plan context")
+            filters = self.lastSuccessfulPlan.get("filters", [])
+            if isinstance(filters, list) and any(
+                    isinstance(item, dict) and item.get("field") in {
+                        "employee.id", "employee.full_name", "employment_period.id"
+                    } for item in filters):
+                raise ValueError("Personal filter in conversation context")
+        elif any(value is not None for value in (
+                self.lastSuccessfulPlan, self.planVersion, self.catalogVersion)):
+            raise ValueError("Unavailable context cannot contain a plan")
+        serialized = json.dumps(self.model_dump(mode="json"), ensure_ascii=False, separators=(",", ":"))
+        if len(serialized) > max_chars:
+            raise ValueError("Conversation context is too large")
+        return self
+
+    def without_plan(self):
+        return self.model_copy(update={
+            "hasUsablePlan": False,
+            "lastSuccessfulPlan": None,
+            "planVersion": None,
+            "catalogVersion": None,
+        })
+
+
 class PlannerRequest(StrictModel):
     contractVersion: Literal["1"]
     question: str = Field(min_length=1, max_length=2000)
     catalogVersion: Literal["1"]
     capabilities: dict[str, DatasetCapabilities]
     semanticContext: SemanticContext | None = None
+    conversationContext: ConversationContext | None = None
 
     @model_validator(mode="after")
     def valid_capabilities(self):
@@ -301,6 +356,17 @@ def validate_authorized_plan(request: PlannerRequest, plan: dict[str, Any]) -> N
             raise ValueError("Unavailable date field")
 
 
+def safe_conversation_request(request: PlannerRequest) -> PlannerRequest:
+    context = request.conversationContext
+    if context is None or not context.hasUsablePlan:
+        return request
+    try:
+        validate_authorized_plan(request, context.lastSuccessfulPlan)
+    except (ValidationError, ValueError, TypeError):
+        return request.model_copy(update={"conversationContext": context.without_plan()})
+    return request
+
+
 def safe_response(request: PlannerRequest, response: Any) -> PlannerResponse:
     try:
         parsed = response_adapter.validate_python(response)
@@ -320,7 +386,11 @@ def plan(request: PlannerRequest, _auth: Annotated[None, Depends(service_auth)])
         return safe_response(request, mock_plan(request))
     if mode != "gemini":
         raise HTTPException(status_code=503, detail="Planner unavailable")
+    if (os.getenv("APP_ENV", "").lower() in {"prod", "production"}
+            and os.getenv("GEMINI_PRODUCTION_APPROVED", "false").lower() != "true"):
+        raise HTTPException(status_code=503, detail="Planner unavailable")
     try:
-        return safe_response(request, GeminiPlanner().plan(request))
+        safe_request = safe_conversation_request(request)
+        return safe_response(safe_request, GeminiPlanner().plan(safe_request))
     except PlannerFailure as failure:
         raise HTTPException(status_code=failure.status_code, detail=failure.message) from failure

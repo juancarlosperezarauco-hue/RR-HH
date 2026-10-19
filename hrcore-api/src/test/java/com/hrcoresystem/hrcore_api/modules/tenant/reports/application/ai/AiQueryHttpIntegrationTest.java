@@ -3,10 +3,14 @@ package com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrcoresystem.hrcore_api.bootstrap.platform.PlatformBootstrapRunner;
+import com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException;
 import com.hrcoresystem.hrcore_api.common.security.jwt.AccessTokenPayload;
 import com.hrcoresystem.hrcore_api.common.security.jwt.JwtTokenService;
 import com.hrcoresystem.hrcore_api.common.tenancy.TenancyProperties;
+import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContext;
+import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContextHolder;
 import com.hrcoresystem.hrcore_api.common.tenancy.schema.TenantSchemaNamingStrategy;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.service.AiConversationTurnPersistence;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,6 +20,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -71,6 +76,7 @@ class AiQueryHttpIntegrationTest {
     @MockitoBean private PlatformBootstrapRunner bootstrap;
     @MockitoBean private S3Client documentS3Client;
     @Autowired private JwtTokenService tokens;
+    @Autowired private AiConversationTurnPersistence turnPersistence;
     @LocalServerPort private int port;
     private final ObjectMapper mapper = new ObjectMapper();
     private String slugA, slugB, schemaA, schemaB;
@@ -244,6 +250,51 @@ class AiQueryHttpIntegrationTest {
         Reply rejected = conversation(slugA, jwt, "POST", "/api/hr/ai/conversations",
                 "{\"owner_user_id\":\"" + UUID.randomUUID() + "\",\"tenant\":\"other\"}");
         assertEquals(400, rejected.status());
+    }
+
+    @Test
+    void postgresSerializesConcurrentReservationsAndRejectsStaleCompletion() throws Exception {
+        String owner = session(schemaA, slugA, userA, ALL);
+        UUID conversationId = UUID.fromString(conversation(slugA, owner, "POST",
+                "/api/hr/ai/conversations", null).body().at("/data/id").asText());
+        CountDownLatch start = new CountDownLatch(1);
+        CompletableFuture<ReservationAttempt> first = CompletableFuture.supplyAsync(() -> {
+            await(start);
+            return reserveAttempt(conversationId, UUID.randomUUID(), "turno sintetico uno");
+        });
+        CompletableFuture<ReservationAttempt> second = CompletableFuture.supplyAsync(() -> {
+            await(start);
+            return reserveAttempt(conversationId, UUID.randomUUID(), "turno sintetico dos");
+        });
+        start.countDown();
+        List<ReservationAttempt> attempts = List.of(first.join(), second.join());
+        List<ReservationAttempt> winners = attempts.stream().filter(attempt -> attempt.reservation() != null).toList();
+        assertEquals(1, winners.size());
+        ReservationAttempt rejected = attempts.stream().filter(attempt -> attempt.failure() != null)
+                .findFirst().orElseThrow();
+        assertTrue(rejected.failure() instanceof BusinessConflictException
+                || rejected.failure() instanceof org.springframework.orm.ObjectOptimisticLockingFailureException,
+                rejected.failure().toString());
+
+        AiConversationTurnPersistence.Reservation reservation = winners.getFirst().reservation();
+        try (Connection tenant = connection(schemaA)) {
+            // Simulate another transaction changing the conversation while the planner is in flight.
+            execute(tenant, "UPDATE ai_conversations SET version=version+1 WHERE id=?", conversationId);
+        }
+        TenantContextHolder.set(new TenantContext(slugA, schemaA, false));
+        try {
+            assertThrows(BusinessConflictException.class, () -> turnPersistence.complete(conversationId, userA,
+                    reservation.request().getId(), reservation.conversationVersion(), "COMPLETED", "REPORT",
+                    "Reporte sintetico", null, null, 1));
+        } finally {
+            TenantContextHolder.clear();
+        }
+        try (Connection tenant = connection(schemaA)) {
+            assertEquals(1, scalarLong(tenant, "SELECT COUNT(*) FROM ai_messages "
+                    + "WHERE conversation_id=? AND role='USER' AND state='PENDING'", conversationId));
+            assertEquals(0, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?",
+                    conversationId));
+        }
     }
 
     @Test
@@ -534,4 +585,19 @@ class AiQueryHttpIntegrationTest {
             throw new IllegalStateException("Interrupted synthetic request", interrupted);
         }
     }
+
+    private ReservationAttempt reserveAttempt(UUID conversationId, UUID clientMessageId, String message) {
+        TenantContextHolder.set(new TenantContext(slugA, schemaA, false));
+        try {
+            return new ReservationAttempt(turnPersistence.reserve(conversationId, userA, clientMessageId,
+                    message, Duration.ofMinutes(2)), null);
+        } catch (RuntimeException failure) {
+            return new ReservationAttempt(null, failure);
+        } finally {
+            TenantContextHolder.clear();
+        }
+    }
+
+    private record ReservationAttempt(AiConversationTurnPersistence.Reservation reservation,
+                                      RuntimeException failure) {}
 }
