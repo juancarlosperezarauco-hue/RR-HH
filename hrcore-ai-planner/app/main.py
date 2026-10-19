@@ -2,6 +2,7 @@
 
 import hmac
 import json
+import logging
 import os
 import re
 from datetime import date
@@ -12,6 +13,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator, model_validator
 
 from app.gemini_planner import GeminiPlanner, PlannerFailure
+
+logger = logging.getLogger(__name__)
 
 
 class StrictModel(BaseModel):
@@ -374,6 +377,19 @@ def safe_response(request: PlannerRequest, response: Any) -> PlannerResponse:
             validate_authorized_plan(request, parsed.plan)
         return parsed
     except (ValidationError, ValueError, TypeError) as error:
+        if isinstance(error, ValidationError):
+            details = ",".join(sorted({item["type"] for item in error.errors(
+                include_url=False, include_context=False, include_input=False)}))
+        elif isinstance(error, ValueError) and str(error) in {
+                "Invalid plan envelope", "Unavailable dataset or mode", "Invalid plan list",
+                "Unavailable dimension", "Unavailable metric", "Unavailable filter",
+                "Unavailable operator", "Unavailable HAVING metric", "Unavailable sort field",
+                "Invalid visualization", "Unavailable chart dimension", "Unavailable chart metric",
+                "Unavailable date field"}:
+            details = str(error)
+        else:
+            details = type(error).__name__
+        logger.warning("Planner response rejected details=%s", details)
         raise HTTPException(status_code=502, detail="Invalid planner response") from error
 
 

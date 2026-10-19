@@ -1,6 +1,7 @@
 """Optional Google Gen AI adapter. All plans are still validated and executed by Spring."""
 
 import json
+import logging
 import os
 import re
 import threading
@@ -10,6 +11,8 @@ from copy import deepcopy
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class PlannerFailure(Exception):
@@ -27,7 +30,11 @@ RESPONSE_SCHEMA = {
         "plan": {"type": "object"},
         "question": {"type": "string"},
         "message": {"type": "string"},
-        "reasonCode": {"type": "string"},
+        "reasonCode": {"type": "string", "enum": [
+            "MISSING_DATE_RANGE", "AMBIGUOUS_REQUEST", "MISSING_INFORMATION",
+            "DATASET_NOT_AVAILABLE", "CAPABILITY_NOT_AVAILABLE", "UNRECOGNIZED_REQUEST",
+            "PERSONAL_IDENTIFIER_NOT_ALLOWED",
+        ]},
     },
     "required": ["status"],
 }
@@ -84,13 +91,8 @@ def _response_schema(request) -> dict[str, Any]:
         "required": ["version", "catalogVersion", "dataset", "mode", "select", "metrics",
                      "filters", "groupBy", "having", "orderBy", "page", "visualization"],
     }
-    if request.semanticContext:
-        limits = request.semanticContext.limits
-        for field, maximum in (("select", limits.maxSelect), ("metrics", limits.maxMetrics),
-                               ("filters", limits.maxFilters), ("groupBy", limits.maxGroupBy),
-                               ("having", limits.maxHaving), ("orderBy", limits.maxOrderBy)):
-            plan["properties"][field]["maxItems"] = maximum
-        plan["properties"]["page"]["properties"]["size"]["maximum"] = limits.maxPageSize
+    # Keep provider JSON Schema within Gemini's supported subset. Limits remain in the
+    # planner context and are enforced authoritatively by Spring's QueryPlan validator.
     schema["properties"]["plan"] = plan
     return schema
 
@@ -134,7 +136,7 @@ class GeminiPlanner:
         from google import genai
         from google.genai import types
         return genai.Client(api_key=key, http_options=types.HttpOptions(
-            timeout=6000, retry_options=types.HttpRetryOptions(attempts=1)))
+            timeout=10_000, retry_options=types.HttpRetryOptions(attempts=1)))
 
     @classmethod
     def _reserve_attempt(cls):
@@ -213,6 +215,15 @@ class GeminiPlanner:
         return isinstance(error, (TimeoutError, httpx.TimeoutException)) or status in {408, 504}
 
     @staticmethod
+    def _safe_error_status(error: Exception) -> str:
+        status = getattr(error, "status_code", None) or getattr(error, "code", None)
+        if isinstance(status, int):
+            return str(status)
+        if isinstance(status, str) and re.fullmatch(r"[A-Za-z0-9_]{1,32}", status):
+            return status
+        return "unknown"
+
+    @staticmethod
     def _decode(response) -> dict[str, Any]:
         raw = getattr(response, "text", None)
         if not isinstance(raw, str) or len(raw.encode("utf-8")) > 128 * 1024:
@@ -259,6 +270,8 @@ class GeminiPlanner:
                         except PlannerFailure:
                             raise
                         except Exception as error:
+                            logger.warning("Gemini provider error type=%s status=%s",
+                                           type(error).__name__, self._safe_error_status(error))
                             if self._quota_exhausted(error):
                                 raise PlannerFailure(503, "Planner unavailable") from error
                             if not self._transient(error):

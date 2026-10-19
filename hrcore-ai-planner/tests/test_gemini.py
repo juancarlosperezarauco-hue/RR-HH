@@ -148,10 +148,17 @@ def test_simple_scenarios_expected_plan(question, fields):
     assert "synthetic-test-key" not in fake.calls[0]["contents"]
     assert "no confiables" in fake.calls[0]["config"].system_instruction
     plan_schema = fake.calls[0]["config"].response_json_schema["properties"]["plan"]
+    assert fake.calls[0]["config"].response_json_schema["properties"]["reasonCode"]["enum"] == [
+        "MISSING_DATE_RANGE", "AMBIGUOUS_REQUEST", "MISSING_INFORMATION",
+        "DATASET_NOT_AVAILABLE", "CAPABILITY_NOT_AVAILABLE", "UNRECOGNIZED_REQUEST",
+        "PERSONAL_IDENTIFIER_NOT_ALLOWED",
+    ]
     assert plan_schema["properties"]["dataset"]["enum"] == ["attendance.daily", "employees.roster"]
     assert "employee.full_name" in plan_schema["properties"]["select"]["items"]["enum"]
     assert "salary.amount" not in str(plan_schema)
-    assert plan_schema["properties"]["page"]["properties"]["size"]["maximum"] == 100
+    assert "maxItems" not in str(plan_schema)
+    assert "maximum" not in plan_schema["properties"]["page"]["properties"]["size"]
+    assert '"maxPageSize":100' in fake.calls[0]["contents"]
 
 
 @pytest.mark.parametrize("question,fields", [
