@@ -31,7 +31,7 @@ export const TENANT_NAVIGATION: TenantNavigationItem[] = [
   { id: 'notifications', label: 'Notificaciones', route: '/dashboard/notifications', icon: 'bell' },
   { id: 'profile', label: 'Mi perfil', route: '/dashboard/profile', icon: 'user-circle-2' },
   { id: 'my-employment', label: 'Mi información laboral', route: '/dashboard/my-employment', icon: 'user-circle-2' },
-  { id: 'hr-reports', label: 'Reportes de RR. HH.', route: '/dashboard/hr-reports', icon: 'bar-chart-3', permission: TENANT_ROUTE_PERMISSIONS.reportsEmployees },
+  { id: 'hr-reports', label: 'Informe de RR. HH.', route: '/dashboard/hr-reports', icon: 'bar-chart-3', permission: TENANT_ROUTE_PERMISSIONS.reportsEmployees },
   { id: 'security', label: 'Seguridad', route: '/dashboard/security', icon: 'lock' },
   { id: 'settings', label: 'Preferencias', route: '/dashboard/settings', icon: 'settings' },
   { id: 'company-settings', label: 'Empresa', route: '/dashboard/company-settings', icon: 'building', permission: TENANT_ROUTE_PERMISSIONS.companySettings, ownerOnly: true },
