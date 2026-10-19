@@ -16,7 +16,8 @@ class AttendanceControllerPermissionsTest {
         assertProtected(AttendanceRecordController.class, Map.of(
                 "list", "hasAuthority('attendance.records.list')",
                 "detail", "hasAuthority('attendance.records.detail')",
-                "calculate", "hasAuthority('attendance.records.calculate')"));
+                "calculate", "hasAuthority('attendance.records.calculate')",
+                "calculateRange", "hasAuthority('attendance.records.calculate')"));
         assertProtected(AttendancePunchController.class, Map.of(
                 "create", "hasAnyAuthority('attendance.punches.create','attendance.punches.manage')",
                 "list", "hasAuthority('attendance.punches.list')",

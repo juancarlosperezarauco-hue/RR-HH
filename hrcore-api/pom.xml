@@ -25,6 +25,7 @@
         <springdoc.version>2.8.4</springdoc.version>
         <lombok.version>1.18.32</lombok.version>
         <aws.sdk.version>2.55.15</aws.sdk.version>
+        <mockito.version>5.17.0</mockito.version>
     </properties>
 
     <dependencyManagement>
@@ -201,6 +202,14 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
+                </configuration>
+            </plugin>
+
             <!-- Plugin de Compilación (Lombok) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
