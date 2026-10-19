@@ -106,6 +106,7 @@ services:
       AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
       GEMINI_ENABLED: ${GEMINI_ENABLED:-false}
       GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     expose:
       - "8000"
     networks:

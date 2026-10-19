@@ -20,6 +20,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,7 +74,7 @@ class AiQueryHttpIntegrationTest {
     @LocalServerPort private int port;
     private final ObjectMapper mapper = new ObjectMapper();
     private String slugA, slugB, schemaA, schemaB;
-    private UUID tenantA, tenantB, userA, userB;
+    private UUID tenantA, tenantB, userA, userB, userA2;
     private long catalogVersion;
 
     @BeforeAll
@@ -96,6 +98,12 @@ class AiQueryHttpIntegrationTest {
         }
         setupTenant(tenantA, slugA, schemaA, "Ada", "Sales", 12);
         setupTenant(tenantB, slugB, schemaB, "Bora", "Support", 99);
+        userA2 = UUID.randomUUID();
+        try (Connection tenant = connection(schemaA)) {
+            execute(tenant, "INSERT INTO tenant_users(id,email,password_hash,first_name,last_name) "
+                    + "VALUES (?,?,?,?,?)", userA2, "second-user@example.invalid", "synthetic-hash",
+                    "Second", "User");
+        }
     }
 
     @AfterAll
@@ -179,6 +187,212 @@ class AiQueryHttpIntegrationTest {
         assertFalse(crossModule.body().has("result"));
     }
 
+    @Test
+    void conversationsAreTenantAndOwnerScopedAndHistoryStartsEmpty() throws Exception {
+        String owner = session(schemaA, slugA, userA, ALL);
+        String secondUser = session(schemaA, slugA, userA2, ALL);
+        String tenantBUser = session(schemaB, slugB, userB, ALL);
+
+        Reply created = conversation(slugA, owner, "POST", "/api/hr/ai/conversations", null);
+        assertEquals(201, created.status());
+        UUID conversationId = UUID.fromString(created.body().at("/data/id").asText());
+        assertEquals("Nuevo informe", created.body().at("/data/title").asText());
+        Reply secondCreated = conversation(slugA, owner, "POST", "/api/hr/ai/conversations", null);
+        assertEquals(201, secondCreated.status());
+
+        Reply ownerList = conversation(slugA, owner, "GET", "/api/hr/ai/conversations?page=0&size=1", null);
+        Reply ownerListSecondPage = conversation(slugA, owner, "GET",
+                "/api/hr/ai/conversations?page=1&size=1", null);
+        Reply otherUserList = conversation(slugA, secondUser, "GET",
+                "/api/hr/ai/conversations?page=0&size=1", null);
+        assertEquals(2, ownerList.body().at("/data/totalElements").asInt(), ownerList.body().toPrettyString());
+        assertEquals(1, ownerList.body().at("/data/content").size());
+        assertEquals(1, ownerListSecondPage.body().at("/data/content").size());
+        assertNotEquals(ownerList.body().at("/data/content/0/id").asText(),
+                ownerListSecondPage.body().at("/data/content/0/id").asText());
+        assertEquals(0, otherUserList.body().at("/data/totalElements").asInt(),
+                otherUserList.body().toPrettyString());
+
+        assertEquals(200, conversation(slugA, owner, "GET",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+        Reply history = conversation(slugA, owner, "GET",
+                "/api/hr/ai/conversations/" + conversationId + "/messages?page=0&size=10", null);
+        assertEquals(200, history.status());
+        assertEquals(0, history.body().at("/data/totalElements").asInt());
+        assertTrue(history.body().at("/data/content").isEmpty());
+
+        assertEquals(404, conversation(slugA, secondUser, "GET",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+        assertEquals(404, conversation(slugA, secondUser, "DELETE",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+        assertEquals(404, conversation(slugB, tenantBUser, "GET",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+        assertEquals(403, conversation(slugA,
+                session(schemaA, slugA, userA, "employees.list,departments.list"),
+                "GET", "/api/hr/ai/conversations", null).status());
+
+        String ownerWithoutReportPermission = session(schemaA, slugA, userA, "employees.list");
+        assertEquals(200, conversation(slugA, ownerWithoutReportPermission, "DELETE",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+        assertEquals(404, conversation(slugA, owner, "GET",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+    }
+
+    @Test
+    void conversationCreationRejectsClientSuppliedOwnerOrTenant() throws Exception {
+        String jwt = session(schemaA, slugA, userA, ALL);
+        Reply rejected = conversation(slugA, jwt, "POST", "/api/hr/ai/conversations",
+                "{\"owner_user_id\":\"" + UUID.randomUUID() + "\",\"tenant\":\"other\"}");
+        assertEquals(400, rejected.status());
+    }
+
+    @Test
+    void conversationTurnIsPersistedIdempotentlyAndRefreshReadsCurrentTenantData() throws Exception {
+        String owner = session(schemaA, slugA, userA, ALL);
+        String sameTenantOtherUser = session(schemaA, slugA, userA2, ALL);
+        String tenantBUser = session(schemaB, slugB, userB, ALL);
+        UUID conversationId = UUID.fromString(conversation(slugA, owner, "POST",
+                "/api/hr/ai/conversations", null).body().at("/data/id").asText());
+        UUID clientMessageId = UUID.randomUUID();
+        String requestBody = mapper.writeValueAsString(java.util.Map.of(
+                "clientMessageId", clientMessageId, "message", "listar empleados al 2026-01-15"));
+        String messagesPath = "/api/hr/ai/conversations/" + conversationId + "/messages";
+        assertEquals(400, conversation(slugA, owner, "POST", messagesPath,
+                mapper.writeValueAsString(java.util.Map.of("clientMessageId", UUID.randomUUID(),
+                        "message", "pregunta", "owner_user_id", userA.toString()))).status());
+        assertEquals(400, conversation(slugA, owner, "POST", messagesPath,
+                "{\"clientMessageId\":\"" + UUID.randomUUID()
+                        + "\",\"clientMessageId\":\"" + UUID.randomUUID()
+                        + "\",\"message\":\"pregunta\"}").status());
+        assertEquals(400, conversation(slugA, owner, "POST", messagesPath,
+                mapper.writeValueAsString(java.util.Map.of("clientMessageId", UUID.randomUUID(),
+                        "message", "x".repeat(4001)))).status());
+
+        Reply first = conversation(slugA, owner, "POST", messagesPath, requestBody);
+        assertEquals(200, first.status(), first.body().toPrettyString());
+        assertEquals("ok", first.body().at("/data/status").asText());
+        assertEquals("Ada Tenant", first.body().at("/data/result/rows/0/employee.full_name").asText());
+        assertTrue(first.body().at("/data/reportRunId").isTextual());
+        UUID firstRunId = UUID.fromString(first.body().at("/data/reportRunId").asText());
+        Reply savedHistory = conversation(slugA, owner, "GET", messagesPath + "?page=0&size=10", null);
+        assertEquals(2, savedHistory.body().at("/data/totalElements").asInt());
+        assertEquals("USER", savedHistory.body().at("/data/content/0/role").asText());
+        assertFalse(savedHistory.body().toPrettyString().contains("Ada Tenant"));
+
+        Reply retry = conversation(slugA, owner, "POST", messagesPath, requestBody);
+        assertEquals(200, retry.status(), retry.body().toPrettyString());
+        assertEquals("ok", retry.body().at("/data/status").asText());
+        assertEquals(firstRunId.toString(), retry.body().at("/data/reportRunId").asText());
+        assertFalse(retry.body().at("/data").has("result"), "replay must not expose cached rows");
+        assertEquals(409, conversation(slugA, owner, "POST", messagesPath,
+                mapper.writeValueAsString(java.util.Map.of("clientMessageId", clientMessageId,
+                        "message", "reutilizar id con otro contenido"))).status());
+        assertEquals(404, conversation(slugA, sameTenantOtherUser, "POST", messagesPath, requestBody).status());
+        assertEquals(404, conversation(slugB, tenantBUser, "POST", messagesPath, requestBody).status());
+
+        Reply unsupported = conversation(slugA, owner, "POST", messagesPath,
+                mapper.writeValueAsString(java.util.Map.of("clientMessageId", UUID.randomUUID(),
+                        "message", "reporte de nómina")));
+        assertEquals(200, unsupported.status(), unsupported.body().toPrettyString());
+        assertEquals("unsupported", unsupported.body().at("/data/status").asText());
+        assertFalse(unsupported.body().at("/data").has("result"));
+
+        try (Connection tenant = connection(schemaA)) {
+            UUID employeeId = scalarUuid(tenant, "SELECT id FROM employees LIMIT 1");
+            execute(tenant, "UPDATE employees SET first_name='Ada Updated' WHERE id=?", employeeId);
+            assertEquals(4, scalarLong(tenant, "SELECT COUNT(*) FROM ai_messages WHERE conversation_id=?",
+                    conversationId));
+            assertEquals(1, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?",
+                    conversationId));
+            assertFalse(scalarText(tenant, "SELECT result_metadata::text FROM ai_report_runs WHERE id=?",
+                    firstRunId).contains("Ada"));
+        }
+
+        Reply refreshed = conversation(slugA, owner, "POST", "/api/hr/ai/conversations/" + conversationId
+                + "/reports/" + firstRunId + "/refresh", null);
+        assertEquals(200, refreshed.status(), refreshed.body().toPrettyString());
+        assertEquals("Ada Updated Tenant", refreshed.body().at("/data/result/rows/0/employee.full_name").asText());
+        assertNotEquals(firstRunId.toString(), refreshed.body().at("/data/reportRunId").asText());
+        try (Connection tenant = connection(schemaA)) {
+            assertEquals(2, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?",
+                    conversationId));
+        }
+
+        String revoked = session(schemaA, slugA, userA, "hr.reports.employees.read,departments.list");
+        Reply deniedRefresh = conversation(slugA, revoked, "POST", "/api/hr/ai/conversations/" + conversationId
+                + "/reports/" + firstRunId + "/refresh", null);
+        assertEquals(403, deniedRefresh.status(), deniedRefresh.body().toPrettyString());
+
+        try (Connection tenant = connection(schemaA)) {
+            execute(tenant, "UPDATE ai_report_runs SET catalog_version='obsolete' WHERE id=?", firstRunId);
+        }
+        Reply obsoleteCatalog = conversation(slugA, owner, "POST", "/api/hr/ai/conversations/" + conversationId
+                + "/reports/" + firstRunId + "/refresh", null);
+        assertEquals(409, obsoleteCatalog.status(), obsoleteCatalog.body().toPrettyString());
+
+        assertEquals(200, conversation(slugA, owner, "DELETE",
+                "/api/hr/ai/conversations/" + conversationId, null).status());
+        try (Connection tenant = connection(schemaA)) {
+            assertEquals(0, scalarLong(tenant, "SELECT COUNT(*) FROM ai_messages WHERE conversation_id=?",
+                    conversationId));
+            assertEquals(0, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?",
+                    conversationId));
+        }
+
+        UUID staleConversationId = UUID.fromString(conversation(slugA, owner, "POST",
+                "/api/hr/ai/conversations", null).body().at("/data/id").asText());
+        UUID staleMessageId = UUID.randomUUID();
+        try (Connection tenant = connection(schemaA)) {
+            execute(tenant, "INSERT INTO ai_messages(id,conversation_id,client_message_id,role,content,"
+                            + "message_type,state,created_at) VALUES (?,?,?,'USER','stale synthetic message',"
+                            + "'TEXT','PENDING',NOW()-INTERVAL '5 minutes')",
+                    UUID.randomUUID(), staleConversationId, staleMessageId);
+        }
+        String staleRecoveryBody = mapper.writeValueAsString(java.util.Map.of(
+                "clientMessageId", UUID.randomUUID(), "message", "listar empleados al 2026-01-15"));
+        Reply afterRecovery = conversation(slugA, owner, "POST", "/api/hr/ai/conversations/"
+                + staleConversationId + "/messages", staleRecoveryBody);
+        assertEquals(200, afterRecovery.status(), afterRecovery.body().toPrettyString());
+        try (Connection tenant = connection(schemaA)) {
+            assertEquals("FAILED", scalarText(tenant,
+                    "SELECT state FROM ai_messages WHERE conversation_id=? AND client_message_id=?",
+                    staleConversationId, staleMessageId));
+            assertEquals(4, scalarLong(tenant, "SELECT COUNT(*) FROM ai_messages WHERE conversation_id=?",
+                    staleConversationId));
+        }
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            UUID concurrentConversationId = UUID.fromString(conversation(slugA, owner, "POST",
+                    "/api/hr/ai/conversations", null).body().at("/data/id").asText());
+            UUID concurrentClientId = UUID.randomUUID();
+            String concurrentBody = mapper.writeValueAsString(java.util.Map.of(
+                    "clientMessageId", concurrentClientId, "message", "listar empleados al 2026-01-15"));
+            String concurrentPath = "/api/hr/ai/conversations/" + concurrentConversationId + "/messages";
+            CountDownLatch start = new CountDownLatch(1);
+            CompletableFuture<Reply> firstCall = CompletableFuture.supplyAsync(() -> {
+                await(start);
+                try { return conversation(slugA, owner, "POST", concurrentPath, concurrentBody); }
+                catch (Exception failure) { throw new RuntimeException(failure); }
+            });
+            CompletableFuture<Reply> secondCall = CompletableFuture.supplyAsync(() -> {
+                await(start);
+                try { return conversation(slugA, owner, "POST", concurrentPath, concurrentBody); }
+                catch (Exception failure) { throw new RuntimeException(failure); }
+            });
+            start.countDown();
+            Reply firstReply = firstCall.join();
+            Reply secondReply = secondCall.join();
+            assertTrue(List.of(200, 202).contains(firstReply.status()), firstReply.body().toPrettyString());
+            assertTrue(List.of(200, 202).contains(secondReply.status()), secondReply.body().toPrettyString());
+            try (Connection tenant = connection(schemaA)) {
+                assertEquals(2, scalarLong(tenant, "SELECT COUNT(*) FROM ai_messages WHERE conversation_id=?",
+                        concurrentConversationId));
+                assertEquals(1, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?",
+                        concurrentConversationId));
+            }
+        }
+    }
+
     private void setupTenant(UUID tenantId, String slug, String schema, String first,
                              String department, int late) throws SQLException {
         Flyway.configure().dataSource(URL, USER, PASSWORD)
@@ -252,6 +466,20 @@ class AiQueryHttpIntegrationTest {
         return new Reply(response.statusCode(), mapper.readTree(response.body()));
     }
 
+    private Reply conversation(String slug, String jwt, String method, String path, String body)
+            throws Exception {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header("Authorization", "Bearer " + jwt)
+                .header("X-Tenant-Slug", slug);
+        if (body != null) builder.header("Content-Type", "application/json");
+        HttpRequest.BodyPublisher publisher = body == null
+                ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body);
+        HttpResponse<String> response = HTTP.send(builder.method(method, publisher).build(),
+                HttpResponse.BodyHandlers.ofString());
+        return new Reply(response.statusCode(), response.body().isBlank()
+                ? mapper.createObjectNode() : mapper.readTree(response.body()));
+    }
+
     private record Reply(int status, JsonNode body) {}
 
     private static Connection connection(String schema) throws SQLException {
@@ -277,11 +505,33 @@ class AiQueryHttpIntegrationTest {
         }
     }
 
-    private static long scalarLong(Connection connection, String sql) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(sql);
-             ResultSet result = statement.executeQuery()) {
-            assertTrue(result.next());
-            return result.getLong(1);
+    private static long scalarLong(Connection connection, String sql, Object... values) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < values.length; i++) statement.setObject(i + 1, values[i]);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getLong(1);
+            }
+        }
+    }
+
+    private static String scalarText(Connection connection, String sql, Object... values) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < values.length; i++) statement.setObject(i + 1, values[i]);
+            try (ResultSet result = statement.executeQuery()) {
+                assertTrue(result.next());
+                return result.getString(1);
+            }
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                throw new IllegalStateException("Timed out starting concurrent synthetic requests");
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted synthetic request", interrupted);
         }
     }
 }

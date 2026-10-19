@@ -1,5 +1,6 @@
 package com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.modules.platform.tenantsettings.application.service.TenantTimezoneService;
 import java.time.LocalDate;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 /** Coordinates one request synchronously so Spring's security and tenant context remain intact. */
 @Service
 public final class AiQueryOrchestrator {
+    public record PlannedQuery(AiQueryResponse response, JsonNode validatedPlan) {}
+
     private final AnalyticAuthorizationPolicy authorization;
     private final AiPlannerClient planner;
     private final AnalyticQueryService queries;
@@ -37,6 +40,11 @@ public final class AiQueryOrchestrator {
     }
 
     public AiQueryResponse query(String question) {
+        return queryWithPlan(question).response();
+    }
+
+    /** Returns a plan only after the existing query service has validated, authorized and executed it. */
+    public PlannedQuery queryWithPlan(String question) {
         Map<String, AnalyticAuthorizationPolicy.DatasetCapabilities> capabilities =
                 new TreeMap<>(authorization.authorizedCatalog());
         if (capabilities.isEmpty())
@@ -45,12 +53,15 @@ public final class AiQueryOrchestrator {
         AiPlannerClient.Reply reply = planner.plan(new AiPlannerClient.Request(
                 "1", question, SemanticCatalogV1.VERSION, capabilities, semanticContext(capabilities)));
         return switch (reply.status()) {
-            case "query_plan" -> AiQueryResponse.ok(queries.execute(reply.plan().toString()));
-            case "needs_clarification" -> AiQueryResponse.clarification(
+            case "query_plan" -> {
+                JsonNode plan = reply.plan().deepCopy();
+                yield new PlannedQuery(AiQueryResponse.ok(queries.execute(plan.toString())), plan);
+            }
+            case "needs_clarification" -> new PlannedQuery(AiQueryResponse.clarification(
                     reply.question() == null ? "¿Qué información adicional necesitas proporcionar?"
-                            : reply.question(), reply.reasonCode());
-            case "unsupported" -> AiQueryResponse.unsupported(safeUnsupported(reply.reasonCode()),
-                    reply.reasonCode());
+                            : reply.question(), reply.reasonCode()), null);
+            case "unsupported" -> new PlannedQuery(AiQueryResponse.unsupported(safeUnsupported(reply.reasonCode()),
+                    reply.reasonCode()), null);
             default -> throw new AiFlowException(AiFlowException.Code.INVALID_PLANNER_RESPONSE);
         };
     }

@@ -37,6 +37,9 @@ app:
       url: ${AI_PLANNER_URL:}
       service-token: ${AI_PLANNER_SERVICE_TOKEN:}
       mode: ${AI_PLANNER_MODE:mock}
+    conversations:
+      message-max-length: ${AI_CONVERSATION_MESSAGE_MAX_LENGTH:4000}
+      pending-timeout: ${AI_CONVERSATION_PENDING_TIMEOUT:PT2M}
   billing:
     stripe:
       secret-key: ${STRIPE_SECRET_KEY:}
