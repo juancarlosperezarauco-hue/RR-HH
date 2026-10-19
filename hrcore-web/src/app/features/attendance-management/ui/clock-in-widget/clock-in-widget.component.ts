@@ -2,17 +2,22 @@ import {
   Component,
   OnInit,
   OnDestroy,
+  OnChanges,
+  SimpleChanges,
+  Input,
+  Output,
+  EventEmitter,
   inject,
   signal,
-  Output,
-  EventEmitter
+  computed
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { AttendanceClockUseCase } from '../../application/attendance-clock.usecase';
-import { AttendanceRecordResponse } from '../../../../entities/attendance';
-import { EmployeesService } from '../../../../entities/employees';
+import { AttendanceRecordResponse, AttendanceService } from '../../../../entities/attendance';
+import { EmployeesService, EmployeeSummary } from '../../../../entities/employees';
+import { ToastService } from '../../../../shared/ui/toast/toast.service';
 import { firstValueFrom } from 'rxjs';
 
 export interface ClockEmployeeOption {
@@ -20,6 +25,8 @@ export interface ClockEmployeeOption {
   name: string;
   code: string;
 }
+
+export type PunchSequenceState = 'NONE' | 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT';
 
 @Component({
   selector: 'app-clock-in-widget',
@@ -89,16 +96,14 @@ export interface ClockEmployeeOption {
             </select>
           </div>
 
-          <!-- Estado del día del colaborador -->
-          <div *ngIf="todayRecord()" class="mt-2 text-xs flex items-center gap-2 text-muted-foreground">
-            <span class="inline-block w-2 h-2 rounded-full" [ngClass]="todayRecord()?.checkOutTime ? 'bg-indigo-500' : 'bg-emerald-500'"></span>
-            <span>
-              Entrada: <strong>{{ formatTime(todayRecord()?.checkInTime) }}</strong>
-              <ng-container *ngIf="todayRecord()?.checkOutTime">
-                | Salida: <strong>{{ formatTime(todayRecord()?.checkOutTime) }}</strong>
-              </ng-container>
-            </span>
+          <!-- Estado de marcación del colaborador -->
+          <div *ngIf="selectedEmployeeId" class="mt-2 text-xs flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" [ngClass]="statusColorClass()"></span>
+            <span class="font-medium text-foreground">{{ statusLabel() }}</span>
           </div>
+          <p *ngIf="employeeOptions.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+            No se encontraron colaboradores activos registrados.
+          </p>
         </div>
 
         <!-- Right: Botones de Marcación & Debounce -->
@@ -106,10 +111,11 @@ export interface ClockEmployeeOption {
           <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full">
             <!-- Botón Entrada -->
             <button
+              type="button"
               (click)="punch('IN')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
-              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              title="Registrar inicio de jornada laboral"
+              [disabled]="!canPunchIn()"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar inicio de jornada laboral (requiere no haber marcado entrada)"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-in" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -118,10 +124,11 @@ export interface ClockEmployeeOption {
 
             <!-- Botón Pausa Almuerzo -->
             <button
+              type="button"
               (click)="punch('BREAK_START')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
-              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-amber-500 hover:to-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              title="Registrar inicio de pausa o almuerzo"
+              [disabled]="!canPunchBreakStart()"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-amber-500 hover:to-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar inicio de pausa o almuerzo (requiere entrada activa)"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="coffee" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -130,10 +137,11 @@ export interface ClockEmployeeOption {
 
             <!-- Botón Fin Pausa -->
             <button
+              type="button"
               (click)="punch('BREAK_END')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
-              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              title="Registrar fin de pausa y retorno al puesto"
+              [disabled]="!canPunchBreakEnd()"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar fin de pausa y retorno al puesto (requiere pausa previa)"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="play" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -142,10 +150,11 @@ export interface ClockEmployeeOption {
 
             <!-- Botón Salida -->
             <button
+              type="button"
               (click)="punch('OUT')"
-              [disabled]="!selectedEmployeeId || clockUseCase.clocking() || clockUseCase.isDebounced()"
-              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-rose-500 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95"
-              title="Registrar cierre de jornada laboral"
+              [disabled]="!canPunchOut()"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm hover:from-rose-500 hover:to-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all transform active:scale-95"
+              title="Registrar cierre de jornada laboral (requiere entrada activa y no estar en pausa)"
             >
               <lucide-icon *ngIf="!clockUseCase.clocking()" name="log-out" class="h-3.5 w-3.5"></lucide-icon>
               <lucide-icon *ngIf="clockUseCase.clocking()" name="loader-circle" class="h-3.5 w-3.5 animate-spin"></lucide-icon>
@@ -170,15 +179,20 @@ export interface ClockEmployeeOption {
     </div>
   `
 })
-export class ClockInWidgetComponent implements OnInit, OnDestroy {
+export class ClockInWidgetComponent implements OnInit, OnDestroy, OnChanges {
+  @Input() employees?: EmployeeSummary[];
+  @Output() clockRegistered = new EventEmitter<AttendanceRecordResponse>();
+
   readonly clockUseCase = inject(AttendanceClockUseCase);
   private readonly employeesService = inject(EmployeesService);
-
-  @Output() clockRegistered = new EventEmitter<AttendanceRecordResponse>();
+  private readonly attendanceService = inject(AttendanceService);
+  private readonly toastService = inject(ToastService);
 
   readonly currentTime = signal<string>('00:00:00');
   readonly currentDate = signal<string>('');
   readonly todayRecord = signal<AttendanceRecordResponse | null>(null);
+  readonly lastPunchState = signal<PunchSequenceState>('NONE');
+  readonly lastPunchTime = signal<string | null>(null);
 
   employeeOptions: ClockEmployeeOption[] = [];
   selectedEmployeeId = '';
@@ -188,28 +202,47 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     this.updateClock();
     this.clockInterval = setInterval(() => this.updateClock(), 1000);
-    await this.loadEmployees();
+    if (!this.employees || this.employees.length === 0) {
+      await this.loadEmployees();
+    } else {
+      this.populateEmployeeOptions(this.employees);
+    }
   }
 
-  private async loadEmployees(): Promise<void> {
-    try {
-      const response = await firstValueFrom(this.employeesService.list(0, 100, { status: 'ACTIVE' }));
-      this.employeeOptions = (response.data?.content || []).map((employee) => ({
-        id: employee.id,
-        name: `${employee.firstName} ${employee.lastName}`.trim(),
-        code: employee.employeeNumber
-      }));
-      this.selectedEmployeeId = this.employeeOptions[0]?.id || '';
-      if (this.selectedEmployeeId) await this.onEmployeeChange();
-    } catch {
-      this.employeeOptions = [];
-      this.selectedEmployeeId = '';
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['employees'] && this.employees) {
+      this.populateEmployeeOptions(this.employees);
     }
   }
 
   ngOnDestroy(): void {
     if (this.clockInterval) {
       clearInterval(this.clockInterval);
+    }
+  }
+
+  private populateEmployeeOptions(list: EmployeeSummary[]): void {
+    this.employeeOptions = list.map((employee) => ({
+      id: employee.id,
+      name: `${employee.firstName} ${employee.lastName}`.trim(),
+      code: employee.employeeNumber
+    }));
+    if (!this.selectedEmployeeId && this.employeeOptions.length > 0) {
+      this.selectedEmployeeId = this.employeeOptions[0].id;
+      this.onEmployeeChange();
+    }
+  }
+
+  async loadEmployees(): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.employeesService.list(0, 100, { status: 'ACTIVE' }));
+      const list: EmployeeSummary[] = Array.isArray(response.data)
+        ? (response.data as EmployeeSummary[])
+        : (response.data?.content || []);
+      this.populateEmployeeOptions(list);
+    } catch {
+      this.employeeOptions = [];
+      this.selectedEmployeeId = '';
     }
   }
 
@@ -236,16 +269,144 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy {
   async onEmployeeChange(): Promise<void> {
     if (!this.selectedEmployeeId) {
       this.todayRecord.set(null);
+      this.lastPunchState.set('NONE');
+      this.lastPunchTime.set(null);
       return;
     }
+    await this.refreshEmployeeState();
+  }
+
+  async refreshEmployeeState(): Promise<void> {
+    if (!this.selectedEmployeeId) return;
+
+    // 1. Obtener registro de jornada de hoy
     const record = await this.clockUseCase.fetchTodayRecord(this.selectedEmployeeId);
     this.todayRecord.set(record);
+
+    // 2. Determinar estado de la secuencia de marcaciones consultando las más recientes
+    try {
+      const punchesRes = await firstValueFrom(
+        this.attendanceService.listPunches({
+          employeeId: this.selectedEmployeeId,
+          size: 10,
+          sort: 'punchedAt',
+          direction: 'desc'
+        })
+      );
+      const punches = Array.isArray(punchesRes?.data) ? punchesRes.data : (punchesRes?.data?.content || []);
+
+      if (punches.length > 0) {
+        // Con direction: 'desc', el primer elemento es la última marcación registrada
+        const latest = punches[0];
+        this.lastPunchState.set(latest.punchType as PunchSequenceState);
+        this.lastPunchTime.set(this.formatTime(latest.punchedAt));
+      } else if (record?.checkOutTime) {
+        this.lastPunchState.set('OUT');
+        this.lastPunchTime.set(this.formatTime(record.checkOutTime));
+      } else if (record?.checkInTime) {
+        this.lastPunchState.set('IN');
+        this.lastPunchTime.set(this.formatTime(record.checkInTime));
+      } else {
+        this.lastPunchState.set('NONE');
+        this.lastPunchTime.set(null);
+      }
+    } catch {
+      this.lastPunchState.set('NONE');
+      this.lastPunchTime.set(null);
+    }
+  }
+
+  canPunchIn(): boolean {
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    return this.lastPunchState() === 'NONE' || this.lastPunchState() === 'OUT';
+  }
+
+  canPunchBreakStart(): boolean {
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    return this.lastPunchState() === 'IN' || this.lastPunchState() === 'BREAK_END';
+  }
+
+  canPunchBreakEnd(): boolean {
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    return this.lastPunchState() === 'BREAK_START';
+  }
+
+  canPunchOut(): boolean {
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    return this.lastPunchState() === 'IN' || this.lastPunchState() === 'BREAK_END';
+  }
+
+  statusLabel(): string {
+    const time = this.lastPunchTime();
+    switch (this.lastPunchState()) {
+      case 'IN':
+        return `En jornada laboral (Entrada: ${time || '--:--'})`;
+      case 'BREAK_START':
+        return `En descanso / pausa (Iniciada: ${time || '--:--'})`;
+      case 'BREAK_END':
+        return `En jornada laboral (Retorno de pausa: ${time || '--:--'})`;
+      case 'OUT':
+        return `Jornada concluida (Salida: ${time || '--:--'})`;
+      case 'NONE':
+      default:
+        return 'Sin marcación hoy · Esperando Entrada';
+    }
+  }
+
+  statusColorClass(): string {
+    switch (this.lastPunchState()) {
+      case 'IN':
+      case 'BREAK_END':
+        return 'bg-emerald-500 shadow-sm shadow-emerald-500/50';
+      case 'BREAK_START':
+        return 'bg-amber-500 shadow-sm shadow-amber-500/50';
+      case 'OUT':
+        return 'bg-indigo-500 shadow-sm shadow-indigo-500/50';
+      case 'NONE':
+      default:
+        return 'bg-muted-foreground/40';
+    }
   }
 
   async punch(type: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END'): Promise<void> {
+    if (!this.selectedEmployeeId) {
+      this.toastService.warning('Seleccione un colaborador antes de marcar.');
+      return;
+    }
+
+    // Validación preventiva en cliente para mejorar la experiencia de usuario
+    if (type === 'IN' && !this.canPunchIn()) {
+      this.toastService.warning('El colaborador ya registró su entrada para esta jornada.');
+      return;
+    }
+    if (type === 'OUT' && !this.canPunchOut()) {
+      if (this.lastPunchState() === 'BREAK_START') {
+        this.toastService.warning('El colaborador está en pausa. Debe registrar el retorno antes de marcar salida.');
+      } else if (this.lastPunchState() === 'NONE') {
+        this.toastService.warning('Debe registrar la entrada antes de poder marcar la salida.');
+      } else {
+        this.toastService.warning('La jornada ya fue finalizada para este colaborador.');
+      }
+      return;
+    }
+    if (type === 'BREAK_START' && !this.canPunchBreakStart()) {
+      if (this.lastPunchState() === 'NONE') {
+        this.toastService.warning('Debe registrar la entrada antes de iniciar una pausa.');
+      } else if (this.lastPunchState() === 'BREAK_START') {
+        this.toastService.warning('El colaborador ya se encuentra en pausa.');
+      } else {
+        this.toastService.warning('No se puede iniciar pausa en el estado actual.');
+      }
+      return;
+    }
+    if (type === 'BREAK_END' && !this.canPunchBreakEnd()) {
+      this.toastService.warning('Debe iniciar una pausa antes de registrar el retorno.');
+      return;
+    }
+
     const result = await this.clockUseCase.registerClock(this.selectedEmployeeId, type);
     if (result) {
-      this.todayRecord.set(result);
+      await this.refreshEmployeeState();
       this.clockRegistered.emit(result);
     }
   }

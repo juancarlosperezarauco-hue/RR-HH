@@ -24,26 +24,37 @@ export class ShiftAssignmentUseCase {
         firstValueFrom(this.employeesService.list(0, 100)).catch(() => null),
         firstValueFrom(this.shiftService.listShifts('ALL', 0, 100)).catch(() => null)
       ]);
-      if (res?.data?.content) {
-        const employees = new Map<string, EmployeeSummary>(
-          (employeesRes?.data?.content || []).map((employee) => [employee.id, employee])
-        );
-        const shifts = new Map<string, ShiftResponse>(
-          (shiftsRes?.data?.content || []).map((shift) => [shift.id, shift])
-        );
-        this.assignments.set(res.data.content.map((assignment) => {
-          const employee = employees.get(assignment.employeeId);
-          const shift = shifts.get(assignment.shiftId);
-          return {
-            ...assignment,
-            employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : undefined,
-            employeeCode: employee?.employeeNumber,
-            shiftName: shift?.name,
-            isRecurring: (assignment.weekdays?.length || 0) > 0
-          };
-        }));
-        return;
-      }
+      const rawAssignments: EmployeeShiftAssignmentResponse[] = Array.isArray(res?.data)
+        ? (res.data as EmployeeShiftAssignmentResponse[])
+        : (res?.data?.content || []);
+
+      const rawEmployees: EmployeeSummary[] = Array.isArray(employeesRes?.data)
+        ? (employeesRes.data as EmployeeSummary[])
+        : (employeesRes?.data?.content || []);
+
+      const rawShifts: ShiftResponse[] = Array.isArray(shiftsRes?.data)
+        ? (shiftsRes.data as ShiftResponse[])
+        : (shiftsRes?.data?.content || []);
+
+      const employees = new Map<string, EmployeeSummary>(
+        rawEmployees.map((employee) => [employee.id, employee])
+      );
+      const shifts = new Map<string, ShiftResponse>(
+        rawShifts.map((shift) => [shift.id, shift])
+      );
+
+      this.assignments.set(rawAssignments.map((assignment) => {
+        const employee = employees.get(assignment.employeeId);
+        const shift = shifts.get(assignment.shiftId);
+        return {
+          ...assignment,
+          employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : undefined,
+          employeeCode: employee?.employeeNumber,
+          shiftName: shift?.name,
+          isRecurring: (assignment.weekdays?.length || 0) > 0
+        };
+      }));
+      return;
     } catch {
       this.assignments.set([]);
     } finally {
@@ -106,8 +117,8 @@ export class ShiftAssignmentUseCase {
       this.assignments.update((prev) => [...res.data, ...prev]);
       return true;
     } catch (err: unknown) {
-      const errorResponse = err as { error?: { message?: string } };
-      const msg = errorResponse?.error?.message || 'Error al asignar el turno a los trabajadores';
+      const errorResponse = err as { error?: { message?: string; errors?: string[] } };
+      const msg = errorResponse?.error?.errors?.[0] || errorResponse?.error?.message || 'Error al asignar el turno a los trabajadores';
       this.error.set(msg);
       this.toastService.error(msg);
       return false;
