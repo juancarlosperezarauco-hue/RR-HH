@@ -180,7 +180,7 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
       const res = await firstValueFrom(
         this.http.get<any>(`${environment.apiUrl}/api/employees?size=50`)
       );
-      const list = res?.data?.content || [];
+      const list = Array.isArray(res?.data) ? res.data : (res?.data?.content || []);
       this.availableEmployees = list.map((e: any) => ({
         id: e.id,
         name: `${e.firstName} ${e.lastName}`,

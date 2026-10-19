@@ -140,16 +140,27 @@ export class AttendanceService {
       params = params.set('status', status);
     }
 
-    return this.http.get<ApiResponse<PageResponse<AttendanceRecordResponse>>>(
+    return this.http.get<ApiResponse<any>>(
       `${this.baseUrl}/records`,
       { params }
-    ).pipe(map((res) => ({
-      ...res,
-      data: {
-        ...res.data,
-        content: (res.data?.content || []).map((record) => this.toViewRecord(record))
-      }
-    })));
+    ).pipe(map((res) => {
+      const rawData = res.data;
+      const list: any[] = Array.isArray(rawData) ? rawData : (rawData?.content || []);
+      const pageData: PageResponse<AttendanceRecordResponse> = {
+        content: list.map((record) => this.toViewRecord(record)),
+        page: typeof rawData?.page === 'number' ? rawData.page : (typeof rawData?.number === 'number' ? rawData.number : 0),
+        size: typeof rawData?.size === 'number' ? rawData.size : (list.length || 20),
+        totalElements: typeof rawData?.totalElements === 'number' ? rawData.totalElements : list.length,
+        totalPages: typeof rawData?.totalPages === 'number' ? rawData.totalPages : 1,
+        first: rawData?.first ?? true,
+        last: rawData?.last ?? true,
+        empty: list.length === 0
+      };
+      return {
+        ...res,
+        data: pageData
+      };
+    }));
   }
 
   getRecordById(id: string): Observable<ApiResponse<AttendanceRecordResponse>> {
@@ -166,7 +177,12 @@ export class AttendanceService {
   }
 
   getTodayStatus(employeeId?: string): Observable<ApiResponse<AttendanceRecordResponse | null>> {
-    const today = new Date().toISOString().split('T')[0];
+    const localNow = new Date();
+    const year = localNow.getFullYear();
+    const month = String(localNow.getMonth() + 1).padStart(2, '0');
+    const day = String(localNow.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+
     let params = new HttpParams()
       .set('from', today)
       .set('to', today)
@@ -177,16 +193,19 @@ export class AttendanceService {
       params = params.set('employeeId', employeeId);
     }
 
-    return this.http.get<ApiResponse<PageResponse<AttendanceRecordResponse>>>(
+    return this.http.get<ApiResponse<any>>(
       `${this.baseUrl}/records`,
       { params }
     ).pipe(
-      map((res) => ({
-        success: res.success,
-        message: res.message,
-        data: res.data?.content?.[0] ? this.toViewRecord(res.data.content[0]) : null,
-        timestamp: res.timestamp
-      }))
+      map((res) => {
+        const items = Array.isArray(res.data) ? res.data : (res.data?.content || []);
+        return {
+          success: res.success,
+          message: res.message,
+          data: items[0] ? this.toViewRecord(items[0]) : null,
+          timestamp: res.timestamp
+        };
+      })
     );
   }
 
