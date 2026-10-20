@@ -29,6 +29,18 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class AiConversationExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(AiConversationExceptionHandler.class);
 
+    @ExceptionHandler(com.hrcoresystem.hrcore_api.modules.tenant.reports.application.ai.AiExportLimitException.class)
+    public ResponseEntity<Error> exportLimit(RuntimeException failure) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new Error("AI_EXPORT_LIMIT_EXCEEDED", failure.getMessage()));
+    }
+
+    @ExceptionHandler(com.hrcoresystem.hrcore_api.modules.tenant.reports.application.export.AiExportBusyException.class)
+    public ResponseEntity<Error> exportBusy(RuntimeException failure) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new Error("AI_EXPORT_BUSY", failure.getMessage()));
+    }
+
     public record Error(boolean success, String code, String message, List<String> errors,
                         Instant timestamp) {
         Error(String code, String message) {

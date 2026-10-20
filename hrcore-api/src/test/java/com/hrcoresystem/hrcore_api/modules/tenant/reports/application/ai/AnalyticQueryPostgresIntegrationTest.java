@@ -98,6 +98,65 @@ class AnalyticQueryPostgresIntegrationTest {
     @BeforeEach
     void tenantA() { authenticate(slugA, schemaA, AUTHORITIES.split(",")); }
 
+    @Test void exportCancelsSlowDatabaseStatement() {
+        var query = new QueryPlanSqlCompiler.CompiledQuery("SELECT 1::bigint AS c0 FROM pg_sleep(2)", List.of(),
+                List.of(new QueryResultV1.Column("id", SemanticCatalogV1.ValueType.INTEGER)), 0, 1);
+        assertEquals(QueryPlanException.Code.QUERY_TIMEOUT, assertThrows(QueryPlanException.class,
+                () -> context.getBean(AnalyticQueryExecutor.class).export(query, 1, new AnalyticExportSink() {
+                    public void columns(List<QueryResultV1.Column> columns) {}
+                    public void row(Map<String, Object> row) { fail("A timed out query must not deliver a row"); }
+                })).code());
+    }
+
+    @Test void exportUsesOneCursorSnapshotAcrossFetchesAndRejectsRowOverflow() throws Exception {
+        var executor = context.getBean(AnalyticQueryExecutor.class);
+        try (Connection db = DriverManager.getConnection(url, user, password)) {
+            update(db, "CREATE TABLE " + schemaA + ".ai_export_snapshot_probe (id bigint PRIMARY KEY)");
+            update(db, "INSERT INTO " + schemaA + ".ai_export_snapshot_probe SELECT generate_series(1,205)");
+        }
+        try {
+            var rows = new java.util.ArrayList<Long>();
+            var query = new QueryPlanSqlCompiler.CompiledQuery(
+                    "SELECT id AS c0 FROM ai_export_snapshot_probe ORDER BY id LIMIT ? OFFSET ?",
+                    List.of(206, 0), List.of(new QueryResultV1.Column("id", SemanticCatalogV1.ValueType.INTEGER)), 0, 205);
+            executor.export(query, 30, new AnalyticExportSink() {
+                public void columns(List<QueryResultV1.Column> columns) {}
+                public void row(Map<String, Object> row) {
+                    rows.add((Long) row.get("id"));
+                    if (rows.size() == 1) {
+                        try (Connection other = DriverManager.getConnection(url, user, password)) {
+                            update(other, "DELETE FROM " + schemaA + ".ai_export_snapshot_probe WHERE id=150");
+                            update(other, "UPDATE " + schemaA + ".ai_export_snapshot_probe SET id=1205 WHERE id=205");
+                            update(other, "INSERT INTO " + schemaA + ".ai_export_snapshot_probe VALUES (0)");
+                        } catch (SQLException failure) { throw new RuntimeException(failure); }
+                    }
+                }
+            });
+            assertEquals(java.util.stream.LongStream.rangeClosed(1, 205).boxed().toList(), rows);
+            var delivered = new java.util.concurrent.atomic.AtomicInteger();
+            assertEquals(QueryPlanException.Code.QUERY_TIMEOUT, assertThrows(QueryPlanException.class,
+                    () -> executor.export(query, 1, new AnalyticExportSink() {
+                        public void columns(List<QueryResultV1.Column> columns) {}
+                        public void row(Map<String, Object> row) {
+                            if (delivered.incrementAndGet() == 100) {
+                                try { Thread.sleep(1100); }
+                                catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new RuntimeException(interrupted); }
+                            }
+                        }
+                    })).code());
+            assertEquals(100, delivered.get(), "The next cursor fetch must not receive a fresh timeout budget");
+            var bounded = new QueryPlanSqlCompiler.CompiledQuery(query.sql(), List.of(4, 0), query.columns(), 0, 3);
+            assertThrows(AiExportLimitException.class, () -> executor.export(bounded, 30, new AnalyticExportSink() {
+                public void columns(List<QueryResultV1.Column> columns) {}
+                public void row(Map<String, Object> row) {}
+            }));
+        } finally {
+            try (Connection db = DriverManager.getConnection(url, user, password)) {
+                update(db, "DROP TABLE " + schemaA + ".ai_export_snapshot_probe");
+            }
+        }
+    }
+
     @AfterEach
     void clear() {
         SecurityContextHolder.clearContext();

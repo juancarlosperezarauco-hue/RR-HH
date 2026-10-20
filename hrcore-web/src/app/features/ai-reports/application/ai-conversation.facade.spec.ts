@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { ReportDownloadService } from './report-download.service';
 import { of, Subject, throwError } from 'rxjs';
 import { AiConversationFacade } from './ai-conversation.facade';
 import { AiConversationService } from '../../../entities/reports/api/ai-conversation.service';
@@ -18,17 +19,20 @@ const result: QueryResult = { columns: [], rows: [], pageNumber: 0, pageSize: 20
 
 describe('AiConversationFacade: identidad, concurrencia e idempotencia', () => {
   let facade: AiConversationFacade, api: jasmine.SpyObj<AiConversationService>;
-  const user = signal<{ id: string; tenantSlug: string; scope: string } | null>(null);
+  const user = signal<{ id: string; tenantSlug: string; scope: string; permissions?: string[] } | null>(null);
+  let downloads: jasmine.SpyObj<ReportDownloadService>;
   const status = signal('ready');
   beforeEach(() => {
-    user.set({ id: 'user1', tenantSlug: 'synthetic', scope: 'TENANT' }); status.set('ready');
-    api = jasmine.createSpyObj('AiConversationService', ['list', 'create', 'get', 'messages', 'delete', 'send', 'refresh']);
+    user.set({ id: 'user1', tenantSlug: 'synthetic', scope: 'TENANT', permissions: ['hr.reports.export'] }); status.set('ready');
+    downloads = jasmine.createSpyObj('ReportDownloadService', ['save']);
+    api = jasmine.createSpyObj('AiConversationService', ['list', 'create', 'get', 'messages', 'delete', 'send', 'refresh', 'export']);
     api.list.and.returnValue(of(reply(page<AiConversation>([conversation()]))));
     api.get.and.callFake(id => of(reply(conversation(id))));
     api.messages.and.returnValue(of(reply(page<AiMessage>())));
     api.create.and.returnValue(of(reply(conversation('new')))); api.delete.and.returnValue(of(reply(null)));
     TestBed.configureTestingModule({ providers: [AiConversationFacade,
       { provide: AiConversationService, useValue: api },
+      { provide: ReportDownloadService, useValue: downloads },
       { provide: AuthFacade, useValue: { currentUser: user, status } },
       { provide: SessionCoordinatorService, useValue: { isLoggingOut: () => false } },
       { provide: ToastService, useValue: { error: jasmine.createSpy(), success: jasmine.createSpy() } }
@@ -40,6 +44,35 @@ describe('AiConversationFacade: identidad, concurrencia e idempotencia', () => {
     facade.initialize(); expect(api.list).toHaveBeenCalledTimes(1);
     facade.create(); expect(facade.selected()?.id).toBe('new'); expect(api.create).toHaveBeenCalledTimes(1);
     expect(api.send).not.toHaveBeenCalled();
+  });
+  it('exporta el run histórico por formato y bloquea clics repetidos', () => {
+    const report = message('answer', 'ASSISTANT'); facade.messages.set([report]);
+    const pending = new Subject<HttpResponse<Blob>>(); api.export.and.returnValue(pending);
+    facade.export(report, 'xlsx'); facade.export(report, 'xlsx');
+    expect(api.export).toHaveBeenCalledOnceWith('c', 'run', 'xlsx'); expect(facade.downloading()).toBeTrue();
+    const response = new HttpResponse({ body: new Blob(['synthetic']) }); pending.next(response);
+    expect(downloads.save).toHaveBeenCalledOnceWith(response, 'xlsx'); expect(facade.downloading()).toBeFalse();
+    expect(api.refresh).not.toHaveBeenCalled(); expect(api.send).not.toHaveBeenCalled();
+  });
+  it('descarta descargas tardías tras selección, nueva ejecución, cambio de identidad o historial', () => {
+    const report = message('answer', 'ASSISTANT'); facade.messages.set([report]);
+    let pending = new Subject<HttpResponse<Blob>>(); api.export.and.returnValue(pending);
+    facade.export(report, 'csv'); facade.select(conversation('other'));
+    pending.next(new HttpResponse({ body: new Blob(['private']) })); expect(downloads.save).not.toHaveBeenCalled();
+    facade.select(conversation()); facade.messages.set([report]); pending = new Subject(); api.export.and.returnValue(pending);
+    facade.export(report, 'pdf'); facade.results.set({ answer: { reportRunId: 'new-run', result, executedAt: '' } });
+    pending.next(new HttpResponse({ body: new Blob(['stale']) })); expect(downloads.save).not.toHaveBeenCalled();
+    pending = new Subject(); api.export.and.returnValue(pending); facade.export(report, 'csv'); facade.loadHistory();
+    expect(pending.observers.length).toBe(0); expect(facade.downloading()).toBeFalse();
+    facade.messages.set([report]); pending = new Subject(); api.export.and.returnValue(pending); facade.export(report, 'csv');
+    user.set(null); status.set('idle'); TestBed.flushEffects(); expect(pending.observers.length).toBe(0);
+  });
+  it('respeta el permiso conocido y muestra errores de exportación', () => {
+    const report = message('answer', 'ASSISTANT'); facade.messages.set([report]);
+    api.export.and.returnValue(throwError(() => new HttpErrorResponse({ status: 413, error: { message: 'Usa filtros' } })));
+    facade.export(report, 'pdf'); expect(facade.error()).toBe('Usa filtros'); expect(facade.downloading()).toBeFalse();
+    api.export.calls.reset(); user.set({ id: 'user1', tenantSlug: 'synthetic', scope: 'TENANT', permissions: [] });
+    facade.export(report, 'csv'); expect(api.export).not.toHaveBeenCalled();
   });
   it('consulta una página para localizar la última sin cargar todo el historial', () => {
     api.messages.and.callFake((_id, number) => of(reply(page<AiMessage>([], number ?? 0, 4))));

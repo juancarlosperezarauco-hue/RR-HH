@@ -33,10 +33,20 @@ logging:
 
 app:
   ai:
+    reports:
+      export:
+        tabular-max-rows: ${AI_EXPORT_TABULAR_MAX_ROWS:10000}
+        tabular-max-bytes: ${AI_EXPORT_TABULAR_MAX_BYTES:26214400}
+        pdf-max-rows: ${AI_EXPORT_PDF_MAX_ROWS:500}
+        pdf-max-columns: ${AI_EXPORT_PDF_MAX_COLUMNS:8}
+        pdf-max-bytes: ${AI_EXPORT_PDF_MAX_BYTES:10485760}
+        timeout-seconds: ${AI_EXPORT_TIMEOUT_SECONDS:30}
+        max-concurrent: ${AI_EXPORT_MAX_CONCURRENT:2}
     planner:
       url: ${AI_PLANNER_URL:}
       service-token: ${AI_PLANNER_SERVICE_TOKEN:}
       mode: ${AI_PLANNER_MODE:mock}
+      read-timeout-seconds: ${AI_PLANNER_READ_TIMEOUT_SECONDS:65}
     conversations:
       message-max-length: ${AI_CONVERSATION_MESSAGE_MAX_LENGTH:4000}
       pending-timeout: ${AI_CONVERSATION_PENDING_TIMEOUT:PT2M}

@@ -26,6 +26,24 @@ describe('AiConversationService: contrato e interceptor', () => {
     service = TestBed.inject(AiConversationService); http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it('descarga cada formato como binario con JWT y tenant, sin enviar filas o planes', () => {
+    for (const format of ['csv', 'xlsx', 'pdf'] as const) {
+      service.export('c', 'run', format).subscribe(response => expect(response.body).toBeInstanceOf(Blob));
+      const req = http.expectOne(r => r.url === `${api}/c/reports/run/export`);
+      expect(req.request.method).toBe('POST'); expect(req.request.body).toBeNull();
+      expect(req.request.params.keys()).toEqual(['format']); expect(req.request.params.get('format')).toBe(format);
+      expect(req.request.responseType).toBe('blob');
+      expect(req.request.headers.get('Authorization')).toBe('Bearer synthetic-access');
+      expect(req.request.headers.get('X-Tenant-Slug')).toBe('synthetic'); req.flush(new Blob(['synthetic']));
+    }
+  });
+  it('recupera el mensaje JSON de un error binario de exportación', done => {
+    service.export('c', 'run', 'pdf').subscribe({ next: () => fail('Debe rechazar'), error: error => {
+      expect(error.status).toBe(413); expect(error.error.message).toBe('Aplica filtros'); done();
+    } });
+    http.expectOne(r => r.url.endsWith('/export')).flush(new Blob([JSON.stringify({ message: 'Aplica filtros' })],
+      { type: 'application/json' }), { status: 413, statusText: 'Too Large' });
+  });
   it('crea sin cuerpo ni tenant/owner manipulables y reutiliza los headers de sesión', () => {
     service.create().subscribe(); const req = http.expectOne(api);
     expect(req.request.method).toBe('POST'); expect(req.request.body).toBeNull();

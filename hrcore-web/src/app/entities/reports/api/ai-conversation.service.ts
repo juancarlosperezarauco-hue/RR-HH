@@ -1,9 +1,9 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { map } from 'rxjs';
+import { catchError, from, map, mergeMap, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ApiResponse, PageResponse } from '../../../shared/api';
-import { AiConversation, AiMessage, AiMessageRequest, AiReportRefresh, AiTurn } from '../model/ai-conversation.model';
+import { AiConversation, AiMessage, AiMessageRequest, AiReportExportFormat, AiReportRefresh, AiTurn } from '../model/ai-conversation.model';
 
 type SpringPage<T> = Omit<PageResponse<T>, 'page'> & { number: number };
 function checked<T>(response: ApiResponse<T>): ApiResponse<T> {
@@ -40,5 +40,21 @@ export class AiConversationService {
     if (page !== undefined) params = params.set('page', page);
     if (size !== undefined) params = params.set('size', size);
     return this.http.post<ApiResponse<AiReportRefresh>>(`${this.api}/${encodeURIComponent(id)}/reports/${encodeURIComponent(runId)}/refresh`, null, { params }).pipe(map(checked));
+  }
+  export(id: string, runId: string, format: AiReportExportFormat) {
+    return this.http.post(`${this.api}/${encodeURIComponent(id)}/reports/${encodeURIComponent(runId)}/export`, null, {
+      params: new HttpParams().set('format', format), responseType: 'blob', observe: 'response'
+    }).pipe(catchError((error: unknown) => {
+      if (error instanceof HttpErrorResponse && error.error instanceof Blob && error.error.size <= 65536
+        && error.error.type.includes('json')) {
+        return from(error.error.text()).pipe(mergeMap(text => {
+          let body: unknown;
+          try { body = JSON.parse(text); } catch { return throwError(() => error); }
+          return throwError(() => new HttpErrorResponse({ error: body, headers: error.headers,
+            status: error.status, statusText: error.statusText, url: error.url ?? undefined }));
+        }));
+      }
+      return throwError(() => error);
+    }));
   }
 }

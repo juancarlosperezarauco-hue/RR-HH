@@ -82,6 +82,64 @@ public class AnalyticQueryExecutor {
                 hasMore, List.copyOf(warnings));
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true,
+            timeoutString = "${app.ai.reports.export.timeout-seconds:30}")
+    public void export(QueryPlanSqlCompiler.CompiledQuery query, int timeoutSeconds, AnalyticExportSink sink) {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(timeoutSeconds);
+        try {
+            jdbc.execute((ConnectionCallback<Void>) connection -> {
+                try (Statement controls = connection.createStatement()) {
+                    controls.execute("SET TRANSACTION READ ONLY");
+                }
+                try (PreparedStatement statement = connection.prepareStatement(query.sql(),
+                        ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+                    statement.setQueryTimeout(timeoutSeconds);
+                    statement.setFetchSize(100);
+                    statement.setMaxRows(query.pageSize() + 1);
+                    for (int i = 0; i < query.parameters().size(); i++)
+                        statement.setObject(i + 1, query.parameters().get(i));
+                    sink.columns(query.columns());
+                    exportTimeout(connection, deadline, sink);
+                    try (ResultSet result = statement.executeQuery()) {
+                        int count = 0;
+                        while (true) {
+                            // PostgreSQL applies statement_timeout to each cursor FETCH. Shrink the
+                            // remaining timeout before each new JDBC batch, without rerunning the data query.
+                            if (count > 0 && count % 100 == 0) exportTimeout(connection, deadline, sink);
+                            if (!result.next()) break;
+                            if (++count > query.pageSize()) throw new AiExportLimitException();
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            for (int i = 0; i < query.columns().size(); i++) {
+                                var column = query.columns().get(i);
+                                row.put(column.key(), value(result, "c" + i, column.type()));
+                            }
+                            sink.row(row);
+                        }
+                    }
+                }
+                return null;
+            });
+        } catch (QueryTimeoutException | TransactionTimedOutException timeout) {
+            throw new QueryPlanException(QueryPlanException.Code.QUERY_TIMEOUT);
+        } catch (DataAccessException failure) {
+            for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+                if (cause instanceof SQLException sql && "57014".equals(sql.getSQLState()))
+                    throw new QueryPlanException(QueryPlanException.Code.QUERY_TIMEOUT);
+            }
+            throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private static void exportTimeout(java.sql.Connection connection, long deadline, AnalyticExportSink sink)
+            throws SQLException {
+        long remaining = Math.min(sink.remainingMillis(),
+                java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()));
+        if (remaining <= 0) throw new QueryPlanException(QueryPlanException.Code.QUERY_TIMEOUT);
+        try (PreparedStatement controls = connection.prepareStatement("SELECT set_config('statement_timeout', ?, true)")) {
+            controls.setString(1, remaining + "ms"); controls.execute();
+        }
+    }
+
     private static Object value(ResultSet result, String alias, SemanticCatalogV1.ValueType type)
             throws SQLException {
         return switch (type) {

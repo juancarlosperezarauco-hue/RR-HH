@@ -84,9 +84,12 @@ public final class AiPlannerClient {
                            @Value("${app.ai.planner.service-token:}") String credential,
                            @Value("${app.ai.planner.mode:mock}") String mode,
                            ObjectMapper mapper,
-                           @Value("${app.ai.conversations.context-max-chars:4000}") int maxConversationContextChars) {
+                           @Value("${app.ai.conversations.context-max-chars:4000}") int maxConversationContextChars,
+                           @Value("${app.ai.planner.read-timeout-seconds:65}") int readTimeoutSeconds) {
         if (maxConversationContextChars < 1 || maxConversationContextChars > 32_000)
             throw new IllegalArgumentException("AI conversation context size must be between 1 and 32000");
+        if (readTimeoutSeconds < 3 || readTimeoutSeconds > 180)
+            throw new IllegalArgumentException("AI planner read timeout must be between 3 and 180 seconds");
         this.url = url == null ? "" : url.trim().replaceAll("/+$", "");
         this.credential = credential == null ? "" : credential;
         this.maxConversationContextChars = maxConversationContextChars;
@@ -96,8 +99,14 @@ public final class AiPlannerClient {
                 .connectTimeout(Duration.ofSeconds(1))
                 .followRedirects(HttpClient.Redirect.NEVER).build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http);
-        factory.setReadTimeout(Duration.ofSeconds("gemini".equals(mode) ? 15 : 3));
+        factory.setReadTimeout(Duration.ofSeconds("gemini".equals(mode) ? readTimeoutSeconds : 3));
         this.rest = RestClient.builder().requestFactory(factory).build();
+    }
+
+    public AiPlannerClient(String url, String credential, String mode, ObjectMapper mapper,
+                           int maxConversationContextChars) {
+        this(url, credential, mode, mapper, maxConversationContextChars,
+                "gemini".equals(mode) ? 65 : 3);
     }
 
     public AiPlannerClient(String url, String credential, String mode, ObjectMapper mapper) {

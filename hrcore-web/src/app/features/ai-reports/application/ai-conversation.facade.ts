@@ -2,12 +2,14 @@ import { computed, DestroyRef, effect, inject, Injectable, signal, untracked } f
 import { Observable, Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AiConversationService } from '../../../entities/reports/api/ai-conversation.service';
-import { AiConversation, AiMessage, AiMessageRequest, AiReportView, AiTurn } from '../../../entities/reports/model/ai-conversation.model';
+import { AiConversation, AiMessage, AiMessageRequest, AiReportExportFormat, AiReportView, AiTurn } from '../../../entities/reports/model/ai-conversation.model';
 import { PageResponse } from '../../../shared/api';
 import { AuthFacade } from '../../../shared/lib/auth/auth.facade';
 import { SessionCoordinatorService } from '../../../shared/lib/auth/session-coordinator.service';
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 import { aiReportError } from './ai-report-error';
+import { PermissionService } from '../../../shared/lib/auth/permission.service';
+import { ReportDownloadService } from './report-download.service';
 
 export interface AiSendAttempt extends AiMessageRequest {
   phase: 'sending' | 'pending' | 'uncertain'; requestId?: string; error?: string;
@@ -22,6 +24,9 @@ export class AiConversationFacade {
   private readonly auth = inject(AuthFacade);
   private readonly sessions = inject(SessionCoordinatorService);
   private readonly toast = inject(ToastService);
+  private readonly permissions = inject(PermissionService);
+  private readonly downloads = inject(ReportDownloadService);
+  private exportRequest?: Subscription;
   private subscriptions = new Subscription();
   private historyRequest?: Subscription;
   private listRequest?: Subscription;
@@ -43,6 +48,9 @@ export class AiConversationFacade {
   readonly error = signal('');
   readonly results = signal<Record<string, AiReportView>>({});
   readonly refreshing = signal<Record<string, boolean>>({});
+  readonly exporting = signal<Record<string, AiReportExportFormat>>({});
+  readonly downloading = computed(() => Object.keys(this.exporting()).length > 0);
+  readonly canExport = computed(() => this.permissions.hasPermission('hr.reports.export'));
   readonly updatingReport = computed(() => Object.values(this.refreshing()).some(Boolean));
   private readonly drafts = signal<Record<string, string>>({});
   private readonly attempts = signal<Record<string, AiSendAttempt>>({});
@@ -95,6 +103,7 @@ export class AiConversationFacade {
   }
   select(conversation: AiConversation): void {
     if (this.selected()?.id === conversation.id) return;
+    this.cancelExport();
     this.selection++; this.historyGeneration++; this.historyRequest?.unsubscribe();
     this.selected.set(conversation); this.history.set(null); this.messages.set([]);
     this.results.set({}); this.refreshing.set({}); this.error.set('');
@@ -108,6 +117,7 @@ export class AiConversationFacade {
   loadHistory(page = this.history()?.page ?? 0, latest = false): void {
     const id = this.selected()?.id;
     if (!id) return;
+    this.cancelExport();
     this.historyRequest?.unsubscribe();
     const generation = ++this.historyGeneration;
     const selection = this.selection;
@@ -133,6 +143,7 @@ export class AiConversationFacade {
   deleteSelected(): void {
     const id = this.selected()?.id;
     if (!id || this.deleting() || this.attempt()?.phase === 'sending') return;
+    this.cancelExport();
     this.deleting.set(true);
     this.observe(this.api.delete(id), () => {
       this.deleting.set(false);
@@ -172,6 +183,25 @@ export class AiConversationFacade {
       this.refreshing.update(current => ({ ...current, [message.id]: false }));
     }, error => { if (selection === this.selection) { this.refreshing.update(current => ({ ...current, [message.id]: false })); this.fail(error); } });
   }
+
+  export(message: AiMessage, format: AiReportExportFormat): void {
+    const id = this.selected()?.id;
+    const runId = this.results()[message.id]?.reportRunId ?? message.reportRunId;
+    if (!id || !runId || message.messageType !== 'REPORT' || !this.canExport() || this.downloading()) return;
+    const selection = this.selection;
+    this.exporting.set({ [message.id]: format }); this.error.set('');
+    this.exportRequest = this.observe(this.api.export(id, runId, format), response => {
+      if (selection !== this.selection || this.selected()?.id !== id) return;
+      this.exporting.set({});
+      if (!this.canExport() || !this.messages().some(item => item.id === message.id)
+        || (this.results()[message.id]?.reportRunId ?? this.messages().find(item => item.id === message.id)?.reportRunId) !== runId) return;
+      try { this.downloads.save(response, format); } catch (failure) { this.fail(failure); }
+    }, failure => {
+      if (selection === this.selection) { this.exporting.set({}); this.fail(failure); }
+    });
+  }
+
+  private cancelExport(): void { this.exportRequest?.unsubscribe(); this.exporting.set({}); }
 
   private executeSend(id: string, attempt: AiSendAttempt): void {
     if (!this.currentIdentity()) return;
@@ -225,6 +255,7 @@ export class AiConversationFacade {
   }
   private fail(error: unknown): void { const message = aiReportError(error); this.error.set(message); this.toast.error(message); }
   private reset(): void {
+    this.cancelExport();
     this.epoch++; this.selection++; this.listGeneration++; this.historyGeneration++;
     this.subscriptions.unsubscribe(); this.subscriptions = new Subscription();
     this.conversations.set(null); this.selected.set(null); this.history.set(null); this.messages.set([]);

@@ -13,6 +13,20 @@
         @if (message.messageType === 'REPORT' && message.reportRunId) {
           @if (facade.results()[message.id]; as view) { <app-ai-report-result [view]="view" [busy]="!!facade.refreshing()[message.id]" [blocked]="!!facade.attempt() || facade.updatingReport()" (refresh)="facade.refresh(message)" (pageChange)="facade.refresh(message, $event)" /> }
           @else { <div class="mt-3 border-t pt-3"><p class="text-xs text-muted-foreground">Las filas históricas no se almacenan. Puedes consultar datos actuales mediante una nueva ejecución sin IA.</p><button type="button" (click)="facade.refresh(message)" [disabled]="!!facade.attempt() || facade.updatingReport()" class="mt-2 rounded-md border px-3 py-2 text-sm text-primary disabled:opacity-50">{{ facade.refreshing()[message.id] ? 'Consultando…' : 'Consultar datos actuales' }}</button></div> }
+          @if (facade.canExport()) {
+            <div class="mt-3 space-y-2 border-t pt-3" [attr.aria-busy]="!!facade.exporting()[message.id]">
+              <div class="flex flex-wrap gap-2" role="group" aria-label="Descargar reporte">
+                @for (item of formats; track item.format) {
+                  <button type="button" (click)="facade.export(message, item.format)" [disabled]="facade.downloading()"
+                    class="rounded-md border px-3 py-2 text-xs text-primary hover:bg-muted disabled:opacity-50">
+                    {{ facade.exporting()[message.id] === item.format ? 'Preparando…' : 'Descargar ' + item.label }}
+                  </button>
+                }
+              </div>
+              <p class="text-xs text-muted-foreground">La descarga consulta el reporte completo con datos actuales, sin IA. Puede diferir de lo mostrado. PDF admite hasta 8 columnas; usa filtros si se supera un límite.</p>
+              @if (facade.exporting()[message.id]) { <p role="status" class="text-xs text-muted-foreground">Preparando archivo…</p> }
+            </div>
+          }
         }
       </article>
     } @empty { @if (!facade.loadingHistory()) { <p class="rounded-lg bg-muted p-5 text-sm text-muted-foreground">Esta conversación está vacía. Incluye el período y el reporte que necesitas en tu primera pregunta.</p> } }

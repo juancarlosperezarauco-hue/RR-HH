@@ -81,4 +81,23 @@ class AnalyticQueryServiceTest {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 principal, null, Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList()));
     }
+
+    @Test void exportsRevalidateCurrentPermissionsAndCannotBypassTenantChecks() {
+        authenticate("hr.reports.attendance.read", "attendance.records.list", "hr.reports.employees.read",
+                "employees.list", "departments.list", "positions.list");
+        var sink = mock(AnalyticExportSink.class);
+        assertEquals(QueryPlanException.Code.QUERY_NOT_ALLOWED, assertThrows(QueryPlanException.class,
+                () -> service.export(QueryPlanValidationServiceTest.ATTENDANCE_DETAIL, 10000, 30, sink)).code());
+        verifyNoInteractions(executor);
+        authenticate("hr.reports.export", "hr.reports.attendance.read", "attendance.records.list",
+                "hr.reports.employees.read", "employees.list", "departments.list", "positions.list");
+        when(timezone.requiredZone()).thenReturn(ZoneId.of("America/La_Paz"));
+        service.export(QueryPlanValidationServiceTest.ATTENDANCE_DETAIL, 10000, 30, sink);
+        verify(executor).export(argThat(q -> q.pageNumber() == 0 && q.pageSize() == 10000
+                && q.parameters().get(q.parameters().size() - 2).equals(10001)), eq(30), same(sink));
+        authenticate("hr.reports.export", "hr.reports.attendance.read", "attendance.records.list");
+        assertThrows(QueryPlanException.class,
+                () -> service.export(QueryPlanValidationServiceTest.ATTENDANCE_DETAIL, 10000, 30, sink));
+        verifyNoMoreInteractions(executor);
+    }
 }

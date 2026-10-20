@@ -38,13 +38,13 @@ usará están presentes. Está habilitado únicamente con `APP_ENV=development` 
 y `AI_PLANNER_MODE=mock`; en otro caso responde 503.
 
 Configurar `AI_PLANNER_URL` en Spring y el mismo `AI_PLANNER_SERVICE_TOKEN` de al menos
-32 caracteres en ambos servicios. `docker compose --profile ai-reports up` añade el
-servicio interno sin publicar su puerto. La URL en Compose es
+32 caracteres en ambos servicios. El planificador forma parte del arranque normal de
+Compose y permanece en la red interna, sin publicar su puerto. La URL predeterminada es
 `http://serv-hrcore-ai-planner:8000`; la credencial se establece en el archivo local
 `.env`, nunca en Git. El cliente espera 1 segundo para conectar y 3 para leer,
 rechaza redirecciones y respuestas mayores que 128 KiB. No reintenta automáticamente.
 
-La ruta no funciona si falta el planificador o su credencial. Las preguntas completas
+La ruta no funciona si el planificador no está disponible o falta su credencial. Las preguntas completas
 y los resultados no se registran. La credencial compartida de PostgreSQL sigue sin
 constituir separación de privilegios entre esquemas; el aislamiento se comprueba por
 la infraestructura tenant de Spring.

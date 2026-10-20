@@ -70,6 +70,8 @@ services:
     depends_on:
       serv-hrcore-db:
         condition: service_healthy
+      serv-hrcore-ai-planner:
+        condition: service_started
       mailpit:
         condition: service_started
       minio-init:
@@ -77,9 +79,10 @@ services:
     env_file:
       - .env
     environment:
-      AI_PLANNER_URL: ${AI_PLANNER_URL:-}
+      AI_PLANNER_URL: ${AI_PLANNER_URL:-http://serv-hrcore-ai-planner:8000}
       AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
       AI_PLANNER_MODE: ${AI_PLANNER_MODE:-mock}
+      AI_PLANNER_READ_TIMEOUT_SECONDS: ${AI_PLANNER_READ_TIMEOUT_SECONDS:-65}
       PG_DUMP_PATH: /usr/lib/postgresql/16/bin/pg_dump
       PG_RESTORE_PATH: /usr/lib/postgresql/16/bin/pg_restore
       PSQL_PATH: /usr/lib/postgresql/16/bin/psql
@@ -97,14 +100,15 @@ services:
       - hrcore-net
 
   serv-hrcore-ai-planner:
-    profiles: ["ai-reports"]
     build:
       context: ./hrcore-ai-planner
+    restart: unless-stopped
     environment:
       APP_ENV: ${APP_ENV:-production}
       AI_PLANNER_MODE: ${AI_PLANNER_MODE:-mock}
       AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
       GEMINI_ENABLED: ${GEMINI_ENABLED:-false}
+      GEMINI_REQUEST_TIMEOUT_MS: ${GEMINI_REQUEST_TIMEOUT_MS:-30000}
       GEMINI_MODEL: ${GEMINI_MODEL:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     expose:

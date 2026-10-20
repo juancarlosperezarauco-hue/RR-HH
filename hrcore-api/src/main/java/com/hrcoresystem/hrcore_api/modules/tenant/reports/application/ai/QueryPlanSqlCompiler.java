@@ -61,6 +61,15 @@ final class QueryPlanSqlCompiler {
     }
 
     CompiledQuery compile(QueryPlanValidationService.ValidatedPlan validated, ZoneId tenantZone) {
+        return compile(validated, tenantZone, validated.plan().page().number(), validated.plan().page().size());
+    }
+
+    CompiledQuery compileExport(QueryPlanValidationService.ValidatedPlan validated, ZoneId tenantZone, int maxRows) {
+        return compile(validated, tenantZone, 0, maxRows);
+    }
+
+    private CompiledQuery compile(QueryPlanValidationService.ValidatedPlan validated, ZoneId tenantZone,
+                                  int pageNumber, int pageSize) {
         QueryPlanV1 plan = validated.plan();
         SemanticCatalogV1.Dataset dataset = catalog.dataset(plan.dataset());
         Map<String, String> aliases = aliases(plan.dataset());
@@ -128,10 +137,10 @@ final class QueryPlanSqlCompiler {
         }
         if (!order.isEmpty()) sql.append(" ORDER BY ").append(String.join(", ", order));
         sql.append(" LIMIT ? OFFSET ?");
-        parameters.add(plan.page().size() + 1);
-        parameters.add(plan.page().number() * plan.page().size());
+        parameters.add(pageSize + 1);
+        parameters.add(pageNumber * pageSize);
         return new CompiledQuery(sql.toString(), parameters, columns,
-                plan.page().number(), plan.page().size());
+                pageNumber, pageSize);
     }
 
     Map<String, String> supportedDimensions(String dataset) { return aliases(dataset); }

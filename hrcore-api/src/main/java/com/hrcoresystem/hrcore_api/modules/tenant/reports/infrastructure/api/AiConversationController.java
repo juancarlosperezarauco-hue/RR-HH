@@ -17,6 +17,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.UUID;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ContentDisposition;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.export.AiReportExportService;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.export.ExportFormat;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -42,11 +48,13 @@ public class AiConversationController {
     private final AiConversationService conversations;
     private final AiConversationTurnService turns;
     private final ObjectMapper mapper;
+    private final AiReportExportService exports;
 
     public AiConversationController(AiConversationService conversations, AiConversationTurnService turns,
-                                    ObjectMapper mapper) {
+                                    ObjectMapper mapper, AiReportExportService exports) {
         this.conversations = conversations;
         this.turns = turns;
+        this.exports = exports;
         this.mapper = mapper.copy();
         this.mapper.getFactory().enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
     }
@@ -123,5 +131,24 @@ public class AiConversationController {
     public ApiResponse<Void> delete(@PathVariable UUID conversationId) {
         conversations.delete(conversationId);
         return ApiResponse.success("Conversación eliminada correctamente", null);
+    }
+
+    @PostMapping("/{conversationId}/reports/{reportRunId}/export")
+    @PreAuthorize("hasAuthority('hr.reports.export')")
+    public void export(@PathVariable UUID conversationId, @PathVariable UUID reportRunId,
+                       @RequestParam String format, HttpServletRequest request,
+                       HttpServletResponse response) throws IOException {
+        if (!request.getParameterMap().keySet().equals(java.util.Set.of("format"))
+                || request.getParameterValues("format").length != 1 || request.getInputStream().read() != -1)
+            throw new BusinessException("La exportación solo admite el formato");
+        try (var download = exports.generate(conversationId, reportRunId, ExportFormat.parse(format))) {
+            response.setContentType(download.mimeType());
+            response.setContentLengthLong(download.size());
+            response.setHeader("Cache-Control", "no-store");
+            response.setHeader("X-Content-Type-Options", "nosniff");
+            response.setHeader("Content-Disposition", ContentDisposition.attachment()
+                    .filename(download.filename(), StandardCharsets.UTF_8).build().toString());
+            Files.copy(download.path(), response.getOutputStream());
+        }
     }
 }

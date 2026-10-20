@@ -565,6 +565,108 @@ class AiQueryHttpIntegrationTest {
                 Instant.now(), Instant.now().plusSeconds(900), UUID.randomUUID()));
     }
 
+    @Test
+    void exportsCurrentCompleteResultsAsRealFilesAndRechecksAuthorizationWithoutPlanner() throws Exception {
+        String permissions = ALL + ",hr.reports.export,positions.list";
+        String owner = session(schemaA, slugA, userA, permissions);
+        String second = session(schemaA, slugA, userA2, permissions);
+        String tenantB = session(schemaB, slugB, userB, permissions);
+        String path = "/api/hr/ai/conversations/" + conversation(slugA, owner, "POST",
+                "/api/hr/ai/conversations", null).body().at("/data/id").asText();
+        Reply initial = conversation(slugA, owner, "POST", path + "/messages", mapper.writeValueAsString(
+                java.util.Map.of("clientMessageId", UUID.randomUUID(), "message", "listar empleados al 2026-01-15")));
+        assertEquals(200, initial.status(), initial.body().toPrettyString());
+        UUID run = UUID.fromString(initial.body().at("/data/reportRunId").asText());
+        Reply aggregate = conversation(slugA, owner, "POST", path + "/messages", mapper.writeValueAsString(
+                java.util.Map.of("clientMessageId", UUID.randomUUID(), "message",
+                        "retrasos por departamento desde 2026-01-01 hasta antes de 2026-02-01")));
+        assertEquals(200, aggregate.status(), aggregate.body().toPrettyString());
+        String aggregateRun = aggregate.body().at("/data/reportRunId").asText();
+        UUID extra = UUID.randomUUID();
+        String exportPath = path + "/reports/" + run + "/export";
+        org.mockito.Mockito.clearInvocations(plannerClient);
+        try {
+            try (Connection tenant = connection(schemaA)) {
+                execute(tenant, "INSERT INTO employees(id,employee_number,first_name,last_name,document_type,document_number,hire_date) VALUES (?,?,?,?,?,?,?)",
+                        extra, extra.toString(), "=SUM(1,2) \"Áda\"", "Ω Ж", "CI", extra.toString(), LocalDate.of(2026, 1, 1));
+                execute(tenant, "UPDATE ai_report_runs SET query_plan=jsonb_set(query_plan,'{page}','{\"number\":1,\"size\":1}'::jsonb) WHERE id=?", run);
+            }
+            for (String format : List.of("csv", "xlsx", "pdf")) {
+                var response = export(slugA, owner, exportPath + "?format=" + format);
+                assertEquals(200, response.statusCode(), new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
+                assertEquals("no-store", response.headers().firstValue("Cache-Control").orElseThrow());
+                assertEquals("nosniff", response.headers().firstValue("X-Content-Type-Options").orElseThrow());
+                assertTrue(response.headers().firstValue("Content-Disposition").orElseThrow().contains("hrcore-reporte-"));
+                if (format.equals("csv")) {
+                    assertTrue(response.headers().firstValue("Content-Type").orElseThrow().startsWith("text/csv"));
+                    String text = new String(response.body(), java.nio.charset.StandardCharsets.UTF_8);
+                    assertTrue(text.contains("'=SUM(1,2) \"\"Áda\"\" Ω Ж"), text);
+                    assertEquals(3, text.lines().count());
+                } else if (format.equals("xlsx")) {
+                    try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(response.body()))) {
+                        var sheet = workbook.getSheetAt(0); assertEquals(2, sheet.getLastRowNum());
+                        boolean found = false;
+                        for (var row : sheet) for (var cell : row) {
+                            assertNotEquals(org.apache.poi.ss.usermodel.CellType.FORMULA, cell.getCellType());
+                            if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING && cell.getStringCellValue().contains("Áda")) found = true;
+                        }
+                        assertTrue(found);
+                    }
+                } else {
+                    try (var reader = new com.lowagie.text.pdf.PdfReader(response.body())) {
+                        String text = new com.lowagie.text.pdf.parser.PdfTextExtractor(reader).getTextFromPage(1);
+                        assertTrue(text.contains("Áda"), text); assertTrue(text.contains("Ω Ж"), text);
+                    }
+                }
+            }
+            assertEquals(403, export(slugA, session(schemaA, slugA, userA, ALL), exportPath + "?format=csv").statusCode());
+            assertEquals(403, export(slugA, session(schemaA, slugA, userA,
+                    "hr.reports.employees.read,hr.reports.export,departments.list"), exportPath + "?format=csv").statusCode());
+            assertEquals(404, export(slugA, second, exportPath + "?format=csv").statusCode());
+            assertEquals(404, export(slugB, tenantB, exportPath + "?format=csv").statusCode());
+            assertEquals(401, export(slugA, "invalid.jwt", exportPath + "?format=csv").statusCode());
+            String other = conversation(slugA, owner, "POST", "/api/hr/ai/conversations", null).body().at("/data/id").asText();
+            assertEquals(404, export(slugA, owner, "/api/hr/ai/conversations/" + other + "/reports/" + run + "/export?format=csv").statusCode());
+            assertEquals(200, conversation(slugA, owner, "DELETE", "/api/hr/ai/conversations/" + other, null).status());
+            assertEquals(400, export(slugA, owner, exportPath + "?format=exe").statusCode());
+            assertEquals(400, export(slugA, owner, exportPath + "?format=csv&sql=SELECT1").statusCode());
+            assertEquals(400, conversation(slugA, owner, "POST", exportPath + "?format=csv", "{\"queryPlan\":{}}").status());
+            var aggregated = export(slugA, owner, path + "/reports/" + aggregateRun + "/export?format=csv");
+            assertEquals(200, aggregated.statusCode());
+            assertTrue(new String(aggregated.body(), java.nio.charset.StandardCharsets.UTF_8).contains("Minutos totales de retraso"));
+            try (Connection tenant = connection(schemaA)) {
+                assertEquals(2, scalarLong(tenant, "SELECT COUNT(*) FROM ai_report_runs WHERE conversation_id=?", UUID.fromString(path.substring(path.lastIndexOf('/') + 1))));
+                execute(tenant, "UPDATE ai_report_runs SET catalog_version='obsolete' WHERE id=?", run);
+            }
+            assertEquals(409, export(slugA, owner, exportPath + "?format=csv").statusCode());
+            org.mockito.Mockito.verifyNoInteractions(plannerClient);
+        } finally {
+            try (Connection tenant = connection(schemaA)) {
+                execute(tenant, "DELETE FROM employment_periods WHERE employee_id=?", extra);
+                execute(tenant, "DELETE FROM employees WHERE id=?", extra);
+            }
+            conversation(slugA, owner, "DELETE", path, null);
+        }
+    }
+
+    @Test void fiveLegacyCsvReportsStillDownloadWithTheirOriginalAuthorization() throws Exception {
+        String owner = session(schemaA, slugA, userA, ALL + ",hr.reports.export,hr.reports.contracts.read,hr.reports.leaves.read,hr.reports.incidents.read");
+        for (String report : List.of("employees", "contracts", "attendance", "leaves", "incidents")) {
+            var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/hr/reports/" + report
+                            + "/export?fromDate=2026-01-01&toDate=2026-01-31"))
+                    .header("Authorization", "Bearer " + owner).header("X-Tenant-Slug", slugA).GET().build();
+            var response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode(), response.body());
+            assertTrue(response.body().startsWith("indicador,valor\n"));
+        }
+    }
+
+    private HttpResponse<byte[]> export(String slug, String jwt, String path) throws Exception {
+        return HTTP.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header("Authorization", "Bearer " + jwt).header("X-Tenant-Slug", slug)
+                .POST(HttpRequest.BodyPublishers.noBody()).build(), HttpResponse.BodyHandlers.ofByteArray());
+    }
+
     private Reply ask(String slug, String jwt, String question) throws Exception {
         String json = mapper.writeValueAsString(java.util.Map.of("question", question));
         return send(slug, jwt, json);

@@ -13,6 +13,7 @@ describe('AI Reports: chat y confirmación accesible', () => {
   function makeFacade() {
     const draft = signal('');
     return { messages, attempt, draft, setDraft: (value: string) => draft.set(value),
+      canExport: signal(false), exporting: signal<Record<string, string>>({}), downloading: signal(false), export: jasmine.createSpy('export'),
       loadingHistory: signal(false), history: signal(null), results: signal<Record<string, AiReportView>>({}), refreshing: signal<Record<string, boolean>>({}), updatingReport: signal(false),
       showLocalAttempt: computed(() => !!attempt()), send: jasmine.createSpy('send'), retry: jasmine.createSpy('retry'), refresh: jasmine.createSpy('refresh'), loadHistory: jasmine.createSpy(),
       initialize: jasmine.createSpy(), create: jasmine.createSpy(), loadConversations: jasmine.createSpy(), select: jasmine.createSpy(), deleteSelected: jasmine.createSpy(),
@@ -51,6 +52,17 @@ describe('AI Reports: chat y confirmación accesible', () => {
     const report = record('REPORT', 'Reporte ejecutado correctamente.'); messages.set([report]); fixture.detectChanges();
     const button = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(item => item.textContent?.includes('Consultar datos actuales'))!;
     button.click(); expect(fake.refresh).toHaveBeenCalledWith(report); expect(fake.send).not.toHaveBeenCalled();
+  });
+  it('ofrece los tres formatos desde historial solo con permiso y bloquea durante descarga', () => {
+    const report = record('REPORT', 'Reporte ejecutado'); messages.set([report]); fixture.detectChanges();
+    const buttons = () => Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('[aria-label="Descargar reporte"] button'));
+    expect(buttons().length).toBe(0);
+    fake.canExport.set(true); fixture.detectChanges();
+    expect(buttons().length).toBe(3);
+    buttons()[1].click(); expect(fake.export).toHaveBeenCalledOnceWith(report, 'xlsx');
+    fake.downloading.set(true); fake.exporting.set({ REPORT: 'xlsx' }); fixture.detectChanges();
+    expect(buttons().every(button => button.disabled)).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Preparando archivo');
   });
   it('exige confirmación nativa antes de eliminar y permite cancelación por teclado', () => {
     const panel = TestBed.createComponent(AiConversationPanelComponent); panel.detectChanges();

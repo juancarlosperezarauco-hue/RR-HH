@@ -135,8 +135,14 @@ class GeminiPlanner:
     def _client(key: str):
         from google import genai
         from google.genai import types
+        try:
+            timeout_ms = int(os.getenv("GEMINI_REQUEST_TIMEOUT_MS", "30000"))
+        except ValueError as error:
+            raise PlannerFailure(503, "Planner unavailable") from error
+        if not 10_000 <= timeout_ms <= 120_000:
+            raise PlannerFailure(503, "Planner unavailable")
         return genai.Client(api_key=key, http_options=types.HttpOptions(
-            timeout=10_000, retry_options=types.HttpRetryOptions(attempts=1)))
+            timeout=timeout_ms, retry_options=types.HttpRetryOptions(attempts=1)))
 
     @classmethod
     def _reserve_attempt(cls):

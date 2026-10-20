@@ -10,7 +10,7 @@ El servicio FastAPI acepta el mensaje interno anterior sin `semanticContext` par
 
 - `AI_PLANNER_MODE=mock` es el valor por defecto. El mock solo funciona con `APP_ENV=development` o `test` y no requiere clave ni acceso externo.
 - `AI_PLANNER_MODE=gemini` requiere además `GEMINI_ENABLED=true`, `GEMINI_MODEL` configurado y `GEMINI_API_KEY` suministrada externamente al proceso. Sin cualquiera de ellos responde `503`; no cambia automáticamente al mock. El repositorio y Docker Compose no almacenan ni inyectan una clave. Un operador autorizado debe gestionarla mediante los mecanismos seguros de despliegue y comprobar las condiciones de uso del proveedor.
-- Spring usa 3 s de espera de lectura en modo mock y 15 s en modo Gemini. El adaptador limita cada intento a 6 s, con un máximo de dos intentos para timeout o códigos HTTP transitorios. Deshabilita los reintentos y continuaciones automáticas del SDK. Cada proceso admite como máximo dos solicitudes simultáneas y diez intentos por minuto. Estos límites son **por proceso**, no una cuota distribuida.
+- Spring usa 3 s de espera de lectura en modo mock y `AI_PLANNER_READ_TIMEOUT_SECONDS` (65 s por defecto) en modo Gemini. Cada intento del adaptador usa `GEMINI_REQUEST_TIMEOUT_MS` (30 s por defecto, rango admitido de 10 a 120 s), con un máximo de dos intentos para timeout o códigos HTTP transitorios. Deshabilita los reintentos y continuaciones automáticas del SDK. Cada proceso admite como máximo dos solicitudes simultáneas y diez intentos por minuto. Estos límites son **por proceso**, no una cuota distribuida.
 - El servicio permanece en el perfil optativo `ai-reports` de Docker Compose y el puerto 8000 no se publica en el host.
 
 ## Límites semánticos y privacidad

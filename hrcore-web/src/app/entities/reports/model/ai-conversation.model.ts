@@ -24,3 +24,4 @@ export interface AiReportRefresh {
   reportRunId: string; refreshedFromRunId: string; refreshedAt: string; result: QueryResult;
 }
 export interface AiReportView { reportRunId: string; result: QueryResult; executedAt: string | null; }
+export type AiReportExportFormat = 'csv' | 'xlsx' | 'pdf';

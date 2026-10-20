@@ -38,6 +38,23 @@ public final class AnalyticQueryService {
     public QueryResultV1 execute(String queryPlanJson) {
         var validated = validator.validate(queryPlanJson);
         authorization.authorize(validated, AnalyticAuthorizationPolicy.Action.QUERY);
+        checkTenant();
+        ZoneId zone = "attendance.daily".equals(validated.plan().dataset())
+                ? timezone.requiredZone() : null;
+        return executor.execute(compiler.compile(validated, zone));
+    }
+
+    public void export(String queryPlanJson, int maxRows, int timeoutSeconds, AnalyticExportSink sink) {
+        if (maxRows < 1 || maxRows > 100_000 || timeoutSeconds < 1 || timeoutSeconds > 120)
+            throw new IllegalArgumentException("Invalid export bounds");
+        var validated = validator.validate(queryPlanJson);
+        authorization.authorize(validated, AnalyticAuthorizationPolicy.Action.EXPORT);
+        checkTenant();
+        ZoneId zone = "attendance.daily".equals(validated.plan().dataset()) ? timezone.requiredZone() : null;
+        executor.export(compiler.compileExport(validated, zone, maxRows), timeoutSeconds, sink);
+    }
+
+    private void checkTenant() {
         TenantContext tenant = TenantContextHolder.get();
         String expectedSchema;
         try {
@@ -48,8 +65,5 @@ public final class AnalyticQueryService {
         if (tenant == null || tenant.publicRequest() || !expectedSchema.equals(tenant.schemaName()))
             throw new QueryPlanException(QueryPlanException.Code.QUERY_NOT_ALLOWED);
 
-        ZoneId zone = "attendance.daily".equals(validated.plan().dataset())
-                ? timezone.requiredZone() : null;
-        return executor.execute(compiler.compile(validated, zone));
     }
 }
