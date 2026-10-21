@@ -8,6 +8,7 @@ import {
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { authTokenInterceptor, mockHttpInterceptor } from './shared/api';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import {
   AlertCircle,
@@ -127,6 +128,7 @@ export const appConfig: ApplicationConfig = {
       }),
     ),
     provideHttpClient(withInterceptors([mockHttpInterceptor, authTokenInterceptor])),
+    provideCharts(withDefaultRegisterables()),
     provideAnimationsAsync(),
     importProvidersFrom(
       LucideAngularModule.pick({
