@@ -32,6 +32,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
             "/api/public/signup-direct",
             "/api/public/plans",
             "/api/public/plans/**",
+            "/api/public/enterprise-inquiries",
+            "/api/public/enterprise-inquiries/**",
             "/api/public/checkout-sessions/**",
             "/api/public/stripe/webhook",
             "/api/auth/login",
