@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, HostListener, ElementRef, inject, OnInit, signal, Input } from '@angular/core';
+import { Component, EventEmitter, Output, HostListener, ElementRef, effect, inject, OnDestroy, OnInit, signal, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -8,7 +8,7 @@ import { AuthFacade } from '../../../shared/lib/auth/auth.facade';
 import { PlatformFacade } from '../../../features/platform/lib/platform.facade';
 import { PermissionService } from '../../../shared/lib/auth/permission.service';
 import { NotificationsService, NotificationResponse } from '../../../entities/notifications';
-import { environment } from '../../../../environments/environment';
+import { AuthService } from '../../../entities/auth/api/auth.service';
 import { NavigationScope } from '../../../shared/lib/navigation';
 
 interface MenuItem {
@@ -214,7 +214,7 @@ interface MenuItem {
     </header>
   `
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent implements OnInit, OnDestroy {
   @Input({ required: true }) scope!: NavigationScope;
   @Output() logoutAction = new EventEmitter<void>();
   isProfileOpen = false;
@@ -236,9 +236,32 @@ export class HeaderComponent implements OnInit {
   private platformFacade = inject(PlatformFacade);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationsService = inject(NotificationsService);
+  private readonly authService = inject(AuthService);
+  private readonly profilePhotoSource = signal<string | null>(null);
+  private profilePhotoObjectUrl: string | null = null;
+  private profilePhotoRequestKey: string | null = null;
 
   readonly platformSuperadmin = this.platformFacade.currentSuperadmin;
   readonly tenantUser = this.authFacade.currentUser;
+
+  constructor() {
+    effect(() => {
+      const user = this.tenantUser();
+      const photoUrl = user?.profilePhotoUrl ?? null;
+      const requestKey = photoUrl ? `${photoUrl}|${user?.updatedAt ?? ''}` : null;
+      if (requestKey === this.profilePhotoRequestKey) {
+        return;
+      }
+
+      this.profilePhotoRequestKey = requestKey;
+      if (!photoUrl || !requestKey) {
+        this.clearProfilePhotoSource();
+        return;
+      }
+
+      void this.loadProfilePhoto(photoUrl, requestKey);
+    });
+  }
 
   get tenantMenuOptions(): MenuItem[] {
     return [
@@ -321,15 +344,36 @@ export class HeaderComponent implements OnInit {
     if (this.isPlatformRoute) {
       return null;
     }
+    return this.profilePhotoSource();
+  }
 
-    const user = this.tenantUser();
-    const profilePhotoUrl = user?.profilePhotoUrl;
-    if (!profilePhotoUrl) {
-      return null;
+  ngOnDestroy(): void {
+    this.clearProfilePhotoSource();
+  }
+
+  private async loadProfilePhoto(photoUrl: string, requestKey: string): Promise<void> {
+    try {
+      const photo = await firstValueFrom(this.authService.getProfilePhoto());
+      if (this.profilePhotoRequestKey !== requestKey || !photoUrl) {
+        return;
+      }
+
+      this.clearProfilePhotoSource();
+      this.profilePhotoObjectUrl = URL.createObjectURL(photo);
+      this.profilePhotoSource.set(this.profilePhotoObjectUrl);
+    } catch {
+      if (this.profilePhotoRequestKey === requestKey) {
+        this.clearProfilePhotoSource();
+      }
     }
+  }
 
-    const updatedAt = user?.updatedAt ? `?v=${encodeURIComponent(user.updatedAt)}` : '';
-    return `${environment.apiUrl}${profilePhotoUrl}${updatedAt}`;
+  private clearProfilePhotoSource(): void {
+    if (this.profilePhotoObjectUrl) {
+      URL.revokeObjectURL(this.profilePhotoObjectUrl);
+      this.profilePhotoObjectUrl = null;
+    }
+    this.profilePhotoSource.set(null);
   }
 
   getRole(): string {
