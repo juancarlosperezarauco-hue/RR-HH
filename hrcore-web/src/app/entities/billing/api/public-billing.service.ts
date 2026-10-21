@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { ApiResponse } from '../../../shared/api';
 import { PublicBillingPlan } from '../model/public-billing-plan.model';
 import { PublicCheckoutActivationStatusResponse } from '../model/public-checkout-activation-status.model';
+import { EnterpriseInquiry } from '../model/enterprise-inquiry.model';
 
 @Injectable({
   providedIn: 'root'
@@ -23,5 +24,9 @@ export class PublicBillingService {
     return this.http.get<ApiResponse<PublicCheckoutActivationStatusResponse>>(
       `${this.API_URL}/checkout-sessions/${encodeURIComponent(stripeSessionId)}/status`
     );
+  }
+
+  sendEnterpriseInquiry(request: EnterpriseInquiry): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.API_URL}/enterprise-inquiries`, request);
   }
 }
