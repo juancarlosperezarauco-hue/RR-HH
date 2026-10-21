@@ -70,6 +70,8 @@ services:
     depends_on:
       serv-hrcore-db:
         condition: service_healthy
+      serv-hrcore-ai-planner:
+        condition: service_started
       mailpit:
         condition: service_started
       minio-init:
@@ -77,6 +79,24 @@ services:
     env_file:
       - .env
     environment:
+      AI_PLANNER_URL: ${AI_PLANNER_URL:-http://serv-hrcore-ai-planner:8000}
+      AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
+      AI_PLANNER_MODE: ${AI_PLANNER_MODE:-mock}
+      AI_PLANNER_READ_TIMEOUT_SECONDS: ${AI_PLANNER_READ_TIMEOUT_SECONDS:-65}
+      AI_VOICE_ENABLED: ${AI_VOICE_ENABLED:-false}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_STT_MODEL: ${GROQ_STT_MODEL:-whisper-large-v3-turbo}
+      AI_VOICE_MAX_DURATION_SECONDS: ${AI_VOICE_MAX_DURATION_SECONDS:-30}
+      AI_VOICE_MAX_BYTES: ${AI_VOICE_MAX_BYTES:-8388608}
+      AI_VOICE_USER_RPM: ${AI_VOICE_USER_RPM:-5}
+      AI_VOICE_TENANT_RPM: ${AI_VOICE_TENANT_RPM:-10}
+      AI_VOICE_GLOBAL_RPM: ${AI_VOICE_GLOBAL_RPM:-15}
+      AI_VOICE_USER_CONCURRENT: ${AI_VOICE_USER_CONCURRENT:-1}
+      AI_VOICE_TENANT_CONCURRENT: ${AI_VOICE_TENANT_CONCURRENT:-2}
+      AI_VOICE_MAX_CONCURRENT: ${AI_VOICE_MAX_CONCURRENT:-2}
+      AI_VOICE_PROBE_TIMEOUT_SECONDS: ${AI_VOICE_PROBE_TIMEOUT_SECONDS:-3}
+      AI_VOICE_PROVIDER_TIMEOUT_SECONDS: ${AI_VOICE_PROVIDER_TIMEOUT_SECONDS:-30}
+      AI_VOICE_FFPROBE_PATH: ${AI_VOICE_FFPROBE_PATH:-ffprobe}
       PG_DUMP_PATH: /usr/lib/postgresql/16/bin/pg_dump
       PG_RESTORE_PATH: /usr/lib/postgresql/16/bin/pg_restore
       PSQL_PATH: /usr/lib/postgresql/16/bin/psql
@@ -90,6 +110,23 @@ services:
       - maven_cache:/root/.m2
       - ./backups:/storage/backups
     working_dir: /app
+    networks:
+      - hrcore-net
+
+  serv-hrcore-ai-planner:
+    build:
+      context: ./hrcore-ai-planner
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      AI_PLANNER_MODE: ${AI_PLANNER_MODE:-mock}
+      AI_PLANNER_SERVICE_TOKEN: ${AI_PLANNER_SERVICE_TOKEN:-}
+      GEMINI_ENABLED: ${GEMINI_ENABLED:-false}
+      GEMINI_REQUEST_TIMEOUT_MS: ${GEMINI_REQUEST_TIMEOUT_MS:-30000}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    expose:
+      - "8000"
     networks:
       - hrcore-net
 

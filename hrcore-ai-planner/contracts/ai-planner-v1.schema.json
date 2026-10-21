@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HRCore planner response v1 envelope",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {"status": {"const": "query_plan"}, "plan": {"type": "object"}},
+      "required": ["status", "plan"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {"const": "needs_clarification"},
+        "question": {"type": "string", "minLength": 1, "maxLength": 300},
+        "reasonCode": {"enum": ["MISSING_DATE_RANGE", "AMBIGUOUS_REQUEST", "MISSING_INFORMATION"]}
+      },
+      "required": ["status", "question", "reasonCode"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {"const": "unsupported"},
+        "message": {"type": "string", "minLength": 1, "maxLength": 300},
+        "reasonCode": {"enum": ["DATASET_NOT_AVAILABLE", "CAPABILITY_NOT_AVAILABLE", "UNRECOGNIZED_REQUEST", "PERSONAL_IDENTIFIER_NOT_ALLOWED"]}
+      },
+      "required": ["status", "message", "reasonCode"],
+      "additionalProperties": false
+    }
+  ]
+}

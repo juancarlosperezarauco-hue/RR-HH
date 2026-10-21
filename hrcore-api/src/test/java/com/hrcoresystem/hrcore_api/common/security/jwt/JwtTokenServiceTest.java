@@ -24,7 +24,7 @@ class JwtTokenServiceTest {
         UUID session = UUID.randomUUID();
         Instant now = Instant.now();
         var token = service().generateAccessToken(new AccessTokenPayload(subject, session, "talentohumano", "TENANT",
-                "admin@tenant.com", "Admin Tenant", List.of("ADMIN"), List.of("users.read"), 2, 3L, 4, now,
+                "admin@tenant.com", "Admin Tenant", List.of("OWNER_ADMIN"), List.of("users.read"), 2, 3L, 4, now,
                 now.plusSeconds(900), UUID.randomUUID()));
         var principal = service().parseAccessToken(token);
         assertEquals(subject, principal.subjectId());
@@ -33,6 +33,7 @@ class JwtTokenServiceTest {
         assertEquals(2, principal.securityVersion());
         assertEquals(3L, principal.authorizationVersion());
         assertEquals(4, principal.catalogVersion());
+        assertEquals(List.of("OWNER_ADMIN"), principal.roles());
     }
 
     @Test

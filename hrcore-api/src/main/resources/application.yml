@@ -32,6 +32,41 @@ logging:
     org.flywaydb.core.internal.sqlscript.DefaultSqlScriptExecutor: WARN
 
 app:
+  ai:
+    voice:
+      enabled: ${AI_VOICE_ENABLED:false}
+      api-key: ${GROQ_API_KEY:}
+      model: ${GROQ_STT_MODEL:whisper-large-v3-turbo}
+      max-duration-seconds: ${AI_VOICE_MAX_DURATION_SECONDS:30}
+      max-bytes: ${AI_VOICE_MAX_BYTES:8388608}
+      user-rpm: ${AI_VOICE_USER_RPM:5}
+      tenant-rpm: ${AI_VOICE_TENANT_RPM:10}
+      global-rpm: ${AI_VOICE_GLOBAL_RPM:15}
+      user-concurrent: ${AI_VOICE_USER_CONCURRENT:1}
+      tenant-concurrent: ${AI_VOICE_TENANT_CONCURRENT:2}
+      max-concurrent: ${AI_VOICE_MAX_CONCURRENT:2}
+      probe-timeout-seconds: ${AI_VOICE_PROBE_TIMEOUT_SECONDS:3}
+      provider-timeout-seconds: ${AI_VOICE_PROVIDER_TIMEOUT_SECONDS:30}
+      ffprobe-path: ${AI_VOICE_FFPROBE_PATH:ffprobe}
+    reports:
+      export:
+        tabular-max-rows: ${AI_EXPORT_TABULAR_MAX_ROWS:10000}
+        tabular-max-bytes: ${AI_EXPORT_TABULAR_MAX_BYTES:26214400}
+        pdf-max-rows: ${AI_EXPORT_PDF_MAX_ROWS:500}
+        pdf-max-columns: ${AI_EXPORT_PDF_MAX_COLUMNS:8}
+        pdf-max-bytes: ${AI_EXPORT_PDF_MAX_BYTES:10485760}
+        timeout-seconds: ${AI_EXPORT_TIMEOUT_SECONDS:30}
+        max-concurrent: ${AI_EXPORT_MAX_CONCURRENT:2}
+    planner:
+      url: ${AI_PLANNER_URL:}
+      service-token: ${AI_PLANNER_SERVICE_TOKEN:}
+      mode: ${AI_PLANNER_MODE:mock}
+      read-timeout-seconds: ${AI_PLANNER_READ_TIMEOUT_SECONDS:65}
+    conversations:
+      message-max-length: ${AI_CONVERSATION_MESSAGE_MAX_LENGTH:4000}
+      pending-timeout: ${AI_CONVERSATION_PENDING_TIMEOUT:PT2M}
+      context-message-count: ${AI_CONVERSATION_CONTEXT_MAX_MESSAGES:4}
+      context-max-chars: ${AI_CONVERSATION_CONTEXT_MAX_CHARS:4000}
   billing:
     stripe:
       secret-key: ${STRIPE_SECRET_KEY:}
@@ -126,6 +161,8 @@ app:
       - /api/public/signup-direct
       - /api/public/plans
       - /api/public/plans/**
+      - /api/public/enterprise-inquiries
+      - /api/public/enterprise-inquiries/**
       - /api/public/checkout-sessions/**
       - /api/public/stripe/webhook
       - /assets/**

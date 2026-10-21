@@ -171,15 +171,15 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
             <div class="rounded-2xl border border-dashed border-border bg-muted/50 p-4">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <p class="text-sm font-bold text-accent-foreground">Captura o selecciona tu fotografía</p>
-                  <p class="text-xs text-muted-foreground">Toma una selfie en vivo o sube una imagen clara de tu rostro.</p>
+                  <p class="text-sm font-bold text-accent-foreground">Acceso facial con cámara</p>
+                  <p class="text-xs text-muted-foreground">Verifica tu identidad tomando una selfie en vivo.</p>
                 </div>
                 <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
                   <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                 </span>
               </div>
 
-              <div class="mt-3 grid gap-2.5 sm:grid-cols-2">
+              <div class="mt-3 grid gap-2.5">
                 <button
                   type="button"
                   (click)="openSelfieCamera()"
@@ -188,13 +188,14 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                   Tomar selfie con cámara
                 </button>
 
-                <div>
+                <div class="hidden space-y-2">
                   <input
                     #galleryInput
                     type="file"
                     accept="image/*"
                     class="hidden"
                     (change)="onFaceFileSelected($event)">
+                  <!-- Opción temporalmente oculta: el acceso facial se realizará únicamente con la cámara.
                   <button
                     type="button"
                     (click)="openGallery()"
@@ -202,6 +203,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                     <lucide-icon name="upload" class="h-4 w-4"></lucide-icon>
                     Subir foto del dispositivo
                   </button>
+                  -->
                 </div>
               </div>
 
@@ -234,8 +236,17 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                       [disabled]="cameraBusy"
                       class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
                       <lucide-icon name="camera" class="h-3.5 w-3.5"></lucide-icon>
-                      {{ cameraBusy ? 'Capturando...' : 'Capturar ahora' }}
+                      {{ cameraBusy ? 'Capturando...' : 'Capturar foto' }}
                     </button>
+                    <!-- La captura ya utiliza la cámara frontal; se conserva la acción para futuras variantes.
+                    <button
+                      type="button"
+                      (click)="openSelfieCamera()"
+                      [disabled]="cameraBusy"
+                      class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+                      Cambiar a selfie
+                    </button>
+                    -->
                   </div>
                 </div>
               }
@@ -256,7 +267,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
 
               @if (faceFileSubmitted && !selectedFaceFile) {
                 <p class="animate-fade-in mt-1.5 text-xs font-medium text-destructive">
-                  Debes tomar una selfie o seleccionar una fotografía para ingresar con rostro.
+                  Debes tomar una selfie con la cámara para ingresar con rostro.
                 </p>
               }
             </div>

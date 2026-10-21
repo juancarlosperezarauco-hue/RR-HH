@@ -20,6 +20,15 @@ export function extractHttpErrorMessage(
     return 'No se pudo conectar con el servidor backend (puerto 8080). Verifica que los contenedores de Docker estén activos.';
   }
 
+  // El backend coloca el detalle accionable en `errors`; debe prevalecer
+  // sobre el mensaje genérico (`Solicitud inválida`, `Conflicto`, etc.).
+  if (httpErr.error && typeof httpErr.error === 'object' && Array.isArray(httpErr.error.errors)) {
+    const details = httpErr.error.errors
+      .filter((detail: unknown): detail is string => typeof detail === 'string' && detail.trim().length > 0)
+      .map((detail: string) => detail.trim());
+    if (details.length > 0) return details.join(' ');
+  }
+
   // Error de proxy / Gateway Timeout / Servicio no disponible
   if (httpErr.status === 502 || httpErr.status === 503 || httpErr.status === 504) {
     return 'El servidor backend aún se está inicializando o no responde. Por favor espera unos momentos e inténtalo de nuevo.';

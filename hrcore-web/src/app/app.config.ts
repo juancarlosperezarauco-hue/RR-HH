@@ -7,7 +7,7 @@ import {
 } from '@angular/core';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
-import { authTokenInterceptor, mockHttpInterceptor } from './shared/api';
+import { apiErrorInterceptor, authTokenInterceptor, mockHttpInterceptor } from './shared/api';
 import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import {
@@ -69,6 +69,7 @@ import {
   LogOut,
   LucideAngularModule,
   Menu,
+  Mic,
   Minus,
   Monitor,
   Network,
@@ -127,7 +128,7 @@ export const appConfig: ApplicationConfig = {
         scrollPositionRestoration: 'enabled',
       }),
     ),
-    provideHttpClient(withInterceptors([mockHttpInterceptor, authTokenInterceptor])),
+    provideHttpClient(withInterceptors([mockHttpInterceptor, authTokenInterceptor, apiErrorInterceptor])),
     provideCharts(withDefaultRegisterables()),
     provideAnimationsAsync(),
     importProvidersFrom(
@@ -171,6 +172,7 @@ export const appConfig: ApplicationConfig = {
         LogOut,
         ChevronDown,
         Menu,
+        Mic,
         X,
         Bell,
         Plus,

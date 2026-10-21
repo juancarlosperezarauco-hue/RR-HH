@@ -13,6 +13,7 @@ import {
   IncidentType
 } from '../../entities/incidents';
 import { ToastService } from '../../shared/ui/toast/toast.service';
+import { extractHttpErrorMessage } from '../../shared/api/http-error-handler';
 
 @Component({
   selector: 'app-incidents-page',
@@ -33,10 +34,10 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
             </p>
           </div>
           <div class="flex flex-wrap gap-3">
-            <button type="button" (click)="load()" class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-accent">
+            <button type="button" (click)="load()" class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-accent">
               <lucide-icon name="refresh-ccw" [size]="16"></lucide-icon> Actualizar
             </button>
-            <button type="button" (click)="openCreate()" class="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90">
+            <button type="button" (click)="openCreate()" class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90">
               <lucide-icon name="plus" [size]="17"></lucide-icon> Registrar incidencia
             </button>
           </div>
@@ -67,7 +68,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
           </select>
         </label>
         <div class="flex items-end">
-          <button type="button" class="h-11 w-full rounded-xl border border-border px-4 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" (click)="clearFilters()">
+          <button type="button" class="h-11 w-full cursor-pointer rounded-xl border border-border px-4 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" (click)="clearFilters()">
             Limpiar filtros
           </button>
         </div>
@@ -146,16 +147,16 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
           <p *ngIf="x.location" class="text-xs font-semibold text-muted-foreground">Lugar: <span class="text-foreground">{{ x.location }}</span></p>
 
           <div class="flex flex-wrap gap-2 border-t border-border pt-4">
-            <button *ngIf="x.status === 'OPEN'" type="button" class="rounded-full border border-border px-3.5 py-1.5 text-xs font-bold hover:bg-muted" (click)="change('review')">Iniciar revisión</button>
-            <button *ngIf="x.status === 'UNDER_REVIEW'" type="button" class="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground" (click)="resolve()">Resolver</button>
-            <button *ngIf="x.status === 'OPEN' || x.status === 'UNDER_REVIEW'" type="button" class="rounded-full border border-destructive/30 px-3.5 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/10" (click)="change('cancel')">Cancelar</button>
-            <button *ngIf="x.status === 'RESOLVED'" type="button" class="rounded-full border border-border px-3.5 py-1.5 text-xs font-bold hover:bg-muted" (click)="change('close')">Cerrar expediente</button>
+            <button *ngIf="x.status === 'OPEN'" type="button" class="cursor-pointer rounded-full border border-border px-3.5 py-1.5 text-xs font-bold hover:bg-muted" (click)="change('review')">Iniciar revisión</button>
+            <button *ngIf="x.status === 'UNDER_REVIEW'" type="button" class="cursor-pointer rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground" (click)="resolve()">Resolver</button>
+            <button *ngIf="x.status === 'OPEN' || x.status === 'UNDER_REVIEW'" type="button" class="cursor-pointer rounded-full border border-destructive/30 px-3.5 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/10" (click)="change('cancel')">Cancelar</button>
+            <button *ngIf="x.status === 'RESOLVED'" type="button" class="cursor-pointer rounded-full border border-border px-3.5 py-1.5 text-xs font-bold hover:bg-muted" (click)="change('close')">Cerrar expediente</button>
           </div>
 
           <div class="border-t border-border pt-4">
             <div class="flex items-center justify-between">
               <h3 class="text-xs font-black uppercase tracking-wider text-muted-foreground">Acciones administrativas</h3>
-              <button type="button" class="rounded-full border border-border px-3 py-1 text-xs font-bold text-primary hover:bg-accent" (click)="addAction()">+ Agregar acción</button>
+              <button type="button" class="cursor-pointer rounded-full border border-border px-3 py-1 text-xs font-bold text-primary hover:bg-accent" (click)="addAction()">+ Agregar acción</button>
             </div>
             <div *ngFor="let a of actions()" class="mt-2.5 rounded-xl border border-border bg-muted/20 p-3 text-xs">
               <div class="flex items-center justify-between">
@@ -164,8 +165,8 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               </div>
               <p class="mt-1 text-muted-foreground">{{ a.description }}</p>
               <div class="mt-2 flex gap-2">
-                <button *ngIf="a.status === 'PENDING'" type="button" class="font-bold text-primary underline" (click)="updateAction(a, 'start')">Iniciar</button>
-                <button *ngIf="a.status === 'IN_PROGRESS'" type="button" class="font-bold text-primary underline" (click)="updateAction(a, 'complete')">Completar</button>
+                <button *ngIf="a.status === 'PENDING'" type="button" class="cursor-pointer font-bold text-primary underline" (click)="updateAction(a, 'start')">Iniciar</button>
+                <button *ngIf="a.status === 'IN_PROGRESS'" type="button" class="cursor-pointer font-bold text-primary underline" (click)="updateAction(a, 'complete')">Completar</button>
               </div>
             </div>
           </div>
@@ -191,12 +192,12 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               <h2 class="text-xl font-black text-accent-foreground">Registrar incidencia laboral</h2>
               <p class="text-xs text-muted-foreground">Documenta los hechos, clasificación y empleado involucrado. Los campos con (*) son obligatorios.</p>
             </div>
-            <button type="button" (click)="closeForm()" class="rounded-full p-2 text-muted-foreground hover:bg-muted">
+            <button type="button" aria-label="Cerrar formulario" title="Cerrar" (click)="closeForm()" class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground">
               <lucide-icon name="x" [size]="18"></lucide-icon>
             </button>
           </div>
 
-          <form class="flex min-h-0 flex-1 flex-col overflow-hidden" (ngSubmit)="create()" novalidate>
+          <form #incidentForm="ngForm" class="flex min-h-0 flex-1 flex-col overflow-hidden" (ngSubmit)="create(incidentForm)" novalidate>
             <div class="grid flex-1 gap-4 overflow-y-auto p-6 md:grid-cols-2">
               <label class="space-y-1.5 text-xs font-bold text-accent-foreground">
                 <span>Empleado *</span>
@@ -215,14 +216,14 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
 
               <label class="space-y-1.5 text-xs font-bold text-accent-foreground">
                 <span>Tipo de incidencia *</span>
-                <select class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm font-normal text-foreground outline-none focus:border-primary" [(ngModel)]="form.incidentType" name="incidentType">
+                <select required class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm font-normal text-foreground outline-none focus:border-primary" [(ngModel)]="form.incidentType" name="incidentType">
                   <option *ngFor="let x of types" [value]="x">{{ typeLabel(x) }}</option>
                 </select>
               </label>
 
               <label class="space-y-1.5 text-xs font-bold text-accent-foreground">
                 <span>Nivel de severidad *</span>
-                <select class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm font-normal text-foreground outline-none focus:border-primary" [(ngModel)]="form.severity" name="severity">
+                <select required class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm font-normal text-foreground outline-none focus:border-primary" [(ngModel)]="form.severity" name="severity">
                   <option *ngFor="let x of severities" [value]="x">{{ severityLabel(x) }}</option>
                 </select>
               </label>
@@ -246,8 +247,10 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
             </div>
 
             <div class="flex shrink-0 justify-end gap-3 border-t border-border bg-card px-6 py-4">
-              <button type="button" class="rounded-full border border-border px-5 py-2 text-sm font-bold text-muted-foreground hover:bg-muted" (click)="closeForm()">Cancelar</button>
-              <button type="submit" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground shadow-sm hover:bg-primary/90">Guardar incidencia</button>
+              <button type="button" class="cursor-pointer rounded-full border border-border px-5 py-2 text-sm font-bold text-muted-foreground hover:bg-muted" (click)="closeForm()">Cancelar</button>
+              <button type="submit" [disabled]="saving()" class="cursor-pointer rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+                {{ saving() ? 'Guardando…' : 'Guardar incidencia' }}
+              </button>
             </div>
           </form>
         </div>
@@ -267,6 +270,7 @@ export class IncidentsPageComponent implements OnInit {
   readonly history = signal<IncidentHistory[]>([]);
   readonly loading = signal(false);
   readonly showForm = signal(false);
+  readonly saving = signal(false);
   readonly formSubmitted = signal(false);
 
   readonly statuses: IncidentStatus[] = ['OPEN', 'UNDER_REVIEW', 'RESOLVED', 'CLOSED', 'CANCELLED'];
@@ -296,7 +300,7 @@ export class IncidentsPageComponent implements OnInit {
       },
       error: (e) => {
         this.loading.set(false);
-        this.toast.error(e?.error?.message ?? 'No se pudieron cargar las incidencias');
+        this.toast.error(extractHttpErrorMessage(e, 'No se pudieron cargar las incidencias'));
       }
     });
   }
@@ -367,25 +371,43 @@ export class IncidentsPageComponent implements OnInit {
   }
 
   closeForm() {
-    this.formSubmitted.set(false);
-    this.showForm.set(false);
+    if (!this.saving()) {
+      this.formSubmitted.set(false);
+      this.showForm.set(false);
+    }
   }
 
-  create() {
+  create(form?: any) {
     this.formSubmitted.set(true);
     if (!this.form.employeeId || !this.form.title.trim() || !this.form.description.trim() || !this.form.occurredAt) {
-      this.toast.warning('Por favor completa todos los campos obligatorios de la incidencia.');
+      this.toast.warning('Completa empleado, fecha, título y descripción para registrar la incidencia');
+      form?.form?.markAllAsTouched();
       return;
     }
-    this.service.create({ ...this.form, title: this.form.title.trim(), description: this.form.description.trim(), occurredAt: new Date(this.form.occurredAt).toISOString() }).subscribe({
+    this.saving.set(true);
+    this.service.create({
+      ...this.form,
+      title: this.form.title.trim(),
+      description: this.form.description.trim(),
+      location: this.form.location?.trim() || null,
+      occurredAt: new Date(this.form.occurredAt).toISOString()
+    }).subscribe({
       next: (r) => {
+        this.saving.set(false);
+        if (!r.success || !r.data) {
+          this.toast.error(r.message || 'No se pudo registrar la incidencia');
+          return;
+        }
         this.formSubmitted.set(false);
         this.showForm.set(false);
         this.load();
-        if (r.data) this.select(r.data);
+        this.select(r.data);
         this.toast.success('Incidencia registrada correctamente');
       },
-      error: (e) => this.toast.error(e?.error?.message ?? 'No se pudo registrar la incidencia')
+      error: (e) => {
+        this.saving.set(false);
+        this.toast.error(extractHttpErrorMessage(e, 'No se pudo registrar la incidencia'));
+      }
     });
   }
 
@@ -398,7 +420,7 @@ export class IncidentsPageComponent implements OnInit {
         if (r.data) this.select(r.data);
         this.load();
       },
-      error: (e) => this.toast.error(e?.error?.message ?? 'No se pudo actualizar el estado')
+      error: (e) => this.toast.error(extractHttpErrorMessage(e, 'No se pudo actualizar el estado'))
     });
   }
 
@@ -412,7 +434,7 @@ export class IncidentsPageComponent implements OnInit {
         if (r.data) this.select(r.data);
         this.load();
       },
-      error: (e) => this.toast.error(e?.error?.message ?? 'No se pudo resolver la incidencia')
+      error: (e) => this.toast.error(extractHttpErrorMessage(e, 'No se pudo resolver la incidencia'))
     });
   }
 
@@ -423,7 +445,7 @@ export class IncidentsPageComponent implements OnInit {
     if (!d?.trim()) return;
     this.service.addAction(x.id, { actionType: 'OTHER', description: d.trim(), actionDate: new Date().toISOString().slice(0, 10) }).subscribe({
       next: () => this.select(x),
-      error: (e) => this.toast.error(e?.error?.message ?? 'No se pudo agregar la acción')
+      error: (e) => this.toast.error(extractHttpErrorMessage(e, 'No se pudo agregar la acción'))
     });
   }
 
@@ -433,7 +455,7 @@ export class IncidentsPageComponent implements OnInit {
     const call = target === 'start' ? this.service.startAction(x.id, a.id) : this.service.completeAction(x.id, a.id);
     call.subscribe({
       next: () => this.select(x),
-      error: (e) => this.toast.error(e?.error?.message ?? 'No se pudo actualizar la acción')
+      error: (e) => this.toast.error(extractHttpErrorMessage(e, 'No se pudo actualizar la acción'))
     });
   }
 

@@ -49,7 +49,7 @@ public class GetTenantDashboardUseCase {
         LocalDate from = requestedFrom == null ? to.minusDays(30) : requestedFrom;
         validateRange(from, to);
 
-        ReportFilter filter = new ReportFilter(from, to, null, null);
+        ReportFilter filter = new ReportFilter(from, to, null, null, null, null, null);
         List<TenantDashboardResponse.Metric> metrics = new ArrayList<>();
         List<TenantDashboardResponse.Section> sections = new ArrayList<>();
 
