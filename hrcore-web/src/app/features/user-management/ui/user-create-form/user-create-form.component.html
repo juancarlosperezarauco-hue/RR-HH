@@ -1,4 +1,32 @@
 <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-5">
+  @if (status === 'error' && error) {
+    <div class="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-xs font-medium text-destructive leading-relaxed">
+      {{ error }}
+    </div>
+  }
+
+  <!-- Vinculación opcional con empleado -->
+  <div class="space-y-2">
+    <div class="flex items-center justify-between">
+      <label for="employeeLink" class="text-sm font-semibold text-muted-foreground">
+        Vinculación con empleado (Opcional)
+      </label>
+      <span class="text-xs text-muted-foreground">Asocia el usuario a su ficha de empleado</span>
+    </div>
+    <select
+      id="employeeLink"
+      (change)="onEmployeeSelect($event)"
+      class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card">
+      <option [value]="''">Sin vincular a empleado</option>
+      @for (emp of availableEmployees; track emp.id) {
+        <option [value]="emp.id">
+          {{ emp.employeeNumber }} — {{ emp.firstName }} {{ emp.lastName }}
+        </option>
+      }
+    </select>
+  </div>
+
+  <!-- Nombres y apellidos -->
   <div class="grid gap-5 sm:grid-cols-2">
     <div class="space-y-2">
       <label for="firstName" class="text-sm font-semibold text-muted-foreground">Nombre</label>
@@ -25,6 +53,7 @@
     </div>
   </div>
 
+  <!-- Correo electrónico -->
   <div class="space-y-2">
     <label for="email" class="text-sm font-semibold text-muted-foreground">Correo electrónico</label>
     <input
@@ -37,17 +66,37 @@
     <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive">Ingresa un correo válido.</span>
   </div>
 
+  <!-- Estado Inicial -->
+  <div class="space-y-2">
+    <label for="initialStatus" class="text-sm font-semibold text-muted-foreground">Estado inicial</label>
+    <select
+      id="initialStatus"
+      formControlName="status"
+      class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card">
+      <option value="ACTIVE">Activo (Acceso inmediato al sistema)</option>
+      <option value="PENDING">Pendiente (Requiere activación previa por correo)</option>
+    </select>
+  </div>
+
   @if (canAssignRoles) {
     <fieldset class="space-y-2 rounded-2xl border border-border bg-muted p-4">
       <legend class="px-1 text-sm font-semibold text-accent-foreground">Roles iniciales (opcional)</legend>
       @for (role of availableRoles; track role.id) {
-        <label class="flex items-center gap-2 text-sm text-accent-foreground"><input type="checkbox" [checked]="userForm.get('roleIds')?.value?.includes(role.id)" (change)="toggleRole(role.id, $event)">{{ role.name }} <span class="text-xs text-muted-foreground">({{ role.code }})</span></label>
-      } @empty { <p class="text-xs text-muted-foreground">No hay roles personalizados activos.</p> }
+        <label class="flex items-center gap-2 text-sm text-accent-foreground cursor-pointer">
+          <input type="checkbox" [checked]="userForm.get('roleIds')?.value?.includes(role.id)" (change)="toggleRole(role.id, $event)">
+          {{ role.name }} <span class="text-xs text-muted-foreground">({{ role.code }})</span>
+        </label>
+      } @empty {
+        <p class="text-xs text-muted-foreground">No hay roles personalizados activos.</p>
+      }
     </fieldset>
   } @else {
-    <p class="rounded-2xl border border-border bg-muted p-3 text-xs text-muted-foreground">El usuario se creará sin roles. Solo el propietario puede asignar roles iniciales.</p>
+    <p class="rounded-2xl border border-border bg-muted p-3 text-xs text-muted-foreground">
+      El usuario se creará sin roles. Solo el propietario puede asignar roles iniciales.
+    </p>
   }
 
+  <!-- Contraseña temporal -->
   <div class="space-y-2">
     <label for="password" class="text-sm font-semibold text-muted-foreground">Contraseña temporal</label>
     <div class="relative">
@@ -69,7 +118,8 @@
     <span *ngIf="isFieldInvalid('password')" class="text-xs text-destructive">Mínimo 8 caracteres requeridos.</span>
   </div>
 
-  <div class="app-modal-footer mt-2 border-t border-border pt-5">
+  <!-- Botones de acción -->
+  <div class="app-modal-footer mt-2 border-t border-border pt-5 flex items-center justify-end gap-3">
     <button
       type="button"
       (click)="onCancel()"

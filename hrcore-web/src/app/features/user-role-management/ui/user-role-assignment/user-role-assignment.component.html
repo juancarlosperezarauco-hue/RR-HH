@@ -14,7 +14,7 @@
     }
 
     <div class="space-y-3">
-      <h4 class="text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-border pb-2">Roles disponibles</h4>
+      <h4 class="text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-border pb-2">Roles de la organización</h4>
       
       @if (status === 'loading' && availableRoles.length === 0) {
         <div class="py-8 flex justify-center text-muted-foreground">Cargando roles...</div>
@@ -22,26 +22,39 @@
 
       @if (availableRoles.length === 0 && status !== 'loading') {
         <div class="p-4 border border-dashed border-border rounded-2xl text-center text-muted-foreground text-sm">
-          No hay roles activos disponibles en este tenant.
+          No hay roles disponibles en esta organización.
         </div>
       }
 
       <div class="grid grid-cols-1 gap-3 mt-2">
         @for (role of availableRoles; track role.id) {
-          <label class="flex items-start gap-3 p-3 rounded-2xl border border-border hover:bg-accent cursor-pointer transition-colors"
+          <label class="flex items-start gap-3 p-3 rounded-2xl border border-border transition-colors"
+                 [class.opacity-60]="!role.active && !hasRole(role.id)"
+                 [class.cursor-not-allowed]="!role.active && !hasRole(role.id)"
+                 [class.cursor-pointer]="role.active || hasRole(role.id)"
+                 [class.hover:bg-accent]="role.active || hasRole(role.id)"
                  [class.bg-background]="hasRole(role.id)"
                  [class.border-primary/30]="hasRole(role.id)">
             <div class="relative flex items-center justify-center mt-1">
-              <input type="checkbox" class="peer sr-only" [checked]="hasRole(role.id)" (change)="toggleRole(role.id, $event)">
+              <input type="checkbox"
+                     class="peer sr-only"
+                     [checked]="hasRole(role.id)"
+                     [disabled]="!role.active && !hasRole(role.id)"
+                     (change)="toggleRole(role.id, $event)">
               <div class="block w-10 h-5.5 rounded-full bg-border peer-checked:bg-primary transition-colors duration-300"></div>
               <div class="absolute left-1 top-1 bg-card w-3.5 h-3.5 rounded-full transition-transform duration-300 peer-checked:translate-x-4.5"></div>
             </div>
             <div class="flex-1">
               <div class="flex items-center justify-between">
                 <span class="font-medium text-accent-foreground">{{ role.name }}</span>
-                @if (hasRole(role.id)) {
-                  <span class="text-[10px] uppercase font-bold text-primary bg-accent px-2 py-0.5 rounded-full">Asignado</span>
-                }
+                <div class="flex items-center gap-1.5">
+                  @if (!role.active) {
+                    <span class="text-[10px] uppercase font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">Inactivo</span>
+                  }
+                  @if (hasRole(role.id)) {
+                    <span class="text-[10px] uppercase font-bold text-primary bg-accent px-2 py-0.5 rounded-full">Asignado</span>
+                  }
+                </div>
               </div>
               <p class="text-xs text-muted-foreground mt-0.5 line-clamp-2">{{ role.description }}</p>
             </div>

@@ -8,17 +8,23 @@ import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.Updat
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleAlreadyExistsException;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleNotFoundException;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.SystemPermission;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.PermissionAssignmentPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.TenantAuthorizationRevisionService;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.SystemPermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class UpdateTenantRoleUseCase {
@@ -30,14 +36,20 @@ public class UpdateTenantRoleUseCase {
     private final AuditTrailService auditTrailService;
     private final TenantOwnershipPolicy tenantOwnershipPolicy;
     private final TenantAuthorizationRevisionService revisionService;
+    private final TenantPlanEnforcementService tenantPlanEnforcementService;
+    private final SystemPermissionRepository systemPermissionRepository;
 
+    @Autowired
     public UpdateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
             TenantRolePermissionRepository tenantRolePermissionRepository,
             PermissionAssignmentPolicy permissionAssignmentPolicy,
             TenantRoleMapper tenantRoleMapper,
-            AuditTrailService auditTrailService, TenantOwnershipPolicy tenantOwnershipPolicy,
-            TenantAuthorizationRevisionService revisionService
+            AuditTrailService auditTrailService,
+            TenantOwnershipPolicy tenantOwnershipPolicy,
+            TenantAuthorizationRevisionService revisionService,
+            @Autowired(required = false) TenantPlanEnforcementService tenantPlanEnforcementService,
+            @Autowired(required = false) SystemPermissionRepository systemPermissionRepository
     ) {
         this.tenantRoleRepository = tenantRoleRepository;
         this.tenantRolePermissionRepository = tenantRolePermissionRepository;
@@ -46,6 +58,21 @@ public class UpdateTenantRoleUseCase {
         this.auditTrailService = auditTrailService;
         this.tenantOwnershipPolicy = tenantOwnershipPolicy;
         this.revisionService = revisionService;
+        this.tenantPlanEnforcementService = tenantPlanEnforcementService;
+        this.systemPermissionRepository = systemPermissionRepository;
+    }
+
+    public UpdateTenantRoleUseCase(
+            TenantRoleRepository tenantRoleRepository,
+            TenantRolePermissionRepository tenantRolePermissionRepository,
+            PermissionAssignmentPolicy permissionAssignmentPolicy,
+            TenantRoleMapper tenantRoleMapper,
+            AuditTrailService auditTrailService,
+            TenantOwnershipPolicy tenantOwnershipPolicy,
+            TenantAuthorizationRevisionService revisionService
+    ) {
+        this(tenantRoleRepository, tenantRolePermissionRepository, permissionAssignmentPolicy,
+                tenantRoleMapper, auditTrailService, tenantOwnershipPolicy, revisionService, null, null);
     }
 
     @Transactional
@@ -63,11 +90,20 @@ public class UpdateTenantRoleUseCase {
                 .filter(foundRole -> !foundRole.id().equals(id))
                 .ifPresent(foundRole -> {
                     throw new TenantRoleAlreadyExistsException(
-                            "A tenant role with name '" + normalizedName + "' already exists"
+                            "Ya existe un rol con el nombre '" + normalizedName + "' en esta organización. Por favor elija un nombre diferente."
                     );
                 });
 
         permissionAssignmentPolicy.validate(normalizedPermissionCodes);
+
+        if (tenantPlanEnforcementService != null) {
+            Map<String, String> codeToModule = systemPermissionRepository != null
+                    ? systemPermissionRepository.findAllActiveTenant().stream()
+                            .collect(Collectors.toMap(SystemPermission::code, SystemPermission::module, (a, b) -> a))
+                    : Map.of();
+
+            tenantPlanEnforcementService.assertCanAssignPermissions(normalizedPermissionCodes, codeToModule);
+        }
 
         List<String> existingPermissionCodes = tenantRolePermissionRepository
                 .findPermissionCodesByRoleId(existingRole.id())
@@ -98,11 +134,10 @@ public class UpdateTenantRoleUseCase {
                 savedRole.id().toString(),
                 IdentityAuditPayloads.of(
                         "operation", "UPDATE_ROLE",
-                        "previousName", existingRole.name(),
-                        "newName", savedRole.name(),
+                        "code", savedRole.code(),
+                        "name", savedRole.name(),
                         "description", savedRole.description(),
-                        "previousPermissionCount", existingPermissionCodes.size(),
-                        "newPermissionCount", normalizedPermissionCodes.size()
+                        "permissionCount", normalizedPermissionCodes.size()
                 ),
                 IdentityAuditPayloads.roleState(
                         existingRole.name(),
@@ -122,10 +157,7 @@ public class UpdateTenantRoleUseCase {
     }
 
     private List<String> normalizePermissionCodes(List<String> permissionCodes) {
-        if (permissionCodes == null) {
-            return List.of();
-        }
-
+        if (permissionCodes == null) return List.of();
         return permissionCodes.stream()
                 .filter(code -> code != null && !code.isBlank())
                 .map(String::trim)
@@ -134,10 +166,7 @@ public class UpdateTenantRoleUseCase {
     }
 
     private String normalizeNullable(String value) {
-        if (value == null) {
-            return null;
-        }
-
+        if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }

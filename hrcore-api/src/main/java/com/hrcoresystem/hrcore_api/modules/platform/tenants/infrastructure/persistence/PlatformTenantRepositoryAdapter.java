@@ -1,6 +1,7 @@
 package com.hrcoresystem.hrcore_api.modules.platform.tenants.infrastructure.persistence;
 
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenant;
+import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenantStatus;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.repository.PlatformTenantRepository;
 import org.springframework.stereotype.Repository;
 
@@ -48,6 +49,14 @@ public class PlatformTenantRepositoryAdapter implements PlatformTenantRepository
     }
 
     @Override
+    public List<PlatformTenant> searchTenants(String search, String name, String taxIdentifier, PlatformTenantStatus status, Boolean active, UUID planId) {
+        return jpaRepository.searchTenants(search, name, taxIdentifier, status, active, planId)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public boolean existsBySlug(String slug) {
         return jpaRepository.existsBySlug(slug);
     }
@@ -67,6 +76,12 @@ public class PlatformTenantRepositoryAdapter implements PlatformTenantRepository
         entity.setPlanId(tenant.planId());
         entity.setStripeCustomerId(tenant.stripeCustomerId());
         entity.setActive(tenant.active());
+        entity.setLegalName(tenant.legalName());
+        entity.setTaxIdentifier(tenant.taxIdentifier());
+        entity.setContactEmail(tenant.contactEmail());
+        entity.setContactPhone(tenant.contactPhone());
+        entity.setOwnerName(tenant.ownerName());
+        entity.setOwnerEmail(tenant.ownerEmail());
         return entity;
     }
 
@@ -80,6 +95,12 @@ public class PlatformTenantRepositoryAdapter implements PlatformTenantRepository
                 entity.getPlanId(),
                 entity.getStripeCustomerId(),
                 entity.isActive(),
+                entity.getLegalName(),
+                entity.getTaxIdentifier(),
+                entity.getContactEmail(),
+                entity.getContactPhone(),
+                entity.getOwnerName(),
+                entity.getOwnerEmail(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

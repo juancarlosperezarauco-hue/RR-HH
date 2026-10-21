@@ -22,10 +22,20 @@ export class UserService {
       .set('size', size.toString());
   }
 
-  getUsers(page = 0, size = 20): Observable<ApiResponse<PageResponse<TenantUserResponse>>> {
+  getUsers(page = 0, size = 20, filters?: { search?: string; status?: string; active?: boolean }): Observable<ApiResponse<PageResponse<TenantUserResponse>>> {
+    let params = this.buildPageParams(page, size);
+    if (filters?.search?.trim()) {
+      params = params.set('search', filters.search.trim());
+    }
+    if (filters?.status && filters.status !== 'all') {
+      params = params.set('status', filters.status);
+    }
+    if (filters?.active !== undefined) {
+      params = params.set('active', filters.active.toString());
+    }
     return this.http.get<ApiResponse<PageResponse<TenantUserResponse>>>(
       this.API_URL,
-      { params: this.buildPageParams(page, size) }
+      { params }
     );
   }
 

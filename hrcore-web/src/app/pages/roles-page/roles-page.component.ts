@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { PermissionListUseCase, RoleFormComponent, RoleFormUseCase, RoleListUseCase, RoleTableComponent } from '../../features/role-management';
 import { CreateTenantRoleRequest, TenantRoleResponse, UpdateTenantRoleRequest } from '../../entities/access';
 import { PermissionService } from '../../shared/lib/auth/permission.service';
+import { SessionCoordinatorService } from '../../shared/lib/auth/session-coordinator.service';
+import { ToastService } from '../../shared/ui/toast/toast.service';
 
 type RoleStatusFilter = 'all' | 'active' | 'inactive';
 
@@ -209,6 +211,7 @@ type RoleStatusFilter = 'all' | 'active' | 'inactive';
                 <app-role-form
                   class="h-full"
                   [status]="roleFormUseCase.status()"
+                  [error]="roleFormUseCase.error()"
                   [roleToEdit]="roleToEdit()"
                   [permissions]="permissionListUseCase.data()"
                   (submitCreate)="handleCreateRole($event)"
@@ -228,6 +231,8 @@ export class RolesPageComponent implements OnInit {
   public readonly permissionListUseCase = inject(PermissionListUseCase);
   public readonly roleFormUseCase = inject(RoleFormUseCase);
   private readonly permissionService = inject(PermissionService);
+  private readonly toastService = inject(ToastService);
+  private readonly sessionCoordinator = inject(SessionCoordinatorService);
 
   public readonly searchQuery = signal('');
   public readonly statusFilter = signal<RoleStatusFilter>('all');
@@ -281,17 +286,6 @@ export class RolesPageComponent implements OnInit {
     };
   });
 
-  constructor() {
-    effect(() => {
-      if (this.roleFormUseCase.status() === 'success') {
-        this.closeRoleModal();
-        this.roleFormUseCase.resetState();
-        this.roleListUseCase.reloadRoles();
-        this.triggerSuccessToast();
-      }
-    });
-  }
-
   ngOnInit(): void {
     this.reload();
   }
@@ -323,19 +317,54 @@ export class RolesPageComponent implements OnInit {
     setTimeout(() => this.roleToEdit.set(null), 300);
   }
 
-  handleCreateRole(request: CreateTenantRoleRequest): void {
-    this.roleFormUseCase.createRole(request);
+  async handleCreateRole(request: CreateTenantRoleRequest): Promise<void> {
+    await this.roleFormUseCase.createRole(request);
+    if (this.roleFormUseCase.status() === 'success') {
+      await this.refreshTenantSession();
+      this.closeRoleModal();
+      this.roleFormUseCase.resetState();
+      this.roleListUseCase.reloadRoles();
+      this.triggerSuccessToast();
+      this.toastService.success('Rol creado exitosamente');
+    } else if (this.roleFormUseCase.status() === 'error') {
+      this.toastService.error(this.roleFormUseCase.error() || 'Error al crear el rol');
+    }
   }
 
-  handleUpdateRole(id: string, request: UpdateTenantRoleRequest): void {
-    this.roleFormUseCase.updateRole(id, request);
+  async handleUpdateRole(id: string, request: UpdateTenantRoleRequest): Promise<void> {
+    await this.roleFormUseCase.updateRole(id, request);
+    if (this.roleFormUseCase.status() === 'success') {
+      await this.refreshTenantSession();
+      this.closeRoleModal();
+      this.roleFormUseCase.resetState();
+      this.roleListUseCase.reloadRoles();
+      this.triggerSuccessToast();
+      this.toastService.success('Rol actualizado exitosamente');
+    } else if (this.roleFormUseCase.status() === 'error') {
+      this.toastService.error(this.roleFormUseCase.error() || 'Error al actualizar el rol');
+    }
   }
 
   async handleToggleStatus(id: string, currentStatus: boolean): Promise<void> {
     const success = await this.roleListUseCase.toggleRoleStatus(id, currentStatus);
     if (success) {
+      await this.refreshTenantSession();
       this.roleListUseCase.reloadRoles();
       this.triggerSuccessToast();
+      this.toastService.success(currentStatus ? 'Rol desactivado exitosamente' : 'Rol activado exitosamente');
+    } else {
+      this.toastService.error(this.roleListUseCase.error() || 'No se pudo cambiar el estado del rol');
+    }
+  }
+
+  private async refreshTenantSession(): Promise<void> {
+    const session = this.sessionCoordinator.getSession('TENANT');
+    if (session) {
+      try {
+        await this.sessionCoordinator.refreshSingleFlight('TENANT', session);
+      } catch (err) {
+        console.warn('Tenant session refresh after role change skipped or failed', err);
+      }
     }
   }
 

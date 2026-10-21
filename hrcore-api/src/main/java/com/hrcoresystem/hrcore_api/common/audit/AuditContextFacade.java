@@ -57,8 +57,16 @@ public class AuditContextFacade {
   }
 
   private String resolveActorSubject() {
+    String displayName = securityContextFacade.getCurrentDisplayName();
+    if (displayName != null && !displayName.isBlank()) {
+      return displayName.trim();
+    }
+    String email = securityContextFacade.getCurrentEmail();
+    if (email != null && !email.isBlank()) {
+      return email.trim();
+    }
     String subject = securityContextFacade.getCurrentSubject();
-    return (subject == null || subject.isBlank()) ? "SYSTEM" : subject.trim();
+    return (subject == null || subject.isBlank()) ? "Sistema" : subject.trim();
   }
 
   private String resolveActorEmail() {

@@ -89,9 +89,29 @@ export interface PlatformTenant {
   schemaName: string;
   status: string;
   planId: string;
+  planName?: string | null;
+  planCode?: string | null;
+  subscriptionStatus?: string | null;
+  legalName?: string | null;
+  taxIdentifier?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  stripeCustomerId?: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PlatformTenantFilters {
+  search?: string;
+  name?: string;
+  taxIdentifier?: string;
+  nit?: string;
+  plan?: string;
+  status?: string;
+  active?: boolean;
 }
 
 export interface CreateTenantRequest {
@@ -245,10 +265,19 @@ export class PlatformService {
     );
   }
 
-  getTenants(page = 0, size = 20): Observable<ApiResponse<PageResponse<PlatformTenant>>> {
+  getTenants(page = 0, size = 20, filters?: PlatformTenantFilters): Observable<ApiResponse<PageResponse<PlatformTenant>>> {
+    let params = this.pageParams(page, size);
+    if (filters?.search) params = params.set('search', filters.search);
+    if (filters?.name) params = params.set('name', filters.name);
+    if (filters?.taxIdentifier) params = params.set('taxIdentifier', filters.taxIdentifier);
+    if (filters?.nit) params = params.set('nit', filters.nit);
+    if (filters?.plan) params = params.set('plan', filters.plan);
+    if (filters?.status && filters.status !== 'all') params = params.set('status', filters.status);
+    if (filters?.active !== undefined) params = params.set('active', filters.active.toString());
+
     return this.http.get<ApiResponse<PageResponse<PlatformTenant>>>(
       `${this.baseUrl}/api/platform/tenants`,
-      { params: this.pageParams(page, size) }
+      { params }
     );
   }
 

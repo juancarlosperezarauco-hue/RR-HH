@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
-import { PageResponse, PlatformService, PlatformTenant } from '../../../entities/platform/api/platform.service';
+import { PageResponse, PlatformService, PlatformTenant, PlatformTenantFilters } from '../../../entities/platform/api/platform.service';
 
 export interface PlatformTenantListState {
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -28,11 +28,11 @@ export class PlatformTenantListUseCase {
   readonly currentPage = computed(() => this.state().page?.number ?? 0);
   readonly error = computed(() => this.state().error);
 
-  async loadTenants(page = 0, size = 20): Promise<void> {
+  async loadTenants(page = 0, size = 20, filters?: PlatformTenantFilters): Promise<void> {
     this.state.set({ status: 'loading', tenants: [], page: null, error: null });
 
     try {
-      const response = await firstValueFrom(this.platformService.getTenants(page, size).pipe(timeout(15000)));
+      const response = await firstValueFrom(this.platformService.getTenants(page, size, filters).pipe(timeout(15000)));
       if (response.success && response.data) {
         this.state.set({
           status: 'success',

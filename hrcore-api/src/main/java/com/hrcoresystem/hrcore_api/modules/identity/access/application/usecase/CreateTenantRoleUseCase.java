@@ -7,17 +7,22 @@ import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.Creat
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.TenantRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.mapper.TenantRoleMapper;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleAlreadyExistsException;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.SystemPermission;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRole;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.TenantRoleType;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.PermissionAssignmentPolicy;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.policy.TenantOwnershipPolicy;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.SystemPermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRolePermissionRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantRoleRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CreateTenantRoleUseCase {
@@ -29,6 +34,28 @@ public class CreateTenantRoleUseCase {
     private final AuditTrailService auditTrailService;
     private final TenantPlanEnforcementService tenantPlanEnforcementService;
     private final TenantOwnershipPolicy tenantOwnershipPolicy;
+    private final SystemPermissionRepository systemPermissionRepository;
+
+    @Autowired
+    public CreateTenantRoleUseCase(
+            TenantRoleRepository tenantRoleRepository,
+            TenantRolePermissionRepository tenantRolePermissionRepository,
+            PermissionAssignmentPolicy permissionAssignmentPolicy,
+            TenantRoleMapper tenantRoleMapper,
+            AuditTrailService auditTrailService,
+            TenantPlanEnforcementService tenantPlanEnforcementService,
+            TenantOwnershipPolicy tenantOwnershipPolicy,
+            @Autowired(required = false) SystemPermissionRepository systemPermissionRepository
+    ) {
+        this.tenantRoleRepository = tenantRoleRepository;
+        this.tenantRolePermissionRepository = tenantRolePermissionRepository;
+        this.permissionAssignmentPolicy = permissionAssignmentPolicy;
+        this.tenantRoleMapper = tenantRoleMapper;
+        this.auditTrailService = auditTrailService;
+        this.tenantPlanEnforcementService = tenantPlanEnforcementService;
+        this.tenantOwnershipPolicy = tenantOwnershipPolicy;
+        this.systemPermissionRepository = systemPermissionRepository;
+    }
 
     public CreateTenantRoleUseCase(
             TenantRoleRepository tenantRoleRepository,
@@ -39,13 +66,8 @@ public class CreateTenantRoleUseCase {
             TenantPlanEnforcementService tenantPlanEnforcementService,
             TenantOwnershipPolicy tenantOwnershipPolicy
     ) {
-        this.tenantRoleRepository = tenantRoleRepository;
-        this.tenantRolePermissionRepository = tenantRolePermissionRepository;
-        this.permissionAssignmentPolicy = permissionAssignmentPolicy;
-        this.tenantRoleMapper = tenantRoleMapper;
-        this.auditTrailService = auditTrailService;
-        this.tenantPlanEnforcementService = tenantPlanEnforcementService;
-        this.tenantOwnershipPolicy = tenantOwnershipPolicy;
+        this(tenantRoleRepository, tenantRolePermissionRepository, permissionAssignmentPolicy,
+                tenantRoleMapper, auditTrailService, tenantPlanEnforcementService, tenantOwnershipPolicy, null);
     }
 
     @Transactional
@@ -56,19 +78,28 @@ public class CreateTenantRoleUseCase {
 
         if (tenantRoleRepository.existsByName(normalizedName)) {
             throw new TenantRoleAlreadyExistsException(
-                    "A tenant role with name '" + normalizedName + "' already exists"
+                    "Ya existe un rol con el nombre '" + normalizedName + "' en esta organización. Por favor elija un nombre diferente."
             );
         }
 
         permissionAssignmentPolicy.validate(normalizedPermissionCodes);
 
-        tenantPlanEnforcementService.assertCanCreateRole(
-                tenantRoleRepository.countActiveCustomRoles()
-        );
+        if (tenantPlanEnforcementService != null) {
+            tenantPlanEnforcementService.assertCanCreateRole(
+                    tenantRoleRepository.countActiveCustomRoles()
+            );
+
+            Map<String, String> codeToModule = systemPermissionRepository != null
+                    ? systemPermissionRepository.findAllActiveTenant().stream()
+                            .collect(Collectors.toMap(SystemPermission::code, SystemPermission::module, (a, b) -> a))
+                    : Map.of();
+
+            tenantPlanEnforcementService.assertCanAssignPermissions(normalizedPermissionCodes, codeToModule);
+        }
 
         TenantRole roleToCreate = new TenantRole(
                 null,
-                null,
+                normalizeNullable(request.code()),
                 normalizedName,
                 normalizeNullable(request.description()),
                 false,
