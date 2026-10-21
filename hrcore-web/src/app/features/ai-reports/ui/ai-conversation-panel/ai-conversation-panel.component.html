@@ -1,0 +1,40 @@
+<section class="space-y-4" aria-labelledby="ai-reports-title">
+  <header class="rounded-lg border bg-card p-5">
+    <div class="flex items-center gap-2 text-primary"><lucide-icon name="sparkles" class="h-5 w-5" /><h2 id="ai-reports-title" class="text-xl font-semibold">Asistente de reportes</h2></div>
+    <p class="mt-2 text-sm text-muted-foreground">Pregunta sobre los datos de RR. HH. a los que tienes acceso. Revisa los resultados y sus fechas antes de utilizarlos.</p>
+    <p class="mt-1 text-xs text-muted-foreground">Las conversaciones e historial se cargan sin IA. Solo enviar una pregunta nueva utiliza el planificador configurado.</p>
+  </header>
+  @if (facade.error()) { <div role="alert" class="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{{ facade.error() }}</div> }
+  <div class="grid min-w-0 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)]">
+    <aside class="min-w-0 space-y-3 rounded-lg border bg-card p-4" aria-label="Conversaciones de reportes">
+      <button type="button" (click)="facade.create()" [disabled]="facade.creating()" class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"><lucide-icon name="plus" class="h-4 w-4" />{{ facade.creating() ? 'Creando…' : 'Nueva conversación' }}</button>
+      <div class="flex items-center justify-between"><h3 class="text-sm font-semibold">Tus conversaciones</h3><button type="button" (click)="facade.loadConversations()" [disabled]="facade.loadingList()" aria-label="Recargar conversaciones" class="rounded-md border p-2 hover:bg-muted disabled:opacity-50"><lucide-icon name="refresh-ccw" class="h-4 w-4" /></button></div>
+      @if (facade.loadingList()) { <p role="status" class="text-sm text-muted-foreground">Cargando conversaciones…</p> }
+      @if (facade.conversations(); as page) {
+        <ul class="space-y-2">
+          @for (conversation of page.content; track conversation.id) {
+            <li><button type="button" (click)="facade.select(conversation)" [attr.aria-pressed]="facade.selected()?.id === conversation.id" class="w-full break-words rounded-md border p-3 text-left hover:bg-accent" [class.border-primary]="facade.selected()?.id === conversation.id" [class.bg-accent]="facade.selected()?.id === conversation.id"><span class="block text-sm font-medium">{{ conversation.title }}</span><span class="mt-1 block text-xs text-muted-foreground">{{ conversation.updatedAt | date:'dd/MM/yyyy HH:mm' }}</span></button></li>
+          } @empty { <li class="py-4 text-sm text-muted-foreground">Aún no tienes conversaciones. Crea una para comenzar.</li> }
+        </ul>
+        <nav aria-label="Páginas de conversaciones" class="flex items-center justify-between gap-2 text-xs">
+          <button type="button" (click)="facade.loadConversations(page.page - 1)" [disabled]="facade.loadingList() || page.page === 0" class="rounded-md border p-2 disabled:opacity-40">Anterior</button>
+          <span>{{ page.page + 1 }} / {{ page.totalPages || 1 }}</span>
+          <button type="button" (click)="facade.loadConversations(page.page + 1)" [disabled]="facade.loadingList() || page.page + 1 >= page.totalPages" class="rounded-md border p-2 disabled:opacity-40">Siguiente</button>
+        </nav>
+      }
+    </aside>
+    <section class="min-w-0 rounded-lg border bg-card" aria-label="Conversación seleccionada">
+      @if (facade.selected(); as conversation) {
+        <header class="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+          <div class="min-w-0"><h3 class="break-words font-semibold">{{ conversation.title }}</h3><p class="text-xs text-muted-foreground">Historial privado de tu usuario en esta organización.</p></div>
+          <div class="flex gap-2"><button type="button" (click)="facade.loadHistory()" [disabled]="facade.loadingHistory()" class="rounded-md border px-3 py-2 text-xs hover:bg-muted disabled:opacity-50">Recargar historial</button><button type="button" (click)="confirmDelete()" [disabled]="facade.deleting() || facade.attempt()?.phase === 'sending'" aria-label="Eliminar conversación" class="rounded-md border p-2 text-destructive hover:bg-destructive/5 disabled:opacity-50"><lucide-icon name="trash-2" class="h-4 w-4" /></button></div>
+        </header>
+        <app-ai-conversation-chat />
+      } @else { <div class="flex min-h-80 flex-col items-center justify-center p-8 text-center"><lucide-icon name="file-chart-column" class="h-8 w-8 text-primary" /><h3 class="mt-4 font-semibold">Tu próxima consulta empieza aquí</h3><p class="mt-2 max-w-sm text-sm text-muted-foreground">Crea una conversación o selecciona una existente para consultar su historial y continuar.</p></div> }
+    </section>
+  </div>
+  <dialog #confirmation aria-labelledby="delete-conversation-title" class="m-auto w-[calc(100%_-_2rem)] max-w-md rounded-xl border bg-card p-6 text-foreground shadow-xl backdrop:bg-black/50">
+    <h3 id="delete-conversation-title" class="text-lg font-semibold">Eliminar conversación</h3><p class="mt-2 text-sm text-muted-foreground">Se eliminarán sus mensajes y las ejecuciones guardadas. Esta acción no se puede deshacer.</p>
+    <div class="mt-5 flex justify-end gap-3"><button type="button" autofocus (click)="cancelDelete()" class="rounded-md border px-4 py-2 text-sm">Cancelar</button><button type="button" (click)="deleteConversation()" class="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground">Eliminar</button></div>
+  </dialog>
+</section>

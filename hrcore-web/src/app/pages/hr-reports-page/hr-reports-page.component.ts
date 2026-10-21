@@ -3,23 +3,33 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReportsService } from '../../entities/reports';
 import { ToastService } from '../../shared/ui/toast/toast.service';
+import { AiConversationPanelComponent } from '../../features/ai-reports/ui/ai-conversation-panel/ai-conversation-panel.component';
 
 type ReportId = 'employees' | 'contracts' | 'attendance' | 'leaves' | 'incidents';
 type ReportData = Record<string, unknown>;
 
 @Component({
-  selector: 'app-hr-reports-page', standalone: true, imports: [CommonModule, FormsModule],
+  selector: 'app-hr-reports-page', standalone: true, imports: [CommonModule, FormsModule, AiConversationPanelComponent],
   template: `
-    <section class="space-y-6 p-6">
+    <nav role="tablist" aria-label="Área de reportes" class="mb-4 flex flex-wrap gap-2">
+      <button id="operational-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='operational'" [attr.tabindex]="area()==='operational'?0:-1" aria-controls="operational-reports" (click)="openArea('operational')" (keydown.arrowright)="focusArea($event, 'assistant')" (keydown.arrowleft)="focusArea($event, 'assistant')" class="rounded-md border px-4 py-2 text-sm" [class.bg-primary]="area()==='operational'" [class.text-primary-foreground]="area()==='operational'">Reportes operativos</button>
+      <button id="assistant-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='assistant'" [attr.tabindex]="area()==='assistant'?0:-1" aria-controls="assistant-reports" (click)="openArea('assistant')" (keydown.arrowright)="focusArea($event, 'operational')" (keydown.arrowleft)="focusArea($event, 'operational')" class="rounded-md border px-4 py-2 text-sm" [class.bg-primary]="area()==='assistant'" [class.text-primary-foreground]="area()==='assistant'">Asistente de reportes</button>
+    </nav>
+    <section id="operational-reports" role="tabpanel" aria-labelledby="operational-reports-tab" [hidden]="area()!=='operational'" class="space-y-6 p-6">
       <header class="flex flex-wrap items-end justify-between gap-4"><div><p class="text-sm text-muted-foreground">Recursos humanos · análisis operativo</p><h1 class="text-2xl font-semibold tracking-tight">Reportes</h1><p class="mt-1 text-sm text-muted-foreground">Indicadores agregados calculados por el backend para este tenant.</p></div><button type="button" class="rounded-md border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50" [disabled]="loading()" (click)="download()">Descargar CSV</button></header>
       <div class="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-[1fr_1fr_auto] md:items-end"><label class="text-sm">Fecha inicial<input type="date" class="mt-1 w-full rounded-md border bg-background px-3 py-2" [(ngModel)]="fromDate" /></label><label class="text-sm">Fecha final<input type="date" class="mt-1 w-full rounded-md border bg-background px-3 py-2" [(ngModel)]="toDate" /></label><button type="button" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90" [disabled]="loading()" (click)="load()">Actualizar</button></div>
       <nav class="flex flex-wrap gap-2" aria-label="Tipos de reporte"><button *ngFor="let item of reportTypes" type="button" class="rounded-full border px-3 py-2 text-sm transition-colors hover:bg-muted" [class.bg-primary]="report()===item.id" [class.text-primary-foreground]="report()===item.id" [attr.aria-current]="report()===item.id ? 'page' : null" (click)="select(item.id)">{{ item.label }}</button></nav>
       <div *ngIf="error()" class="flex items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert"><span>{{ error() }}</span><button type="button" class="underline" (click)="load()">Reintentar</button></div>
       <div *ngIf="loading()" class="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground" aria-live="polite">Generando reporte…</div>
       <ng-container *ngIf="!loading() && data() as value"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"><article *ngFor="let metric of metrics()" class="rounded-lg border bg-card p-4"><p class="text-xs uppercase tracking-wide text-muted-foreground">{{ metric.label }}</p><p class="mt-2 text-2xl font-semibold tabular-nums">{{ metric.value }}</p></article></div><div class="grid gap-6 lg:grid-cols-2"><article *ngFor="let group of groups()" class="rounded-lg border bg-card p-5"><h2 class="text-sm font-semibold">{{ group.label }}</h2><div class="mt-3 divide-y rounded-md border"><div *ngFor="let row of group.rows" class="flex items-center justify-between gap-4 px-3 py-2 text-sm"><span>{{ row.label }}</span><span class="font-medium tabular-nums">{{ row.value }}</span></div><p *ngIf="!group.rows.length" class="px-3 py-4 text-sm text-muted-foreground">Sin distribución disponible.</p></div></article></div><p *ngIf="!metrics().length && !groups().length" class="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">El backend no devolvió indicadores para este reporte.</p></ng-container>
-    </section>`
+    </section>
+    @if (assistantOpened()) { <div id="assistant-reports" role="tabpanel" aria-labelledby="assistant-reports-tab" [hidden]="area()!=='assistant'"><app-ai-conversation-panel /></div> }`
 })
 export class HrReportsPageComponent implements OnInit {
+  readonly area = signal<'operational' | 'assistant'>('operational');
+  readonly assistantOpened = signal(false);
+  openArea(area: 'operational' | 'assistant') { this.area.set(area); if (area === 'assistant') this.assistantOpened.set(true); }
+  focusArea(event: Event, area: 'operational' | 'assistant') { event.preventDefault(); this.openArea(area); document.getElementById(area === 'assistant' ? 'assistant-reports-tab' : 'operational-reports-tab')?.focus(); }
   private readonly service = inject(ReportsService); private readonly toast = inject(ToastService);
   readonly reportTypes: { id: ReportId; label: string }[] = [{ id: 'employees', label: 'Empleados' }, { id: 'contracts', label: 'Contratos' }, { id: 'attendance', label: 'Asistencia' }, { id: 'leaves', label: 'Permisos' }, { id: 'incidents', label: 'Incidencias' }];
   readonly report = signal<ReportId>('employees'); readonly data = signal<ReportData | null>(null); readonly loading = signal(false); readonly error = signal(''); fromDate = ''; toDate = '';
