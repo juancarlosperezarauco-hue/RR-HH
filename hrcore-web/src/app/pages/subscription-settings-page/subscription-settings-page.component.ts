@@ -5,6 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { BillingInterval, TenantBillingPlan } from '../../entities/billing';
 import { TenantSubscriptionUseCase } from '../../features/billing';
 import { EnterpriseContactComponent } from '../../widgets/pricing/enterprise-contact/enterprise-contact.component';
+import { planFeatures } from '../../widgets/pricing/plan-features';
 
 @Component({
   selector: 'app-subscription-settings-page',
@@ -135,19 +136,11 @@ import { EnterpriseContactComponent } from '../../widgets/pricing/enterprise-con
                 </div>
 
                 <ul class="mt-7 space-y-3 text-sm text-muted-foreground">
-                  <li class="flex gap-3">
-                    <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                    Gestión de usuarios según el plan contratado
-                  </li>
-                  <li class="flex gap-3">
-                    <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                    Roles y permisos para tu equipo
-                  </li>
-                  @if (plan.planType !== 'ENTERPRISE') {
-                  <li class="flex gap-3">
-                    <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                    Pago seguro con Stripe
-                  </li>
+                  @for (feature of features(plan); track feature) {
+                    <li class="flex gap-3">
+                      <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
+                      <span>{{ feature }}</span>
+                    </li>
                   }
                 </ul>
               </div>
@@ -259,6 +252,16 @@ export class SubscriptionSettingsPageComponent implements OnInit {
     }
 
     return `${plan.currency || 'USD'} ${amount}`;
+  }
+
+  features(plan: TenantBillingPlan): string[] {
+    return planFeatures({
+      code: plan.code,
+      maxUsers: plan.maxUsers,
+      maxRoles: plan.maxRoles,
+      trialDays: plan.trialDays,
+      contactSales: plan.planType === 'ENTERPRISE'
+    });
   }
 
   upgrade(plan: TenantBillingPlan): void {

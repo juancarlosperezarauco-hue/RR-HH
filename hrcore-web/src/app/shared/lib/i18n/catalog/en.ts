@@ -12,7 +12,7 @@ export const en = {
   'nav.company-settings': 'Company', 'nav.appearance-settings': 'System customization',
   'nav.audit': 'Audit',
   'group.organization': 'Organization', 'group.operations': 'Work management',
-  'group.personal': 'My space', 'group.administration': 'Administration',
+  'group.personal': 'Configuration', 'group.administration': 'Administration',
   'upgrade.eyebrow': 'Upgrade', 'upgrade.title': 'Upgrade your plan',
   'upgrade.description': 'Expand your tenant’s user and permission capacity.',
   'upgrade.plans': 'View plans',

@@ -20,37 +20,18 @@
     <section class="space-y-4">
       <h4 class="border-b border-border pb-2 text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground">Información general</h4>
       
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label for="name" class="mb-1 block text-sm font-semibold text-muted-foreground">Nombre del rol</label>
-          <input 
-            id="name" 
-            type="text" 
-            formControlName="name"
-            class="w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
-            [class.border-destructive/30]="isFieldInvalid('name')"
-            placeholder="Ej: Administrador de RR. HH.">
-          @if (isFieldInvalid('name')) {
-            <span class="mt-1 block text-xs text-destructive">El nombre es requerido (máx 100 caracteres).</span>
-          }
-        </div>
-
-        <div>
-          <label for="code" class="mb-1 block text-sm font-semibold text-muted-foreground">
-            Código de rol
-            @if (roleToEdit) {
-              <span class="text-xs font-normal text-muted-foreground">(Inmutable)</span>
-            } @else {
-              <span class="text-xs font-normal text-muted-foreground">(Opcional / Auto-generado)</span>
-            }
-          </label>
-          <input 
-            id="code" 
-            type="text" 
-            formControlName="code"
-            class="w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card disabled:opacity-60 disabled:cursor-not-allowed"
-            placeholder="Ej: ROL-00001 (auto-generado)">
-        </div>
+      <div>
+        <label for="name" class="mb-1 block text-sm font-semibold text-muted-foreground">Nombre del rol</label>
+        <input
+          id="name"
+          type="text"
+          formControlName="name"
+          class="w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card"
+          [class.border-destructive/30]="isFieldInvalid('name')"
+          placeholder="Ej: Administrador de RR. HH.">
+        @if (isFieldInvalid('name')) {
+          <span class="mt-1 block text-xs text-destructive">El nombre es requerido (máx 100 caracteres).</span>
+        }
       </div>
 
       <div>

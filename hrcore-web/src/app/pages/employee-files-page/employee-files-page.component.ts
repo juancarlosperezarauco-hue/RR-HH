@@ -70,7 +70,8 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </section>
 
-      <section class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div class="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] md:items-stretch">
+      <section class="h-full rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div class="flex-1 max-w-xl">
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -100,7 +101,7 @@ import { firstValueFrom } from 'rxjs';
       <!-- Selector y Estado del Expediente Activo -->
       <section
         *ngIf="fileListUseCase.activeFile()"
-        class="rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        class="h-full rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-4">
           <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary font-black text-base border border-primary/20">
             <lucide-icon name="folder" [size]="22"></lucide-icon>
@@ -136,6 +137,7 @@ import { firstValueFrom } from 'rxjs';
           </select>
         </div>
       </section>
+      </div>
 
       <!-- Estado: Cargando -->
       <div *ngIf="fileListUseCase.loading()" class="rounded-2xl border border-border bg-card p-12 text-center flex flex-col items-center justify-center space-y-3">

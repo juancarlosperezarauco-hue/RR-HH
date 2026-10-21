@@ -16,6 +16,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUser;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantUserRoleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -33,6 +34,7 @@ public class LoginTenantUserWithFaceUseCase {
     private final FaceRecognitionProperties faceRecognitionProperties;
     private final AuthSessionService authSessionService;
     private final AuditTrailService auditTrailService;
+    private final TenantUserRoleRepository tenantUserRoleRepository;
 
     public LoginTenantUserWithFaceUseCase(
             TenantUserRepository tenantUserRepository,
@@ -41,7 +43,8 @@ public class LoginTenantUserWithFaceUseCase {
             ProfilePhotoStoragePort profilePhotoStoragePort,
             FaceRecognitionProperties faceRecognitionProperties,
             AuthSessionService authSessionService,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService,
+            TenantUserRoleRepository tenantUserRoleRepository
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.faceLoginProfileRepository = faceLoginProfileRepository;
@@ -50,6 +53,7 @@ public class LoginTenantUserWithFaceUseCase {
         this.faceRecognitionProperties = faceRecognitionProperties;
         this.authSessionService = authSessionService;
         this.auditTrailService = auditTrailService;
+        this.tenantUserRoleRepository = tenantUserRoleRepository;
     }
 
     public AuthTokenResponse execute(String email, MultipartFile image) {
@@ -71,6 +75,10 @@ public class LoginTenantUserWithFaceUseCase {
                 throw new AuthenticationFailedException("Tu cuenta aún no está activada. Revisa tu correo.");
             }
             throw new AuthenticationFailedException("User is inactive");
+        }
+
+        if (tenantUserRoleRepository.findRoleCodesByUserId(tenantUser.id()).isEmpty()) {
+            throw new AuthenticationFailedException("Tu cuenta aún no tiene un rol asignado. Solicita al administrador que configure tus accesos.");
         }
 
         TenantUserFaceLoginProfile faceProfile = faceLoginProfileRepository.findByUserId(tenantUser.id())

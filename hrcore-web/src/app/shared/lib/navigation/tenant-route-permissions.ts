@@ -5,6 +5,7 @@ export const TENANT_ROUTE_PERMISSIONS = {
   subscription: 'billing.subscription.manage',
   backups: 'backups.list',
   employees: 'employees.list',
+  selfEmployment: 'employees.list',
   contracts: 'contracts.list',
   dossiers: 'employee_files.list',
   shifts: 'shifts.list',
@@ -16,5 +17,6 @@ export const TENANT_ROUTE_PERMISSIONS = {
   positions: 'positions.list',
   team: 'employees.team.read',
   companySettings: 'tenant-settings.read',
+  tenantSettings: 'tenant-settings.read',
   audit: 'audit.events.read',
 } as const;

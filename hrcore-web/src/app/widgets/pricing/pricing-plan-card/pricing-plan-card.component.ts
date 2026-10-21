@@ -5,6 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { PublicBillingPlan } from '../../../entities/billing';
 import { BillingInterval } from '../pricing-page/pricing-page.component';
 import { EnterpriseContactComponent } from '../enterprise-contact/enterprise-contact.component';
+import { planFeatures } from '../plan-features';
 
 @Component({
   selector: 'app-pricing-plan-card',
@@ -160,21 +161,7 @@ export class PricingPlanCardComponent {
   }
 
   features(): string[] {
-    if (this.isFree()) {
-      return [
-        `Hasta ${this.plan.maxUsers} usuarios`,
-        `Hasta ${this.plan.maxRoles} roles personalizados`,
-        `${this.plan.trialDays ?? 10} días de prueba`,
-        'Sin tarjeta de crédito',
-        'Ideal para validar el flujo completo'
-      ];
-    }
-
-    if (this.plan.contactSales) {
-      return ['Capacidad personalizada', 'Condiciones comerciales especiales', 'Acompañamiento comercial', 'No usa checkout automático'];
-    }
-
-    return [`Hasta ${this.plan.maxUsers} usuarios`, `Hasta ${this.plan.maxRoles} roles personalizados`, 'Pago seguro con Stripe', 'Puedes cambiar de plan desde tu sesión'];
+    return planFeatures(this.plan);
   }
 
   private formatMoney(value: number): string {

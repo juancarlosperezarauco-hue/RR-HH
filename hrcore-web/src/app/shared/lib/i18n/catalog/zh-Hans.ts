@@ -12,7 +12,7 @@ export const zhHans = {
   'nav.company-settings': '企业', 'nav.appearance-settings': '系统外观定制',
   'nav.audit': '审计',
   'group.organization': '组织管理', 'group.operations': '人事管理',
-  'group.personal': '个人空间', 'group.administration': '管理',
+  'group.personal': '设置', 'group.administration': '管理',
   'upgrade.eyebrow': '升级', 'upgrade.title': '升级您的方案',
   'upgrade.description': '提高企业可用的用户数量和权限容量。',
   'upgrade.plans': '查看方案',

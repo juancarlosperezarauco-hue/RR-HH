@@ -47,7 +47,6 @@ export class RoleFormComponent implements OnInit, OnChanges {
 
   private initForm(): void {
     this.roleForm = this.fb.group({
-      code: [{ value: '', disabled: false }],
       name: ['', [Validators.required, Validators.maxLength(100)]],
       description: ['', [Validators.maxLength(255)]],
       permissionCodes: this.fb.array([])
@@ -63,12 +62,9 @@ export class RoleFormComponent implements OnInit, OnChanges {
     
     if (this.roleToEdit) {
       this.roleForm.patchValue({
-        code: this.roleToEdit.code,
         name: this.roleToEdit.name,
         description: this.roleToEdit.description || ''
       });
-      this.roleForm.get('code')?.disable();
-
       const permissionsArray = this.roleForm.get('permissionCodes') as FormArray;
       permissionsArray.clear();
       
@@ -77,7 +73,6 @@ export class RoleFormComponent implements OnInit, OnChanges {
       });
     } else {
       this.roleForm.reset();
-      this.roleForm.get('code')?.enable();
       (this.roleForm.get('permissionCodes') as FormArray).clear();
     }
   }
@@ -237,9 +232,7 @@ export class RoleFormComponent implements OnInit, OnChanges {
         };
         this.submitUpdate.emit({ id: this.roleToEdit.id, request });
       } else {
-        const rawCode = String(formValue.code ?? '').trim();
         const request: CreateTenantRoleRequest = {
-          code: rawCode ? rawCode : undefined,
           name,
           description: String(formValue.description ?? '').trim() || null,
           permissionCodes

@@ -12,7 +12,7 @@ export const zhHant = {
   'nav.company-settings': '企業', 'nav.appearance-settings': '系統外觀自訂',
   'nav.audit': '稽核',
   'group.organization': '組織管理', 'group.operations': '人事管理',
-  'group.personal': '個人專區', 'group.administration': '管理',
+  'group.personal': '設定', 'group.administration': '管理',
   'upgrade.eyebrow': '升級', 'upgrade.title': '升級您的方案',
   'upgrade.description': '提高企業可用的使用者人數與權限容量。',
   'upgrade.plans': '檢視方案',

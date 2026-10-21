@@ -12,7 +12,7 @@ export const ko = {
   'nav.company-settings': '회사', 'nav.appearance-settings': '시스템 화면 맞춤 설정',
   'nav.audit': '감사',
   'group.organization': '조직 관리', 'group.operations': '인사 운영',
-  'group.personal': '개인 공간', 'group.administration': '관리',
+  'group.personal': '설정', 'group.administration': '관리',
   'upgrade.eyebrow': '업그레이드', 'upgrade.title': '요금제 업그레이드',
   'upgrade.description': '회사에서 사용할 수 있는 사용자 수와 권한 한도를 늘릴 수 있습니다.',
   'upgrade.plans': '요금제 보기',

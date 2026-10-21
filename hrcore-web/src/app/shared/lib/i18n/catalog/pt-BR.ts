@@ -12,7 +12,7 @@ export const ptBR = {
   'nav.company-settings': 'Empresa', 'nav.appearance-settings': 'Personalização do Sistema',
   'nav.audit': 'Auditoria',
   'group.organization': 'Organização', 'group.operations': 'Gestão de pessoas',
-  'group.personal': 'Meu espaço', 'group.administration': 'Administração',
+  'group.personal': 'Configuração', 'group.administration': 'Administração',
   'upgrade.eyebrow': 'Upgrade', 'upgrade.title': 'Melhore seu plano',
   'upgrade.description': 'Amplie a capacidade de usuários e permissões da sua empresa.',
   'upgrade.plans': 'Ver planos',

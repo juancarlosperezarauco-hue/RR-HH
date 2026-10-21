@@ -57,7 +57,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
           <button
             type="button"
             (click)="openRequestModal()"
-            [disabled]="!currentEmployeeId"
+            [disabled]="!employees.length"
             class="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"
           >
             <lucide-icon name="plus" class="h-4 w-4"></lucide-icon>
@@ -66,20 +66,20 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         </div>
       </div>
 
-      <div class="rounded-2xl border border-border bg-card p-4 shadow-xs">
-        <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-          Empleado
+      <div class="grid gap-4 rounded-2xl border border-border bg-card p-4 shadow-xs md:grid-cols-2 md:items-end">
+        <label class="block space-y-1.5">
+          <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Empleado en consulta</span>
+          <select
+            [(ngModel)]="currentEmployeeId"
+            (ngModelChange)="onEmployeeChanged()"
+            class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground">
+            <option value="" disabled>Seleccione un empleado</option>
+            <option *ngFor="let employee of employees" [value]="employee.id">
+              {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+            </option>
+          </select>
         </label>
-        <select
-          [(ngModel)]="currentEmployeeId"
-          (ngModelChange)="onEmployeeChanged()"
-          class="w-full max-w-xl rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground">
-          <option value="" disabled>Seleccione un empleado</option>
-          <option *ngFor="let employee of employees" [value]="employee.id">
-            {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
-          </option>
-        </select>
-        <label class="mt-3 block max-w-xl space-y-1.5">
+        <label class="block space-y-1.5">
           <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Período laboral</span>
           <select
             [(ngModel)]="selectedEmploymentPeriodId"
@@ -103,7 +103,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
       ></app-vacation-balance-card>
 
       <!-- KPI Summary Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Pendientes -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-amber-500/40">
           <div class="flex items-center justify-between">
@@ -181,10 +181,12 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
       <app-absence-request-modal
         [isOpen]="isRequestModalOpen"
         [employeeId]="currentEmployeeId"
+        [employees]="employees"
         [leaveTypes]="listUseCase.leaveTypes()"
         [balance]="balanceUseCase.balance()"
         [holidays]="listUseCase.holidays()"
         (closeModal)="isRequestModalOpen = false"
+        (employeeChanged)="onRequestEmployeeChanged($event)"
         (requestSubmitted)="onRequestSubmitted()"
       ></app-absence-request-modal>
 
@@ -263,15 +265,16 @@ export class AbsencesPageComponent implements OnInit {
   }
 
   openRequestModal(): void {
-    if (!this.currentEmployeeId) {
-      this.toast.warning('Seleccione un empleado antes de registrar una ausencia.');
-      return;
-    }
-    if (!this.selectedEmploymentPeriodId) {
-      this.toast.warning('Seleccione el período laboral que recibirá el saldo.');
+    if (!this.employees.length) {
+      this.toast.warning('No hay empleados disponibles para registrar una ausencia.');
       return;
     }
     this.isRequestModalOpen = true;
+  }
+
+  onRequestEmployeeChanged(employeeId: string): void {
+    this.currentEmployeeId = employeeId;
+    this.loadEmploymentPeriods();
   }
 
   async configureVacationBalance(): Promise<void> {

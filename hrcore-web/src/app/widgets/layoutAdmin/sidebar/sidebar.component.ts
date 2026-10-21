@@ -125,12 +125,10 @@ import { TenantTextKey } from '../../../shared/lib/i18n/keys';
         <section *ngFor="let group of navigationGroups; trackBy: trackGroup" class="pt-1.5">
           <button
             type="button"
-            class="group flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] transition-all duration-200"
+            class="group flex w-full cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-primary"
             [class.bg-accent/70]="isGroupActive(group)"
             [class.text-primary]="isGroupActive(group) || isGroupExpanded(group.id)"
             [class.text-muted-foreground]="!isGroupActive(group) && !isGroupExpanded(group.id)"
-            [class.hover:bg-muted]="!isGroupActive(group)"
-            [class.hover:text-foreground]="!isGroupActive(group)"
             [attr.aria-expanded]="isGroupExpanded(group.id)"
             (click)="toggleGroup(group.id)">
             <span class="flex items-center gap-2">
@@ -138,7 +136,14 @@ import { TenantTextKey } from '../../../shared/lib/i18n/keys';
               <span>{{ group.label }}</span>
             </span>
             <span class="flex items-center gap-1.5">
-              <span class="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+              <span
+                class="rounded-full border px-1.5 py-0.5 text-[10px] font-bold transition-colors"
+                [class.border-primary]="isGroupActive(group) || isGroupExpanded(group.id)"
+                [class.bg-primary]="isGroupActive(group) || isGroupExpanded(group.id)"
+                [class.text-primary-foreground]="isGroupActive(group) || isGroupExpanded(group.id)"
+                [class.border-border]="!isGroupActive(group) && !isGroupExpanded(group.id)"
+                [class.bg-accent]="!isGroupActive(group) && !isGroupExpanded(group.id)"
+                [class.text-primary]="!isGroupActive(group) && !isGroupExpanded(group.id)">
                 {{ group.items.length }}
               </span>
               <lucide-icon
@@ -271,8 +276,8 @@ export class SidebarComponent {
     TENANT: [
       { id: 'organization', label: 'Organización', icon: 'building-2', ids: ['users', 'departments', 'positions', 'organization-chart', 'my-team', 'employees'] },
       { id: 'operations', label: 'Gestión laboral', icon: 'briefcase', ids: ['contracts', 'dossiers', 'shifts', 'attendance', 'absences', 'incidents'] },
-      { id: 'personal', label: 'Mi espacio', icon: 'user-circle-2', ids: ['profile', 'my-employment', 'notifications'] },
-      { id: 'administration', label: 'Administración', icon: 'shield-check', ids: ['roles', 'permissions', 'subscription', 'hr-reports', 'company-settings', 'appearance-settings', 'audit', 'backups', 'security', 'settings'] }
+      { id: 'administration', label: 'Administración', icon: 'shield-check', ids: ['roles', 'permissions', 'subscription', 'hr-reports', 'audit', 'backups', 'security'] },
+      { id: 'personal', label: 'Configuración', icon: 'user-circle-2', ids: ['profile', 'my-employment', 'notifications', 'settings', 'company-settings', 'appearance-settings'] }
     ],
     PLATFORM: [
       { id: 'platform', label: 'Plataforma', icon: 'building-2', ids: ['tenants', 'plans', 'subscriptions', 'audit', 'backups'] },

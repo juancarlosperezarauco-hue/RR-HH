@@ -6,6 +6,8 @@ export interface TenantBillingPlan {
   name: string;
   description: string | null;
   planType: string;
+  maxUsers: number;
+  maxRoles: number;
   trialDays: number | null;
   monthlyAmount: number | null;
   yearlyAmount: number | null;

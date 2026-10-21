@@ -12,7 +12,7 @@ export const id = {
   'nav.company-settings': 'Perusahaan', 'nav.appearance-settings': 'Penyesuaian tampilan sistem',
   'nav.audit': 'Audit',
   'group.organization': 'Pengelolaan organisasi', 'group.operations': 'Operasional SDM',
-  'group.personal': 'Ruang pribadi', 'group.administration': 'Administrasi',
+  'group.personal': 'Konfigurasi', 'group.administration': 'Administrasi',
   'upgrade.eyebrow': 'Peningkatan', 'upgrade.title': 'Tingkatkan paket Anda',
   'upgrade.description': 'Tingkatkan jumlah pengguna dan kapasitas izin akses yang tersedia bagi perusahaan Anda.',
   'upgrade.plans': 'Lihat paket',

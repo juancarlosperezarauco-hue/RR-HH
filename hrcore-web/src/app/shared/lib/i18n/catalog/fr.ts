@@ -12,7 +12,7 @@ export const fr = {
   'nav.company-settings': 'Entreprise', 'nav.appearance-settings': 'Personnalisation du système',
   'nav.audit': 'Audit',
   'group.organization': 'Organisation', 'group.operations': 'Gestion du personnel',
-  'group.personal': 'Mon espace', 'group.administration': 'Administration',
+  'group.personal': 'Configuration', 'group.administration': 'Administration',
   'upgrade.eyebrow': 'Évolution', 'upgrade.title': 'Améliorez votre offre',
   'upgrade.description': 'Augmentez la capacité d’utilisateurs et d’autorisations de votre entreprise.',
   'upgrade.plans': 'Voir les offres',

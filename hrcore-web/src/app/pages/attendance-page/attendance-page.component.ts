@@ -91,7 +91,7 @@ import { firstValueFrom } from 'rxjs';
       ></app-clock-in-widget>
 
       <!-- KPI Summary Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-4">
         <!-- Puntualidad -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-emerald-500/40">
           <div class="flex items-center justify-between">

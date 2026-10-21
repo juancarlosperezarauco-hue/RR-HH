@@ -12,7 +12,7 @@ export const ja = {
   'nav.company-settings': '企業', 'nav.appearance-settings': 'システムの外観設定',
   'nav.audit': '監査',
   'group.organization': '組織管理', 'group.operations': '人事業務',
-  'group.personal': '個人用', 'group.administration': '管理',
+  'group.personal': '設定', 'group.administration': '管理',
   'upgrade.eyebrow': 'アップグレード', 'upgrade.title': 'プランをアップグレード',
   'upgrade.description': '企業で利用できるユーザー数と権限の上限を増やせます。',
   'upgrade.plans': 'プランを見る',

@@ -19,6 +19,7 @@ export class TenantNavigationService {
     if (this.authFacade.status() !== 'ready' || !this.authFacade.currentUser()) return false;
     if (item.ownerOnly && !this.permissions.isCurrentOwner()) return false;
     if (item.hideForOwner && this.permissions.isCurrentOwner()) return false;
+    if (!item.permission && !item.authOnly) return false;
     return !item.permission || this.permissions.hasPermission(item.permission);
   }
 }

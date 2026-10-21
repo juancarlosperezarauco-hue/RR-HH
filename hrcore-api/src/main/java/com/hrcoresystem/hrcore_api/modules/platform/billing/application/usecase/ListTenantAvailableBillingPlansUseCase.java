@@ -48,6 +48,8 @@ public class ListTenantAvailableBillingPlansUseCase {
                         plan.name(),
                         plan.description(),
                         plan.planType(),
+                        plan.maxUsers(),
+                        plan.maxRoles(),
                         plan.trialDays(),
                         plan.monthlyAmount(),
                         plan.yearlyAmount(),

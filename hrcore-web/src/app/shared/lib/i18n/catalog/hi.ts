@@ -12,7 +12,7 @@ export const hi = {
   'nav.company-settings': 'कंपनी', 'nav.appearance-settings': 'सिस्टम का रूप अनुकूलित करें',
   'nav.audit': 'ऑडिट',
   'group.organization': 'संगठन प्रबंधन', 'group.operations': 'मानव संसाधन संचालन',
-  'group.personal': 'व्यक्तिगत अनुभाग', 'group.administration': 'प्रशासन',
+  'group.personal': 'कॉन्फ़िगरेशन', 'group.administration': 'प्रशासन',
   'upgrade.eyebrow': 'अपग्रेड', 'upgrade.title': 'अपनी योजना अपग्रेड करें',
   'upgrade.description': 'अपनी कंपनी के लिए उपलब्ध उपयोगकर्ताओं की संख्या और अनुमतियों की सीमा बढ़ाएँ।',
   'upgrade.plans': 'योजनाएँ देखें',

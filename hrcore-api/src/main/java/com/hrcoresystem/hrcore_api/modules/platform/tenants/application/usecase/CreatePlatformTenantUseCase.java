@@ -45,14 +45,25 @@ public class CreatePlatformTenantUseCase {
                 new CreateTenantRequest(request.name(), request.slug(), request.planCode())
         );
 
-        tenantOwnerAdminProvisioningService.provisionOwnerAdmin(
-                tenantResponse.schemaName(),
-                tenantResponse.slug(),
-                request.adminEmail(),
-                request.password(),
-                request.firstName(),
-                request.lastName()
-        );
+        if (request.directAccess()) {
+            tenantOwnerAdminProvisioningService.provisionOwnerAdminWithoutVerification(
+                    tenantResponse.schemaName(),
+                    tenantResponse.slug(),
+                    request.adminEmail(),
+                    request.password(),
+                    request.firstName(),
+                    request.lastName()
+            );
+        } else {
+            tenantOwnerAdminProvisioningService.provisionOwnerAdmin(
+                    tenantResponse.schemaName(),
+                    tenantResponse.slug(),
+                    request.adminEmail(),
+                    request.password(),
+                    request.firstName(),
+                    request.lastName()
+            );
+        }
 
         if (platformTenantRepository != null && tenantResponse.id() != null) {
             var existingTenantOpt = platformTenantRepository.findById(tenantResponse.id());

@@ -22,6 +22,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.exception.Tenan
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUser;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantUserRoleRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.superadmin.domain.repository.PlatformSuperadminRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,12 +52,14 @@ class TenantUserSecurityAndIsolationTest {
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         AuthSessionService sessions = mock(AuthSessionService.class);
         AuditTrailService audit = mock(AuditTrailService.class);
+        TenantUserRoleRepository roleRepository = mock(TenantUserRoleRepository.class);
 
         LoginTenantUserUseCase loginUseCase = new LoginTenantUserUseCase(
                 tenantUserRepository,
                 passwordEncoder,
                 sessions,
-                audit
+                audit,
+                roleRepository
         );
 
         TenantContextHolder.set(new TenantContext("empresa-a", "tenant_empresa_a", false));

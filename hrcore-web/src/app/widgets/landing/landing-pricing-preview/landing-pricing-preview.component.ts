@@ -2,12 +2,17 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { planFeatures } from '../../pricing/plan-features';
 
 interface LandingPreviewPlan {
+  code: string;
   name: string;
   description: string;
   price: string;
   period: string;
+  maxUsers: number;
+  maxRoles: number;
+  trialDays?: number | null;
   badge?: string;
   queryParams?: Record<string, string>;
   featured?: boolean;
@@ -69,18 +74,12 @@ interface LandingPreviewPlan {
               </div>
 
               <ul class="mt-7 space-y-3">
-                <li class="flex gap-3 text-sm font-semibold text-muted-foreground">
-                  <lucide-icon name="check-circle" class="h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                  Usuarios según límite del plan
-                </li>
-                <li class="flex gap-3 text-sm font-semibold text-muted-foreground">
-                  <lucide-icon name="check-circle" class="h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                  Roles y permisos configurables
-                </li>
-                <li class="flex gap-3 text-sm font-semibold text-muted-foreground">
-                  <lucide-icon name="check-circle" class="h-4 w-4 shrink-0 text-primary"></lucide-icon>
-                  Acceso a operación multi-tenant
-                </li>
+                @for (feature of features(plan); track feature) {
+                  <li class="flex gap-3 text-sm font-semibold text-muted-foreground">
+                    <lucide-icon name="check-circle" class="h-4 w-4 shrink-0 text-primary"></lucide-icon>
+                    <span>{{ feature }}</span>
+                  </li>
+                }
               </ul>
 
               <div class="mt-auto pt-8">
@@ -108,27 +107,41 @@ interface LandingPreviewPlan {
 export class LandingPricingPreviewComponent {
   readonly plans: LandingPreviewPlan[] = [
     {
+      code: 'DEMO',
       name: 'Demo',
       description: 'Ideal para validar el sistema antes de contratar una suscripción.',
       price: 'USD 0',
       period: '/ prueba',
+      maxUsers: 15,
+      maxRoles: 5,
+      trialDays: 10,
       queryParams: { plan: 'DEMO' }
     },
     {
+      code: 'BASIC',
       name: 'Basic',
       description: 'Para equipos pequeños que necesitan iniciar con una gestión humana ordenada.',
       price: 'Desde USD 9.99',
       period: '/ mes',
+      maxUsers: 10,
+      maxRoles: 5,
       queryParams: { plan: 'BASIC', billing: 'MONTHLY' }
     },
     {
+      code: 'PRO',
       name: 'Professional',
       description: 'Para tenants que necesitan mayor capacidad operativa y crecimiento.',
       price: 'Desde USD 19.99',
       period: '/ mes',
+      maxUsers: 25,
+      maxRoles: 10,
       badge: 'Recomendado',
       featured: true,
       queryParams: { plan: 'PRO', billing: 'MONTHLY' }
     }
   ];
+
+  features(plan: LandingPreviewPlan): string[] {
+    return planFeatures(plan);
+  }
 }

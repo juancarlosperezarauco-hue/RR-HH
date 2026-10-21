@@ -9,6 +9,8 @@ public record BillingPlanResponse(
         String name,
         String description,
         String planType,
+        int maxUsers,
+        int maxRoles,
         Integer trialDays,
         BigDecimal monthlyAmount,
         BigDecimal yearlyAmount,

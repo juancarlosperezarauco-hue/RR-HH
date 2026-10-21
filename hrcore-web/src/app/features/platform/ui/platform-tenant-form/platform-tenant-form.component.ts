@@ -24,6 +24,7 @@ export interface CreateTenantFormData {
   password: string;
   firstName: string;
   lastName: string;
+  directAccess: boolean;
 }
 
 @Component({
@@ -127,6 +128,14 @@ export interface CreateTenantFormData {
             <span *ngIf="isFieldInvalid('password')" class="text-xs text-destructive mt-1">La contraseña es requerida (mínimo 8 caracteres)</span>
           </div>
         </div>
+
+        <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/40 p-3">
+          <input type="checkbox" formControlName="directAccess" class="mt-0.5 h-4 w-4 accent-primary">
+          <span>
+            <span class="block text-sm font-semibold text-accent-foreground">Habilitar acceso directo</span>
+            <span class="mt-0.5 block text-xs text-muted-foreground">El administrador podrá iniciar sesión sin activar la cuenta por correo.</span>
+          </span>
+        </label>
       </div>
 
       <!-- Botones -->
@@ -166,7 +175,8 @@ export class PlatformTenantFormComponent {
     adminEmail: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(8)]],
     firstName: ['', Validators.required],
-    lastName: ['', Validators.required]
+    lastName: ['', Validators.required],
+    directAccess: [false]
   });
 
   onSubmit(): void {
