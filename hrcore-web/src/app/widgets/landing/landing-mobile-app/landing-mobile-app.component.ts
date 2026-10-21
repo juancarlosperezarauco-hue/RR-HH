@@ -57,7 +57,7 @@ import { LucideAngularModule } from 'lucide-angular';
 
           <div class="mt-10 flex flex-col gap-3 sm:flex-row">
             <a
-              href="https://drive.google.com"
+              href="https://1drv.ms/f/c/7067b6f6ccf3f914/IgC0BdSWAzB2S4SF_2n2YChoAQhmSUaydmMM0Z3via8aVNY?e=Ga0wqi"
               target="_blank"
               rel="noopener noreferrer"
               class="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
