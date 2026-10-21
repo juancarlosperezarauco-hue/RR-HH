@@ -31,6 +31,8 @@ public record CreatePlatformTenantRequest(
 
         @NotBlank
         @Size(max = 100)
-        String lastName
+        String lastName,
+
+        boolean directAccess
 ) {
 }

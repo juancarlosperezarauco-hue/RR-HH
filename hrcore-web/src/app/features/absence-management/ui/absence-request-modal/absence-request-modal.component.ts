@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { LeaveTypeResponse, LeaveBalanceResponse, HolidayResponse } from '../../../../entities/absence';
+import { EmployeeSummary } from '../../../../entities/employees';
 import { AbsenceRequestUseCase } from '../../application/absence-request.usecase';
 
 @Component({
@@ -39,6 +40,27 @@ import { AbsenceRequestUseCase } from '../../application/absence-request.usecase
 
         <form (ngSubmit)="onSubmit()" class="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <div class="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                Personal solicitante <span class="text-rose-500">*</span>
+              </label>
+              <select
+                [(ngModel)]="selectedEmployeeId"
+                (ngModelChange)="onEmployeeChange($event)"
+                name="selectedEmployeeId"
+                class="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                required
+              >
+                <option value="" disabled>Seleccione el empleado que solicita la ausencia</option>
+                <option *ngFor="let employee of employees" [value]="employee.id">
+                  {{ employee.employeeNumber }} · {{ employee.firstName }} {{ employee.lastName }}
+                </option>
+              </select>
+              <p *ngIf="!employees.length" class="mt-2 text-xs text-rose-600 dark:text-rose-400">
+                No hay empleados disponibles para registrar una solicitud.
+              </p>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Tipo de Licencia -->
               <div>
@@ -182,24 +204,33 @@ import { AbsenceRequestUseCase } from '../../application/absence-request.usecase
     </div>
   `
 })
-export class AbsenceRequestModalComponent {
+export class AbsenceRequestModalComponent implements OnChanges {
   readonly useCase = inject(AbsenceRequestUseCase);
 
   @Input() isOpen = false;
   @Input() employeeId = '';
+  @Input() employees: EmployeeSummary[] = [];
   @Input() leaveTypes: LeaveTypeResponse[] = [];
   @Input() balance: LeaveBalanceResponse | null = null;
   @Input() holidays: HolidayResponse[] = [];
 
   @Output() closeModal = new EventEmitter<void>();
+  @Output() employeeChanged = new EventEmitter<string>();
   @Output() requestSubmitted = new EventEmitter<void>();
 
+  selectedEmployeeId = '';
   selectedTypeId = '';
   startDate = '';
   endDate = '';
   reason = '';
   proofFile: File | null = null;
   computedDays = 0;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ((changes['employeeId'] || changes['isOpen']) && !this.selectedEmployeeId) {
+      this.selectedEmployeeId = this.employeeId || '';
+    }
+  }
 
   get selectedType(): LeaveTypeResponse | undefined {
     return this.leaveTypes.find(t => t.id === this.selectedTypeId);
@@ -211,7 +242,7 @@ export class AbsenceRequestModalComponent {
 
   get isSubmitDisabled(): boolean {
     if (this.useCase.submitting()) return true;
-    if (!this.employeeId) return true;
+    if (!this.selectedEmployeeId) return true;
     if (!this.selectedTypeId || !this.startDate || !this.endDate || !this.reason.trim()) return true;
     if (this.dateRangeError) return true;
     if (this.computedDays <= 0) return true;
@@ -221,6 +252,12 @@ export class AbsenceRequestModalComponent {
   }
 
   onTypeChange(): void {
+    this.recalculateDays();
+  }
+
+  onEmployeeChange(employeeId: string): void {
+    this.selectedEmployeeId = employeeId;
+    this.employeeChanged.emit(employeeId);
     this.recalculateDays();
   }
 
@@ -257,6 +294,7 @@ export class AbsenceRequestModalComponent {
     this.reason = '';
     this.proofFile = null;
     this.computedDays = 0;
+    this.selectedEmployeeId = this.employeeId || '';
     this.closeModal.emit();
   }
 
@@ -266,7 +304,7 @@ export class AbsenceRequestModalComponent {
     const holidayDates = this.holidays.map(h => h.holidayDate);
     const ok = await this.useCase.submitRequest(
       {
-        employeeId: this.employeeId,
+        employeeId: this.selectedEmployeeId,
         leaveTypeId: this.selectedTypeId,
         startDate: this.startDate,
         endDate: this.endDate,

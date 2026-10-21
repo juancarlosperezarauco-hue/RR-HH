@@ -9,6 +9,8 @@ import com.hrcoresystem.hrcore_api.modules.identity.auth.application.dto.LoginRe
 import com.hrcoresystem.hrcore_api.modules.identity.auth.domain.exception.AuthenticationFailedException;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.repository.TenantUserRoleRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.hrcoresystem.hrcore_api.common.security.session.AuthSessionService;
@@ -22,17 +24,21 @@ public class LoginTenantUserUseCase {
     private final PasswordEncoder passwordEncoder;
     private final AuthSessionService authSessionService;
     private final AuditTrailService auditTrailService;
+    private final TenantUserRoleRepository tenantUserRoleRepository;
 
+    @Autowired
     public LoginTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
             PasswordEncoder passwordEncoder,
             AuthSessionService authSessionService,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService,
+            TenantUserRoleRepository tenantUserRoleRepository
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.authSessionService = authSessionService;
         this.auditTrailService = auditTrailService;
+        this.tenantUserRoleRepository = tenantUserRoleRepository;
     }
 
     public AuthTokenResponse execute(LoginRequest request) {
@@ -52,6 +58,8 @@ public class LoginTenantUserUseCase {
         if (!passwordEncoder.matches(request.password(), tenantUser.passwordHash())) {
             throw new AuthenticationFailedException("Invalid credentials");
         }
+
+        ensureRoleAssigned(tenantUser.id());
 
         var issued = authSessionService.createTenantSession(tenantUser, tenantSlug);
 
@@ -81,5 +89,11 @@ public class LoginTenantUserUseCase {
                 issued.refreshToken(),
                 issued.accessExpiresInMs()
         );
+    }
+
+    private void ensureRoleAssigned(java.util.UUID userId) {
+        if (tenantUserRoleRepository.findRoleCodesByUserId(userId).isEmpty()) {
+            throw new AuthenticationFailedException("Tu cuenta aún no tiene un rol asignado. Solicita al administrador que configure tus accesos.");
+        }
     }
 }

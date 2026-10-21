@@ -18,10 +18,13 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Only this client sees the service credential. It never forwards user authentication. */
 @Component
 public final class AiPlannerClient {
+    private static final Logger log = LoggerFactory.getLogger(AiPlannerClient.class);
     private static final int MAX_RESPONSE_BYTES = 128 * 1024;
     private static final Set<String> PLAN_FIELDS = Set.of("status", "plan");
     private static final Set<String> CLARIFICATION_FIELDS = Set.of("status", "question", "reasonCode");
@@ -121,6 +124,8 @@ public final class AiPlannerClient {
         if (!configured()) throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
         try {
             Request boundedRequest = boundedContext(request);
+            log.info("AI planner request sent question={} payload={}",
+                    truncate(boundedRequest.question(), 500), truncateJson(boundedRequest));
             byte[] body = rest.post().uri(url + "/internal/v1/plan")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("X-Internal-Service-Token", credential)
@@ -142,17 +147,35 @@ public final class AiPlannerClient {
             try (JsonParser parser = mapper.getFactory().createParser(body)) {
                 JsonNode envelope = mapper.readTree(parser);
                 if (envelope == null || parser.nextToken() != null || !envelope.isObject()) throw invalid();
-                return reply(envelope);
+                Reply parsed = reply(envelope);
+                log.info("AI planner response received status={} reasonCode={} payload={}",
+                        parsed.status(), parsed.reasonCode(), truncate(envelope.toString(), 8000));
+                return parsed;
             } catch (IOException invalidJson) {
                 throw invalid();
             }
         } catch (RestClientException | IllegalArgumentException failure) {
+            log.warn("AI planner request failed type={} message={}",
+                    failure.getClass().getSimpleName(), truncate(failure.getMessage(), 300));
             for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
                 if (cause instanceof HttpTimeoutException || cause instanceof java.net.SocketTimeoutException)
                     throw new AiFlowException(AiFlowException.Code.PLANNER_TIMEOUT);
             }
             throw new QueryPlanException(QueryPlanException.Code.SERVICE_UNAVAILABLE);
         }
+    }
+
+    private String truncateJson(Object value) {
+        try {
+            return truncate(mapper.writeValueAsString(value), 12_000);
+        } catch (IOException serializationFailure) {
+            return "<unserializable>";
+        }
+    }
+
+    private static String truncate(String value, int maxLength) {
+        if (value == null) return "";
+        return value.length() <= maxLength ? value : value.substring(0, maxLength) + "…";
     }
 
     private Request boundedContext(Request request) {

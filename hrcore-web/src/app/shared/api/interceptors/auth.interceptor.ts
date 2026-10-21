@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthStorageService } from '../../lib/storage/auth-storage.service';
 import { PlatformStorageService } from '../../../features/platform/lib/platform-storage.service';
 import { SessionCoordinatorService } from '../../lib/auth/session-coordinator.service';
+import { AuthFacade } from '../../lib/auth/auth.facade';
 
 export const AUTH_RETRIED = new HttpContextToken<boolean>(() => false);
 
@@ -14,6 +15,7 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
   const tenantStorage = inject(AuthStorageService);
   const platformStorage = inject(PlatformStorageService);
   const sessions = inject(SessionCoordinatorService);
+  const authFacade = inject(AuthFacade);
   const session = target.scope === 'TENANT' ? tenantStorage.getSession() : platformStorage.getSession();
   const isAuthRoute = target.path.includes('/auth/login') || target.path.includes('/auth/refresh') || target.path.includes('/auth/logout') || target.path.includes('/forgot-password') || target.path.includes('/reset-password') || target.path.includes('/activate-account') || target.path.includes('/resend-activation') || target.path.includes('/face/login');
   let request = req;
@@ -30,7 +32,14 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
         if (!latest || latest.loginId !== session.loginId || latest.tenantSlug !== session.tenantSlug || nextSession.loginId !== session.loginId) return throwError(() => new Error('Session changed'));
         const headers: Record<string, string> = { Authorization: `Bearer ${nextSession.accessToken}` };
         if (target.scope === 'TENANT' && nextSession.tenantSlug) headers['X-Tenant-Slug'] = nextSession.tenantSlug;
-        return next(req.clone({ context: req.context.set(AUTH_RETRIED, true), setHeaders: headers }));
+        const refreshIdentity = target.scope === 'TENANT'
+          && !target.path.endsWith('/api/auth/me')
+          && authFacade.status() !== 'loading'
+          ? from(authFacade.loadCurrentUser())
+          : from(Promise.resolve(null));
+        return refreshIdentity.pipe(
+          switchMap(() => next(req.clone({ context: req.context.set(AUTH_RETRIED, true), setHeaders: headers })))
+        );
       }),
       catchError(refreshError => { sessions.clearSession(target.scope, session.loginId); return throwError(() => refreshError); })
     );

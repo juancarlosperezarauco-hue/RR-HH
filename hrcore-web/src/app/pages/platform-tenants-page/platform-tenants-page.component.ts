@@ -61,7 +61,7 @@ type TenantStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE';
               (click)="toggleCreateForm()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
               <lucide-icon name="plus" class="h-4 w-4"></lucide-icon>
-              {{ showCreateForm() ? 'Cerrar formulario' : 'Nueva organización' }}
+              {{ showCreateForm() ? 'Cerrar formulario' : 'Nuevo tenant' }}
             </button>
           </div>
         </div>
@@ -353,7 +353,7 @@ type TenantStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE';
           <div class="app-modal-panel" (click)="$event.stopPropagation()">
             <div class="app-modal-header border-b border-border pb-5">
               <div>
-                <h2 class="app-modal-title">Nueva Organización</h2>
+                <h2 class="app-modal-title">Nuevo tenant</h2>
                 <p class="app-modal-subtitle">Registra una nueva organización y asigna su plan inicial.</p>
               </div>
               <button
@@ -364,7 +364,7 @@ type TenantStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE';
               </button>
             </div>
 
-            <div class="pt-6">
+            <div class="px-4 pb-6 pt-6 sm:px-6">
               <app-platform-tenant-form
                 [isLoading]="createUseCase.status() === 'loading'"
                 [error]="createUseCase.error()"

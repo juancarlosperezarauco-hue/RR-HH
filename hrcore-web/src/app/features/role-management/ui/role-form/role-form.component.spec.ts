@@ -45,9 +45,9 @@ describe('RoleFormComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should initialize empty form with code control enabled for new role', () => {
+  it('should initialize the form without the generated role code field', () => {
     expect(component.roleForm).toBeDefined();
-    expect(component.roleForm.get('code')?.enabled).toBeTrue();
+    expect(component.roleForm.get('code')).toBeNull();
     expect(component.roleForm.get('name')?.value).toBe('');
     expect(component.groupedPermissions.length).toBe(2); // employees, shifts
   });
@@ -71,11 +71,10 @@ describe('RoleFormComponent', () => {
     expect(component.isPermissionSelected('shifts.create')).toBeFalse();
   });
 
-  it('should emit submitCreate with code, name, description and authorized permissions', () => {
+  it('should emit submitCreate with name, description and authorized permissions', () => {
     spyOn(component.submitCreate, 'emit');
 
     component.roleForm.patchValue({
-      code: 'ROL-00003',
       name: 'Gestor Básico',
       description: 'Rol para empleados'
     });
@@ -88,14 +87,13 @@ describe('RoleFormComponent', () => {
     component.onSubmit();
 
     expect(component.submitCreate.emit).toHaveBeenCalledWith({
-      code: 'ROL-00003',
       name: 'Gestor Básico',
       description: 'Rol para empleados',
       permissionCodes: ['employees.create']
     });
   });
 
-  it('should patch existing role values and disable code field when roleToEdit is provided', () => {
+  it('should patch existing role values without exposing the generated code', () => {
     const existingRole: TenantRoleResponse = {
       id: 'role-123',
       code: 'ROL-00001',
@@ -119,8 +117,7 @@ describe('RoleFormComponent', () => {
       }
     });
 
-    expect(component.roleForm.get('code')?.value).toBe('ROL-00001');
-    expect(component.roleForm.get('code')?.disabled).toBeTrue();
+    expect(component.roleForm.get('code')).toBeNull();
     expect(component.roleForm.get('name')?.value).toBe('Rol Existente');
     expect(component.isPermissionSelected('employees.list')).toBeTrue();
   });

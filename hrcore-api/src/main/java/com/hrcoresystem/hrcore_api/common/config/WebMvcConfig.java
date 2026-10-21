@@ -13,11 +13,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
   private final TenantMaintenanceInterceptor tenantMaintenanceInterceptor;
   private final TenantHrReadinessInterceptor tenantHrReadinessInterceptor;
+  private final TenantPlanModuleInterceptor tenantPlanModuleInterceptor;
 
   public WebMvcConfig(
-      TenantMaintenanceInterceptor tenantMaintenanceInterceptor, TenantHrReadinessInterceptor tenantHrReadinessInterceptor) {
+      TenantMaintenanceInterceptor tenantMaintenanceInterceptor, TenantHrReadinessInterceptor tenantHrReadinessInterceptor,
+      TenantPlanModuleInterceptor tenantPlanModuleInterceptor) {
     this.tenantMaintenanceInterceptor = tenantMaintenanceInterceptor;
     this.tenantHrReadinessInterceptor = tenantHrReadinessInterceptor;
+    this.tenantPlanModuleInterceptor = tenantPlanModuleInterceptor;
   }
 
   @Override
@@ -46,6 +49,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
             "/actuator/**")
         .order(1);
     registry.addInterceptor(tenantHrReadinessInterceptor).addPathPatterns("/api/shifts", "/api/shifts/**", "/api/attendance", "/api/attendance/**").order(2);
+    registry.addInterceptor(tenantPlanModuleInterceptor)
+        .addPathPatterns("/api/incidents", "/api/incidents/**", "/api/me/incidents", "/api/me/incidents/**",
+            "/api/leaves", "/api/leaves/**", "/api/me/leaves", "/api/me/leaves/**", "/api/me/leave-balances", "/api/me/leave-balances/**",
+            "/api/shifts", "/api/shifts/**", "/api/me/schedule", "/api/me/schedule/**", "/api/hr/reports", "/api/hr/reports/**", "/api/hr/ai", "/api/hr/ai/**")
+            .addPathPatterns("/api/attendance", "/api/attendance/**", "/api/me/attendance", "/api/me/attendance/**")
+        .order(3);
   }
 
   @Override

@@ -12,7 +12,7 @@ export const tr = {
   'nav.company-settings': 'Şirket', 'nav.appearance-settings': 'Sistem görünümünü özelleştir',
   'nav.audit': 'Denetim',
   'group.organization': 'Organizasyon yönetimi', 'group.operations': 'İK işlemleri',
-  'group.personal': 'Kişisel alan', 'group.administration': 'Yönetim',
+  'group.personal': 'Yapılandırma', 'group.administration': 'Yönetim',
   'upgrade.eyebrow': 'Yükseltme', 'upgrade.title': 'Planınızı yükseltin',
   'upgrade.description': 'Şirketinizin kullanabileceği kullanıcı sayısını ve yetki kapasitesini artırın.',
   'upgrade.plans': 'Planları görüntüle',

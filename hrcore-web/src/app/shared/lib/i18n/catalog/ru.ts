@@ -12,7 +12,7 @@ export const ru = {
   'nav.company-settings': 'Компания', 'nav.appearance-settings': 'Оформление системы',
   'nav.audit': 'Аудит',
   'group.organization': 'Управление организацией', 'group.operations': 'Кадровые процессы',
-  'group.personal': 'Личный раздел', 'group.administration': 'Администрирование',
+  'group.personal': 'Настройки', 'group.administration': 'Администрирование',
   'upgrade.eyebrow': 'Повышение тарифа', 'upgrade.title': 'Перейдите на другой тариф',
   'upgrade.description': 'Увеличьте доступное для компании число пользователей и лимит прав доступа.',
   'upgrade.plans': 'Посмотреть тарифы',

@@ -12,7 +12,7 @@ export const de = {
   'nav.company-settings': 'Unternehmen', 'nav.appearance-settings': 'Systemanpassung',
   'nav.audit': 'Audit',
   'group.organization': 'Organisation', 'group.operations': 'Personalverwaltung',
-  'group.personal': 'Mein Bereich', 'group.administration': 'Administration',
+  'group.personal': 'Konfiguration', 'group.administration': 'Administration',
   'upgrade.eyebrow': 'Upgrade', 'upgrade.title': 'Tarif erweitern',
   'upgrade.description': 'Erhöhen Sie die Anzahl der Benutzer und Berechtigungen für Ihr Unternehmen.',
   'upgrade.plans': 'Tarife ansehen',

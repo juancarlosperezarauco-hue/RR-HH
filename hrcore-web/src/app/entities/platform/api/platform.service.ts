@@ -122,6 +122,7 @@ export interface CreateTenantRequest {
   password: string;        // ✅ Nuevo campo
   firstName: string;       // ✅ Nuevo campo
   lastName: string;        // ✅ Nuevo campo
+  directAccess: boolean;
 }
 export interface PlatformSubscription {
   id: string;

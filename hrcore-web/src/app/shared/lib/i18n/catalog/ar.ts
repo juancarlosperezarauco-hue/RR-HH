@@ -12,7 +12,7 @@ export const ar = {
   'nav.company-settings': 'الشركة', 'nav.appearance-settings': 'تخصيص مظهر النظام',
   'nav.audit': 'التدقيق',
   'group.organization': 'إدارة المؤسسة', 'group.operations': 'عمليات الموارد البشرية',
-  'group.personal': 'المساحة الشخصية', 'group.administration': 'الإدارة',
+  'group.personal': 'الإعدادات', 'group.administration': 'الإدارة',
   'upgrade.eyebrow': 'الترقية', 'upgrade.title': 'ترقية خطتك',
   'upgrade.description': 'زد عدد المستخدمين وسعة الصلاحيات المتاحة لشركتك.',
   'upgrade.plans': 'عرض الخطط',

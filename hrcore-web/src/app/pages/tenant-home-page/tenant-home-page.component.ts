@@ -63,6 +63,12 @@ interface OperationalHealthCard {
         </section>
       } @else if (auth.currentUser(); as user) {
         @if (dashboard.data(); as data) {
+          @if (dashboard.notice(); as notice) {
+            <section class="flex items-start gap-3 rounded-2xl border border-amber-300/50 bg-amber-50 p-4 text-amber-950 dark:border-amber-400/30 dark:bg-amber-950/20 dark:text-amber-100" role="status">
+              <lucide-icon name="info" class="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-300"></lucide-icon>
+              <p class="text-sm leading-6">{{ notice }}</p>
+            </section>
+          }
           <!-- Cabecera Ejecutiva con Selector de Periodo -->
           <section class="animate-slide-up rounded-[28px] border border-border bg-gradient-to-br from-card via-background to-accent/40 p-6 shadow-md">
             <div class="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">

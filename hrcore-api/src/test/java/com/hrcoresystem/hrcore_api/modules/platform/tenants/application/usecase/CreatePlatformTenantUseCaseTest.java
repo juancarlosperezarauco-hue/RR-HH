@@ -34,7 +34,8 @@ class CreatePlatformTenantUseCaseTest {
                 "admin@talentohumano.com",
                 "Password123!",
                 "Carlos",
-                "Rojas"
+                "Rojas",
+                false
         );
 
         PlatformTenantResponse createdTenantResponse = new PlatformTenantResponse(

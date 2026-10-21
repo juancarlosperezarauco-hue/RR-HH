@@ -50,6 +50,6 @@ describe('HrReportsPage: regresión de reportes operativos', () => {
     page.openArea('operational'); fixture.detectChanges(); page.openArea('assistant'); fixture.detectChanges();
     expect(AssistantStub.created).toBe(1); expect(service.get).toHaveBeenCalledTimes(1);
     expect((fixture.nativeElement.querySelector('#operational-reports') as HTMLElement).hidden).toBeTrue();
-    expect(fixture.nativeElement.querySelector('[role=tab][aria-selected=true]').textContent).toContain('Asistente');
+    expect(fixture.nativeElement.querySelector('[role=tab][aria-selected=true]').textContent).toContain('Reporte con IA');
   });
 });
