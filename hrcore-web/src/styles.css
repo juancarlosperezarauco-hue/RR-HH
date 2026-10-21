@@ -157,40 +157,216 @@
     background-color: var(--background);
     color: var(--foreground);
   }
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* ── Animaciones empresariales ligeras ── */
+@keyframes hrcoreFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hrcoreSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hrcoreScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes hrcoreFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 @layer components {
+  .animate-fade-in {
+    animation: hrcoreFadeIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-slide-up {
+    animation: hrcoreSlideUp 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-scale-in {
+    animation: hrcoreScaleIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-float {
+    animation: hrcoreFloat 5s ease-in-out infinite;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md;
+  }
+
   .app-modal-overlay {
-    @apply fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 sm:items-center;
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-xs sm:p-4;
+    animation: hrcoreFadeIn 180ms ease-out both;
   }
 
   .app-modal-panel {
-    @apply w-full max-w-2xl rounded-[28px] bg-white p-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain;
+    @apply flex w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-2xl max-h-[calc(100vh-2rem)];
+    animation: hrcoreScaleIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .app-modal-panel-sm {
-    @apply w-full max-w-lg rounded-[28px] bg-white p-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto overscroll-contain;
+    @apply flex w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-2xl max-h-[calc(100vh-2rem)];
+    animation: hrcoreScaleIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   .app-modal-header {
-    @apply flex items-start justify-between gap-4;
+    @apply flex shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6 py-4;
+  }
+
+  .app-modal-body {
+    @apply flex-1 overflow-y-auto overscroll-contain p-6;
   }
 
   .app-modal-title {
-    @apply text-2xl font-black text-primary;
+    @apply text-xl font-black text-primary sm:text-2xl;
   }
 
   .app-modal-subtitle {
-    @apply mt-1 text-sm text-muted-foreground;
+    @apply mt-0.5 text-xs text-muted-foreground sm:text-sm;
   }
 
   .app-modal-content-grid {
-    @apply mt-6 grid gap-4 sm:grid-cols-2;
+    @apply grid gap-4 sm:grid-cols-2;
   }
 
   .app-modal-footer {
-    @apply mt-6 flex justify-end;
+    @apply flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-6 py-4;
   }
+}
+
+/* ── Diseño Corporativo Global para Tablas (Zebra Celeste/Blanco + Header Azul Fuerte + Hover Énfasis) ── */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table thead tr {
+  background: linear-gradient(180deg, #dceeff 0%, #cfe6ff 100%) !important;
+}
+
+:root.dark table thead tr {
+  background: rgba(18, 104, 196, 0.28) !important;
+}
+
+table thead th {
+  color: #073575 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.07em;
+  border-bottom: 2px solid rgba(18, 104, 196, 0.22) !important;
+}
+
+:root.dark table thead th {
+  color: #e0f2fe !important;
+  border-bottom-color: rgba(19, 168, 232, 0.3) !important;
+}
+
+table tbody tr {
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* Intercalado: 1ra celeste, 2da blanca, 3ra celeste... */
+table tbody tr:nth-child(odd) {
+  background-color: #edf6ff !important;
+}
+
+table tbody tr:nth-child(even) {
+  background-color: #ffffff !important;
+}
+
+:root.dark table tbody tr:nth-child(odd) {
+  background-color: rgba(18, 104, 196, 0.12) !important;
+}
+
+:root.dark table tbody tr:nth-child(even) {
+  background-color: var(--card) !important;
+}
+
+/* Hover con énfasis, elevación ligera y borde lateral primario */
+table tbody tr:hover {
+  background-color: #d6ebff !important;
+  transform: translateY(-1px) scale(1.003);
+  box-shadow:
+    0 6px 16px -4px rgba(11, 59, 130, 0.15),
+    inset 4px 0 0 0 var(--primary);
+  position: relative;
+  z-index: 2;
+}
+
+:root.dark table tbody tr:hover {
+  background-color: rgba(19, 168, 232, 0.22) !important;
+  box-shadow:
+    0 6px 16px -4px rgba(0, 0, 0, 0.4),
+    inset 4px 0 0 0 var(--primary);
+}
+
+/* ── Scrollbars Empresariales Delgados y Redondeados ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(18, 104, 196, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(18, 104, 196, 0.26);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(18, 104, 196, 0.5);
 }
 
 html {

@@ -9,78 +9,82 @@ import { EmployeeSummary } from '../../../../entities/employees/model/employees.
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-5">
-      <!-- Vinculación con empleado -->
-      <div class="space-y-2">
-        <label for="employeeEdit" class="text-sm font-semibold text-muted-foreground">
-          Empleado vinculado
-        </label>
-        <select
-          id="employeeEdit"
-          formControlName="employeeId"
-          class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card">
-          <option [ngValue]="null">Sin vincular a empleado</option>
-          @for (emp of availableEmployees; track emp.id) {
-            <option [ngValue]="emp.id">
-              {{ emp.employeeNumber }} — {{ emp.firstName }} {{ emp.lastName }}
-            </option>
-          }
-        </select>
-        <p class="text-xs text-muted-foreground">
-          Puedes asociar este usuario a una ficha de empleado o desvincularlo.
-        </p>
-      </div>
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="flex min-h-0 flex-1 flex-col overflow-hidden" novalidate>
+      <div class="flex-1 space-y-5 overflow-y-auto p-6">
+        <div class="rounded-2xl border border-border/80 bg-muted/25 p-5">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="space-y-1.5">
+              <label for="firstNameEdit" class="block text-xs font-bold text-accent-foreground">Nombre *</label>
+              <input
+                id="firstNameEdit"
+                type="text"
+                formControlName="firstName"
+                class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                [class.border-destructive]="isFieldInvalid('firstName')"
+                placeholder="Ej: Carlos">
+              <span *ngIf="isFieldInvalid('firstName')" class="block text-xs font-medium text-destructive">El nombre es obligatorio.</span>
+            </div>
 
-      <div class="grid gap-5 sm:grid-cols-2">
-        <div class="space-y-2">
-          <label for="firstNameEdit" class="text-sm font-semibold text-muted-foreground">Nombre</label>
-          <input
-            id="firstNameEdit"
-            type="text"
-            formControlName="firstName"
-            class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-            [class.border-destructive/30]="isFieldInvalid('firstName')"
-            placeholder="Ej: Carlos">
-          <span *ngIf="isFieldInvalid('firstName')" class="text-xs text-destructive">El nombre es requerido.</span>
+            <div class="space-y-1.5">
+              <label for="lastNameEdit" class="block text-xs font-bold text-accent-foreground">Apellido *</label>
+              <input
+                id="lastNameEdit"
+                type="text"
+                formControlName="lastName"
+                class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                [class.border-destructive]="isFieldInvalid('lastName')"
+                placeholder="Ej: Rojas">
+              <span *ngIf="isFieldInvalid('lastName')" class="block text-xs font-medium text-destructive">El apellido es obligatorio.</span>
+            </div>
+
+            <div class="space-y-1.5">
+              <label for="emailEdit" class="block text-xs font-bold text-accent-foreground">Correo electrónico *</label>
+              <input
+                id="emailEdit"
+                type="email"
+                formControlName="email"
+                class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+                [class.border-destructive]="isFieldInvalid('email')"
+                placeholder="usuario@empresa.com">
+              <span *ngIf="isFieldInvalid('email')" class="block text-xs font-medium text-destructive">Ingresa un correo válido.</span>
+            </div>
+
+            <!-- Vinculación con empleado -->
+            <div class="space-y-1.5">
+              <label for="employeeEdit" class="block text-xs font-bold text-accent-foreground">
+                Empleado vinculado
+              </label>
+              <select
+                id="employeeEdit"
+                formControlName="employeeId"
+                class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors focus:border-primary">
+                <option [ngValue]="null">Sin vincular a empleado</option>
+                @for (emp of availableEmployees; track emp.id) {
+                  <option [ngValue]="emp.id">
+                    {{ emp.employeeNumber }} — {{ emp.firstName }} {{ emp.lastName }}
+                  </option>
+                }
+              </select>
+              <p class="text-[11px] text-muted-foreground">
+                Asocia este usuario a su ficha laboral o desvincula el registro.
+              </p>
+            </div>
+          </div>
         </div>
-
-        <div class="space-y-2">
-          <label for="lastNameEdit" class="text-sm font-semibold text-muted-foreground">Apellido</label>
-          <input
-            id="lastNameEdit"
-            type="text"
-            formControlName="lastName"
-            class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-            [class.border-destructive/30]="isFieldInvalid('lastName')"
-            placeholder="Ej: Rojas">
-          <span *ngIf="isFieldInvalid('lastName')" class="text-xs text-destructive">El apellido es requerido.</span>
-        </div>
       </div>
 
-      <div class="space-y-2">
-        <label for="emailEdit" class="text-sm font-semibold text-muted-foreground">Correo electrónico</label>
-        <input
-          id="emailEdit"
-          type="email"
-          formControlName="email"
-          class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-          [class.border-destructive/30]="isFieldInvalid('email')"
-          placeholder="usuario@empresa.com">
-          <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive">Ingresa un correo válido.</span>
-      </div>
-
-      <div class="app-modal-footer mt-2 border-t border-border pt-5 flex items-center justify-end gap-3">
+      <div class="app-modal-footer">
         <button
           type="button"
           (click)="onCancel()"
           [disabled]="status === 'loading'"
-          class="cursor-pointer rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+          class="cursor-pointer rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50">
           Cancelar
         </button>
         <button
           type="submit"
           [disabled]="status === 'loading'"
-          class="cursor-pointer inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+          class="cursor-pointer inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
           <ng-container *ngIf="status !== 'loading'; else loadingSpinner">
             Guardar cambios
           </ng-container>

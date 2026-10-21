@@ -17,11 +17,11 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
     >
       <div
-        class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all"
+        class="flex w-full max-w-xl max-h-[88vh] flex-col overflow-hidden rounded-[26px] border border-border bg-card shadow-2xl transition-all"
         (click)="$event.stopPropagation()"
       >
-        <!-- Modal Header -->
-        <div class="flex items-start justify-between border-b border-border pb-4">
+        <!-- Modal Header (Fijo) -->
+        <div class="flex shrink-0 items-start justify-between border-b border-border bg-card px-6 py-4">
           <div>
             <h3 class="text-lg font-bold text-foreground">Revisión de Solicitud de Ausencia</h3>
             <p class="text-xs text-muted-foreground mt-0.5">
@@ -31,14 +31,16 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
           <button
             type="button"
             (click)="close()"
-            class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Cerrar"
+            title="Cerrar"
+            class="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
+            <lucide-icon name="x" class="h-4 w-4"></lucide-icon>
           </button>
         </div>
 
-        <!-- Detalles de la Solicitud -->
-        <div class="mt-4 space-y-3">
+        <!-- Detalles de la Solicitud (Scrollable) -->
+        <div class="flex-1 overflow-y-auto px-6 py-5 space-y-3">
           <div class="rounded-xl bg-accent/40 border border-border/60 p-4 space-y-2">
             <div class="flex items-center justify-between">
               <div>
@@ -115,15 +117,15 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
           </div>
         </div>
 
-        <!-- Modal Actions -->
-        <div class="mt-6 flex items-center justify-between gap-3 pt-3 border-t border-border">
+        <!-- Modal Actions (Fijo) -->
+        <div class="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-card px-6 py-4">
           <button
             type="button"
             (click)="close()"
             [disabled]="useCase.reviewing()"
-            class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors"
+            class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors cursor-pointer"
           >
-            Cerrar
+            Cancelar
           </button>
 
           <div class="flex items-center gap-2">
@@ -133,7 +135,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 type="button"
                 (click)="isRejectMode = true"
                 [disabled]="useCase.reviewing() || request.status !== 'PENDING'"
-                class="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-50 transition-colors"
+                class="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 dark:text-rose-400 hover:bg-rose-500/20 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 <lucide-icon name="ban" class="h-4 w-4"></lucide-icon>
                 Rechazar
@@ -143,7 +145,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 type="button"
                 (click)="onApprove()"
                 [disabled]="useCase.reviewing() || request.status !== 'PENDING'"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 transition-all cursor-pointer"
               >
                 <lucide-icon *ngIf="useCase.reviewing()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
                 <lucide-icon *ngIf="!useCase.reviewing()" name="check-circle" class="h-4 w-4"></lucide-icon>
@@ -156,7 +158,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
               <button
                 type="button"
                 (click)="isRejectMode = false"
-                class="rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
+                class="rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent cursor-pointer"
               >
                 Cancelar Rechazo
               </button>
@@ -165,7 +167,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                 type="button"
                 (click)="onConfirmReject()"
                 [disabled]="useCase.reviewing() || rejectionReason.trim().length < 10"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-sm font-bold text-white shadow-xs hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
                 <lucide-icon *ngIf="useCase.reviewing()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
                 Confirmar Rechazo

@@ -45,6 +45,9 @@ export class EmployeesPageComponent implements OnInit {
   readonly showProfile = signal(false);
   readonly showAssignmentForm = signal(false);
   readonly showContactForm = signal(false);
+  readonly formSubmitted = signal(false);
+  readonly assignmentSubmitted = signal(false);
+  readonly contactSubmitted = signal(false);
   readonly formMode = signal<FormMode>('create');
   readonly selected = signal<Employee | null>(null);
   readonly assignments = signal<EmployeeAssignment[]>([]);
@@ -129,21 +132,44 @@ export class EmployeesPageComponent implements OnInit {
 
   openCreate(): void {
     this.formMode.set('create'); this.selected.set(null); this.form = this.emptyEmployee();
-    this.assignmentForm = this.emptyAssignment(); this.showForm.set(true);
+    this.assignmentForm = this.emptyAssignment(); this.formSubmitted.set(false); this.showForm.set(true);
   }
   openEdit(id: string): void {
     this.service.get(id).subscribe({
-      next: response => { this.selected.set(response.data); this.form = this.toRequest(response.data); this.formMode.set('edit'); this.showForm.set(true); },
+      next: response => { this.selected.set(response.data); this.form = this.toRequest(response.data); this.formMode.set('edit'); this.formSubmitted.set(false); this.showForm.set(true); },
       error: error => this.handleError(error, 'No se pudo consultar el empleado')
     });
   }
-  closeForm(): void { if (!this.saving()) this.showForm.set(false); }
-  save(): void {
+  closeForm(): void { if (!this.saving()) { this.formSubmitted.set(false); this.showForm.set(false); } }
+  isBirthDateInvalid(): boolean {
+    return Boolean(this.form.birthDate && !this.isAdult(this.form.birthDate));
+  }
+  isEmailInvalid(value: string | null | undefined): boolean {
+    if (!value || !value.trim()) return false;
+    return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  }
+  hasFormValidationErrors(): boolean {
     if (!this.form.firstName.trim() || !this.form.lastName.trim() || !this.form.documentType.trim() || !this.form.documentNumber.trim() || !this.form.hireDate) {
-      this.toast.warning('Complete nombre, apellido, documento y fecha de ingreso.'); return;
+      return true;
     }
-    if (this.form.birthDate && !this.isAdult(this.form.birthDate)) {
+    if (this.isBirthDateInvalid() || this.isEmailInvalid(this.form.personalEmail) || this.isEmailInvalid(this.form.workEmail)) {
+      return true;
+    }
+    if (this.formMode() === 'create' && (!this.assignmentForm.departmentId || !this.assignmentForm.positionId || !this.assignmentForm.startDate)) {
+      return true;
+    }
+    return false;
+  }
+  save(): void {
+    this.formSubmitted.set(true);
+    if (!this.form.firstName.trim() || !this.form.lastName.trim() || !this.form.documentType.trim() || !this.form.documentNumber.trim() || !this.form.hireDate) {
+      this.toast.warning('Complete los campos obligatorios: nombre, apellido, documento y fecha de ingreso.'); return;
+    }
+    if (this.isBirthDateInvalid()) {
       this.toast.warning('El empleado debe tener al menos 18 años.'); return;
+    }
+    if (this.isEmailInvalid(this.form.personalEmail) || this.isEmailInvalid(this.form.workEmail)) {
+      this.toast.warning('Verifica el formato de los correos electrónicos ingresados.'); return;
     }
     const creating = this.formMode() === 'create';
     if (creating && (!this.assignmentForm.departmentId || !this.assignmentForm.positionId || !this.assignmentForm.startDate)) {
@@ -158,7 +184,7 @@ export class EmployeesPageComponent implements OnInit {
       : this.service.createWithAssignment({ employee: request, assignment });
     operation.subscribe({
       next: () => {
-        this.saving.set(false); this.showForm.set(false);
+        this.saving.set(false); this.formSubmitted.set(false); this.showForm.set(false);
         this.toast.success(creating ? 'Empleado y asignación laboral guardados correctamente.' : 'Empleado actualizado correctamente.');
         this.load(this.currentPage());
       },
@@ -219,15 +245,16 @@ export class EmployeesPageComponent implements OnInit {
     });
   }
 
-  openNewAssignment(): void { this.assignmentForm = this.emptyAssignment(); this.showAssignmentForm.set(true); }
+  openNewAssignment(): void { this.assignmentForm = this.emptyAssignment(); this.assignmentSubmitted.set(false); this.showAssignmentForm.set(true); }
   saveAssignment(): void {
+    this.assignmentSubmitted.set(true);
     const employee = this.selected();
     if (!employee || !this.assignmentForm.departmentId || !this.assignmentForm.positionId || !this.assignmentForm.startDate) {
       this.toast.warning('Seleccione departamento, cargo y fecha de inicio.'); return;
     }
     this.saving.set(true);
     this.service.createAssignment(employee.id, { ...this.assignmentForm, supervisorEmployeeId: this.nullable(this.assignmentForm.supervisorEmployeeId), endDate: this.nullable(this.assignmentForm.endDate), reason: this.nullable(this.assignmentForm.reason) }).subscribe({
-      next: () => { this.saving.set(false); this.showAssignmentForm.set(false); this.toast.success('Asignación laboral registrada.'); this.loadRelations(employee.id); },
+      next: () => { this.saving.set(false); this.assignmentSubmitted.set(false); this.showAssignmentForm.set(false); this.toast.success('Asignación laboral registrada.'); this.loadRelations(employee.id); },
       error: error => { this.saving.set(false); this.handleError(error, 'No se pudo registrar la asignación'); }
     });
   }
@@ -263,13 +290,14 @@ export class EmployeesPageComponent implements OnInit {
     });
   }
 
-  openNewContact(): void { this.contactForm = this.emptyContact(); this.showContactForm.set(true); }
+  openNewContact(): void { this.contactForm = this.emptyContact(); this.contactSubmitted.set(false); this.showContactForm.set(true); }
   saveContact(): void {
+    this.contactSubmitted.set(true);
     const employee = this.selected();
     if (!employee || !this.contactForm.fullName.trim() || !this.contactForm.phone.trim()) { this.toast.warning('Complete nombre y teléfono.'); return; }
     this.saving.set(true);
     this.service.createContact(employee.id, { ...this.contactForm, relationship: this.nullable(this.contactForm.relationship), alternativePhone: this.nullable(this.contactForm.alternativePhone), address: this.nullable(this.contactForm.address) }).subscribe({
-      next: () => { this.saving.set(false); this.showContactForm.set(false); this.toast.success('Contacto de emergencia registrado.'); this.loadRelations(employee.id); },
+      next: () => { this.saving.set(false); this.contactSubmitted.set(false); this.showContactForm.set(false); this.toast.success('Contacto de emergencia registrado.'); this.loadRelations(employee.id); },
       error: error => { this.saving.set(false); this.handleError(error, 'No se pudo registrar el contacto'); }
     });
   }

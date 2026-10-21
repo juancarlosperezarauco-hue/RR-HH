@@ -37,6 +37,7 @@ export class ContractsPageComponent implements OnInit {
   readonly showHistory = signal(false);
   readonly formMode = signal<FormMode>('create');
   readonly selected = signal<EmploymentContract | null>(null);
+  readonly formSubmitted = signal(false);
   search = '';
   statusFilter = '';
   form: ContractRequest = this.emptyForm();
@@ -71,11 +72,11 @@ export class ContractsPageComponent implements OnInit {
 
   openCreate(): void {
     this.formMode.set('create'); this.selected.set(null); this.form = this.emptyForm();
-    this.assignments.set([]); this.renewalReason = ''; this.showForm.set(true);
+    this.assignments.set([]); this.renewalReason = ''; this.formSubmitted.set(false); this.showForm.set(true);
   }
   openEdit(contract: EmploymentContract): void {
     this.formMode.set('edit'); this.selected.set(contract); this.form = this.fromContract(contract);
-    this.renewalReason = ''; this.loadAssignments(contract.employeeId, contract.employeeAssignmentId);
+    this.renewalReason = ''; this.formSubmitted.set(false); this.loadAssignments(contract.employeeId, contract.employeeAssignmentId);
     this.showForm.set(true);
   }
   openRenew(contract: EmploymentContract): void {
@@ -83,10 +84,16 @@ export class ContractsPageComponent implements OnInit {
     const nextStart = contract.endDate ? this.addDay(contract.endDate) : '';
     this.form = { ...this.fromContract(contract), startDate: nextStart, endDate: null };
     this.renewalReason = 'Continuidad de la relación laboral';
+    this.formSubmitted.set(false);
     this.loadAssignments(contract.employeeId, contract.employeeAssignmentId);
     this.showForm.set(true);
   }
-  closeForm(): void { if (!this.saving()) this.showForm.set(false); }
+  closeForm(): void {
+    if (!this.saving()) {
+      this.formSubmitted.set(false);
+      this.showForm.set(false);
+    }
+  }
 
   employeeChanged(): void {
     this.form.employeeAssignmentId = '';
@@ -104,11 +111,15 @@ export class ContractsPageComponent implements OnInit {
   }
 
   save(): void {
+    this.formSubmitted.set(true);
     if (!this.form.employeeId || !this.form.employeeAssignmentId || !this.form.startDate) {
       this.toast.warning('Complete empleado, asignación y fecha de inicio.'); return;
     }
     if (this.form.contractType !== 'INDEFINITE' && !this.form.endDate) {
       this.toast.warning('Este tipo de contrato requiere fecha de finalización.'); return;
+    }
+    if (this.form.baseSalary === null || this.form.baseSalary === undefined || Number(this.form.baseSalary) < 0) {
+      this.toast.warning('Indique un salario base válido.'); return;
     }
     const request: ContractRequest = {
       ...this.form,
@@ -199,6 +210,12 @@ export class ContractsPageComponent implements OnInit {
   }
   typeLabel(type: string): string {
     return ({ INDEFINITE: 'Tiempo indefinido', FIXED_TERM: 'Plazo fijo', SEASONAL: 'Temporada', WORK_OR_SERVICE: 'Obra o servicio', EVENTUAL: 'Eventual', INTERNSHIP: 'Pasantía', OTHER: 'Otro' } as Record<string, string>)[type] ?? type;
+  }
+  modalityLabel(modality: string): string {
+    return ({ ONSITE: 'Presencial', REMOTE: 'Remoto', HYBRID: 'Híbrido' } as Record<string, string>)[modality] ?? modality;
+  }
+  scheduleLabel(schedule: string): string {
+    return ({ FULL_TIME: 'Tiempo completo', PART_TIME: 'Tiempo parcial' } as Record<string, string>)[schedule] ?? schedule;
   }
   statusClass(status: ContractStatus): string {
     return ({ ACTIVE: 'bg-emerald-100 text-emerald-800', PENDING_SIGNATURE: 'bg-amber-100 text-amber-800', DRAFT: 'bg-slate-100 text-slate-700', EXPIRED: 'bg-orange-100 text-orange-800', TERMINATED: 'bg-red-100 text-red-800', CANCELLED: 'bg-zinc-100 text-zinc-600' })[status];

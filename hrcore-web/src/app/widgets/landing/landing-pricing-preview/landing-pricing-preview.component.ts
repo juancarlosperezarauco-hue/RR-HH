@@ -47,11 +47,12 @@ interface LandingPreviewPlan {
         <div class="mt-12 grid gap-6 lg:grid-cols-3">
           @for (plan of plans; track plan.name) {
             <article
-              class="relative flex min-h-[370px] flex-col rounded-[30px] border bg-card p-7 shadow-lg"
+              class="group relative flex min-h-[370px] flex-col rounded-[30px] border bg-card p-7 shadow-lg transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl"
               [class.border-primary]="plan.featured"
               [class.ring-2]="plan.featured"
               [class.ring-secondary]="plan.featured"
-              [class.border-border]="!plan.featured">
+              [class.border-border]="!plan.featured"
+              [class.hover:border-primary/40]="!plan.featured">
 
               @if (plan.badge) {
                 <span class="absolute -top-4 left-7 rounded-full bg-primary px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-primary-foreground shadow-sm">
@@ -86,15 +87,15 @@ interface LandingPreviewPlan {
                 <a
                   [routerLink]="plan.queryParams?.['plan'] === 'DEMO' ? '/onboarding' : '/prices'"
                   [queryParams]="plan.queryParams?.['plan'] === 'DEMO' ? plan.queryParams : null"
-                  class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-black transition-colors"
+                  class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-black shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
                   [class.bg-primary]="plan.featured"
                   [class.text-primary-foreground]="plan.featured"
                   [class.hover:bg-primary/90]="plan.featured"
                   [class.bg-sidebar]="!plan.featured"
                   [class.text-primary-foreground]="!plan.featured"
-                  [class.hover:bg-card]="!plan.featured">
+                  [class.hover:bg-primary]="!plan.featured">
                   Elegir {{ plan.name }}
-                  <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
+                  <lucide-icon name="arrow-right" class="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"></lucide-icon>
                 </a>
               </div>
             </article>

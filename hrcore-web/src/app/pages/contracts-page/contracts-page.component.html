@@ -47,7 +47,7 @@
         <thead class="bg-muted text-xs uppercase tracking-wider text-muted-foreground"><tr><th class="px-4 py-3">Contrato</th><th class="px-4 py-3">Empleado</th><th class="px-4 py-3">Tipo</th><th class="px-4 py-3">Vigencia</th><th class="px-4 py-3">Salario</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3 text-right">Acciones</th></tr></thead>
         <tbody class="divide-y divide-border">
           <tr *ngFor="let contract of contracts()" class="hover:bg-muted/30">
-            <td class="px-4 py-4"><p class="font-black text-accent-foreground">{{ contract.contractNumber }}</p><p class="text-xs text-muted-foreground">{{ contract.workModality }} · {{ contract.workSchedule }}</p></td>
+            <td class="px-4 py-4"><p class="font-black text-accent-foreground">{{ contract.contractNumber }}</p><p class="text-xs text-muted-foreground">{{ modalityLabel(contract.workModality) }} · {{ scheduleLabel(contract.workSchedule) }}</p></td>
             <td class="px-4 py-4 font-semibold text-accent-foreground">{{ employeeName(contract.employeeId) }}</td>
             <td class="px-4 py-4">{{ typeLabel(contract.contractType) }}</td>
             <td class="px-4 py-4"><p>{{ contract.startDate | date:'dd/MM/yyyy' }}</p><p class="text-xs text-muted-foreground">hasta {{ contract.endDate ? (contract.endDate | date:'dd/MM/yyyy') : 'indefinido' }}</p></td>
@@ -72,32 +72,204 @@
   </section>
 </div>
 
-<div *ngIf="showForm()" class="fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
-  <div class="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-[28px] border border-border bg-card shadow-2xl">
-    <div class="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-6 py-5"><div><h2 class="text-2xl font-black text-accent-foreground">{{ formMode() === 'create' ? 'Nuevo contrato' : formMode() === 'edit' ? 'Editar contrato' : 'Renovar contrato' }}</h2><p class="text-sm text-muted-foreground">Complete las condiciones laborales y salariales.</p></div><button (click)="closeForm()" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div>
-    <form (ngSubmit)="save()" class="grid gap-5 p-6 md:grid-cols-2">
-      <label class="space-y-2 md:col-span-2"><span class="text-sm font-bold">Empleado</span><select name="employeeId" [(ngModel)]="form.employeeId" (ngModelChange)="employeeChanged()" [disabled]="formMode() === 'renew'" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="">Seleccione un empleado</option><option *ngFor="let employee of employees()" [value]="employee.id">{{ employee.firstName }} {{ employee.lastName }} · {{ employee.employeeNumber }}</option></select></label>
-      <label class="space-y-2 md:col-span-2"><span class="text-sm font-bold">Asignación laboral (departamento y puesto)</span><select name="assignment" [(ngModel)]="form.employeeAssignmentId" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="">Seleccione una asignación</option><option *ngFor="let assignment of assignments()" [value]="assignment.id">{{ assignmentLabel(assignment) }}</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Tipo de contrato</span><select name="type" [(ngModel)]="form.contractType" class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="INDEFINITE">Tiempo indefinido</option><option value="FIXED_TERM">Plazo fijo</option><option value="SEASONAL">Temporada</option><option value="WORK_OR_SERVICE">Obra o servicio</option><option value="EVENTUAL">Eventual</option><option value="INTERNSHIP">Pasantía</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Fecha de inicio</span><input name="start" type="date" [(ngModel)]="form.startDate" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Fecha de finalización</span><input name="end" type="date" [(ngModel)]="form.endDate" [disabled]="form.contractType === 'INDEFINITE'" class="h-12 w-full rounded-2xl border border-border bg-background px-4"><span *ngIf="form.contractType === 'INDEFINITE'" class="text-xs text-muted-foreground">No aplica para tiempo indefinido.</span></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Forma</span><select name="form" [(ngModel)]="form.contractForm" class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="WRITTEN">Escrito</option><option value="VERBAL">Verbal</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Jornada</span><select name="schedule" [(ngModel)]="form.workSchedule" class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="FULL_TIME">Tiempo completo</option><option value="PART_TIME">Tiempo parcial</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Modalidad</span><select name="modality" [(ngModel)]="form.workModality" class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="ONSITE">Presencial</option><option value="REMOTE">Remoto</option><option value="HYBRID">Híbrido</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Horas semanales</span><input name="hours" type="number" min="1" max="168" step="0.5" [(ngModel)]="form.weeklyHours" class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Salario base</span><div class="flex"><input name="salary" type="number" min="0" step="0.01" [(ngModel)]="form.baseSalary" required class="h-12 min-w-0 flex-1 rounded-l-2xl border border-border bg-background px-4"><input name="currency" [(ngModel)]="form.currency" maxlength="3" class="h-12 w-20 rounded-r-2xl border-y border-r border-border bg-muted px-3 font-bold uppercase"></div></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Frecuencia de pago</span><select name="frequency" [(ngModel)]="form.paymentFrequency" class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="MONTHLY">Mensual</option><option value="BIWEEKLY">Quincenal</option><option value="WEEKLY">Semanal</option><option value="DAILY">Diario</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Fin del periodo de prueba</span><input name="probation" type="date" [(ngModel)]="form.probationEndDate" class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
-      <label *ngIf="formMode() === 'renew'" class="space-y-2 md:col-span-2"><span class="text-sm font-bold">Motivo de renovación</span><input name="renewalReason" [(ngModel)]="renewalReason" class="h-12 w-full rounded-2xl border border-border bg-background px-4"></label>
-      <label class="space-y-2 md:col-span-2"><span class="text-sm font-bold">Términos y observaciones</span><textarea name="terms" [(ngModel)]="form.terms" rows="4" class="w-full rounded-2xl border border-border bg-background p-4"></textarea></label>
-      <div class="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2"><button type="button" (click)="closeForm()" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold">Cancelar</button><button type="submit" [disabled]="saving()" class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground disabled:opacity-50"><lucide-icon *ngIf="saving()" name="loader-circle" class="animate-spin" [size]="17"></lucide-icon>{{ formMode() === 'renew' ? 'Crear renovación' : 'Guardar contrato' }}</button></div>
+<div *ngIf="showForm()" class="app-modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
+  <div class="app-modal-panel flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-2xl">
+    <!-- Header fijo -->
+    <div class="flex shrink-0 items-center justify-between border-b border-border bg-card px-6 py-4">
+      <div>
+        <div class="mb-1 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+          <lucide-icon name="file-signature" [size]="12"></lucide-icon>
+          Gestión contractual
+        </div>
+        <h2 class="text-xl font-black text-accent-foreground sm:text-2xl">{{ formMode() === 'create' ? 'Nuevo contrato' : formMode() === 'edit' ? 'Editar contrato' : 'Renovar contrato' }}</h2>
+        <p class="text-xs text-muted-foreground">Complete las condiciones laborales y salariales. Los campos con (*) son obligatorios.</p>
+      </div>
+      <button type="button" (click)="closeForm()" class="cursor-pointer rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <lucide-icon name="x" [size]="20"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Cuerpo con scroll interno -->
+    <form (ngSubmit)="save()" novalidate class="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div class="flex-1 space-y-5 overflow-y-auto p-6">
+
+        <!-- SECCIÓN 1: Empleado y asignación -->
+        <div class="rounded-2xl border border-border/80 bg-muted/20 p-5">
+          <div class="mb-4 flex items-center gap-2 border-b border-border/60 pb-2.5">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">1</span>
+            <div>
+              <h3 class="text-sm font-black text-accent-foreground">Empleado y asignación laboral</h3>
+              <p class="text-xs text-muted-foreground">Selecciona al colaborador y su puesto vigente dentro de la organización.</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Empleado *</span>
+              <select name="employeeId" [(ngModel)]="form.employeeId" (ngModelChange)="employeeChanged()" [disabled]="formMode() === 'renew'" required
+                [class.border-destructive]="formSubmitted() && !form.employeeId"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="">Seleccione un empleado</option>
+                <option *ngFor="let employee of employees()" [value]="employee.id">{{ employee.firstName }} {{ employee.lastName }} · {{ employee.employeeNumber }}</option>
+              </select>
+              <small *ngIf="formSubmitted() && !form.employeeId" class="block text-xs font-medium text-destructive">Debes seleccionar un empleado.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Asignación laboral (departamento y puesto) *</span>
+              <select name="assignment" [(ngModel)]="form.employeeAssignmentId" required
+                [class.border-destructive]="formSubmitted() && !form.employeeAssignmentId"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="">Seleccione una asignación</option>
+                <option *ngFor="let assignment of assignments()" [value]="assignment.id">{{ assignmentLabel(assignment) }}</option>
+              </select>
+              <small *ngIf="formSubmitted() && !form.employeeAssignmentId" class="block text-xs font-medium text-destructive">Selecciona una asignación laboral activa.</small>
+            </label>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: Vigencia y modalidad -->
+        <div class="rounded-2xl border border-border/80 bg-muted/20 p-5">
+          <div class="mb-4 flex items-center gap-2 border-b border-border/60 pb-2.5">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">2</span>
+            <div>
+              <h3 class="text-sm font-black text-accent-foreground">Vigencia, tipo y modalidad</h3>
+              <p class="text-xs text-muted-foreground">Define el régimen contractual, fechas de vigencia y modalidad de trabajo.</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Tipo de contrato *</span>
+              <select name="type" [(ngModel)]="form.contractType" class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="INDEFINITE">Tiempo indefinido</option>
+                <option value="FIXED_TERM">Plazo fijo</option>
+                <option value="SEASONAL">Temporada</option>
+                <option value="WORK_OR_SERVICE">Obra o servicio</option>
+                <option value="EVENTUAL">Eventual</option>
+                <option value="INTERNSHIP">Pasantía</option>
+              </select>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Fecha de inicio *</span>
+              <input name="start" type="date" [(ngModel)]="form.startDate" required
+                [class.border-destructive]="formSubmitted() && !form.startDate"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && !form.startDate" class="block text-xs font-medium text-destructive">Indica la fecha de inicio del contrato.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Fecha de finalización {{ form.contractType !== 'INDEFINITE' ? '*' : '' }}</span>
+              <input name="end" type="date" [(ngModel)]="form.endDate" [disabled]="form.contractType === 'INDEFINITE'"
+                [class.border-destructive]="formSubmitted() && form.contractType !== 'INDEFINITE' && !form.endDate"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary disabled:opacity-50" />
+              <small *ngIf="form.contractType === 'INDEFINITE'" class="block text-[11px] text-muted-foreground">No aplica para tiempo indefinido.</small>
+              <small *ngIf="formSubmitted() && form.contractType !== 'INDEFINITE' && !form.endDate" class="block text-xs font-medium text-destructive">Este tipo de contrato requiere fecha de finalización.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Forma contractual</span>
+              <select name="form" [(ngModel)]="form.contractForm" class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="WRITTEN">Escrito</option>
+                <option value="VERBAL">Verbal</option>
+              </select>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Jornada laboral</span>
+              <select name="schedule" [(ngModel)]="form.workSchedule" class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="FULL_TIME">Tiempo completo</option>
+                <option value="PART_TIME">Tiempo parcial</option>
+              </select>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Modalidad</span>
+              <select name="modality" [(ngModel)]="form.workModality" class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="ONSITE">Presencial</option>
+                <option value="REMOTE">Remoto</option>
+                <option value="HYBRID">Híbrido</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: Condiciones salariales y observaciones -->
+        <div class="rounded-2xl border border-border/80 bg-muted/20 p-5">
+          <div class="mb-4 flex items-center gap-2 border-b border-border/60 pb-2.5">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">3</span>
+            <div>
+              <h3 class="text-sm font-black text-accent-foreground">Condiciones salariales y observaciones</h3>
+              <p class="text-xs text-muted-foreground">Remuneración base, carga horaria semanal y cláusulas adicionales.</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
+              <span class="text-xs font-bold text-accent-foreground">Salario base *</span>
+              <div class="flex">
+                <input name="salary" type="number" min="0" step="0.01" [(ngModel)]="form.baseSalary" required
+                  class="h-11 min-w-0 flex-1 rounded-l-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary" />
+                <input name="currency" [(ngModel)]="form.currency" maxlength="3"
+                  class="h-11 w-20 rounded-r-xl border-y border-r border-border bg-muted px-3 text-center text-xs font-bold uppercase" />
+              </div>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Frecuencia de pago</span>
+              <select name="frequency" [(ngModel)]="form.paymentFrequency" class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary">
+                <option value="MONTHLY">Mensual</option>
+                <option value="BIWEEKLY">Quincenal</option>
+                <option value="WEEKLY">Semanal</option>
+                <option value="DAILY">Diario</option>
+              </select>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Horas semanales</span>
+              <input name="hours" type="number" min="1" max="168" step="0.5" [(ngModel)]="form.weeklyHours"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-2">
+              <span class="text-xs font-semibold text-muted-foreground">Fin del periodo de prueba</span>
+              <input name="probation" type="date" [(ngModel)]="form.probationEndDate"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label *ngIf="formMode() === 'renew'" class="space-y-1.5 sm:col-span-2">
+              <span class="text-xs font-bold text-accent-foreground">Motivo de renovación</span>
+              <input name="renewalReason" [(ngModel)]="renewalReason" placeholder="Ej. Continuidad de la relación laboral"
+                class="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-2 lg:col-span-4">
+              <span class="text-xs font-semibold text-muted-foreground">Términos y observaciones</span>
+              <textarea name="terms" [(ngModel)]="form.terms" rows="3" placeholder="Cláusulas especiales, funciones principales u observaciones del contrato..."
+                class="w-full resize-none rounded-xl border border-border bg-background p-3.5 text-sm outline-none transition-all focus:border-primary"></textarea>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer fijo -->
+      <div class="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-6 py-4">
+        <button type="button" (click)="closeForm()" class="cursor-pointer rounded-full border border-border px-5 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="saving()" class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50">
+          <lucide-icon *ngIf="saving()" name="loader-circle" class="animate-spin" [size]="17"></lucide-icon>
+          {{ formMode() === 'renew' ? 'Crear renovación' : 'Guardar contrato' }}
+        </button>
+      </div>
     </form>
   </div>
 </div>
 
-<div *ngIf="showHistory()" class="fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
-  <div class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[28px] border border-border bg-card p-6 shadow-2xl">
-    <div class="flex items-start justify-between"><div><h2 class="text-2xl font-black">Historial contractual</h2><p class="text-sm text-muted-foreground">{{ selected()?.contractNumber }}</p></div><button (click)="showHistory.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div>
-    <div class="mt-6 space-y-3"><div *ngFor="let item of historyItems()" class="rounded-2xl border border-border bg-muted/30 p-4"><div class="flex justify-between gap-4"><p class="font-black text-primary">{{ item.action }}</p><time class="text-xs text-muted-foreground">{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</time></div><p *ngIf="item.previousStatus || item.newStatus" class="mt-2 text-sm">{{ item.previousStatus ? statusLabel(item.previousStatus) : 'Inicio' }} → {{ item.newStatus ? statusLabel(item.newStatus) : '-' }}</p><p *ngIf="item.reason" class="mt-1 text-sm text-muted-foreground">{{ item.reason }}</p></div><p *ngIf="!historyItems().length" class="py-8 text-center text-sm text-muted-foreground">Cargando historial...</p></div>
+<div *ngIf="showHistory()" class="app-modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
+  <div class="app-modal-panel flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-2xl">
+    <div class="flex shrink-0 items-start justify-between border-b border-border px-6 py-4"><div><h2 class="text-xl font-black text-accent-foreground">Historial contractual</h2><p class="text-xs text-muted-foreground">{{ selected()?.contractNumber }}</p></div><button (click)="showHistory.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div>
+    <div class="flex-1 space-y-3 overflow-y-auto p-6"><div *ngFor="let item of historyItems()" class="rounded-2xl border border-border bg-muted/30 p-4"><div class="flex justify-between gap-4"><p class="font-black text-primary">{{ item.action }}</p><time class="text-xs text-muted-foreground">{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</time></div><p *ngIf="item.previousStatus || item.newStatus" class="mt-2 text-sm">{{ item.previousStatus ? statusLabel(item.previousStatus) : 'Inicio' }} → {{ item.newStatus ? statusLabel(item.newStatus) : '-' }}</p><p *ngIf="item.reason" class="mt-1 text-sm text-muted-foreground">{{ item.reason }}</p></div><p *ngIf="!historyItems().length" class="py-8 text-center text-sm text-muted-foreground">Cargando historial...</p></div>
   </div>
 </div>

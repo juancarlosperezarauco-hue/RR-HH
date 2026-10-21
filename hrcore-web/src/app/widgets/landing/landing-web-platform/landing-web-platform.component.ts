@@ -39,16 +39,16 @@ interface WebPreviewTab {
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-[26px] border border-border bg-muted p-5">
-              <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-primary">
+            <div class="group rounded-[26px] border border-border bg-card/85 p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md">
+              <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-primary transition-transform duration-300 group-hover:scale-110">
                 <lucide-icon name="users" class="h-5 w-5"></lucide-icon>
               </div>
               <h3 class="font-black text-foreground">Personas</h3>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">Gestión de colaboradores, roles y permisos.</p>
             </div>
 
-            <div class="rounded-[26px] border border-border bg-muted p-5">
-              <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-primary">
+            <div class="group rounded-[26px] border border-border bg-card/85 p-5 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md">
+              <div class="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-primary transition-transform duration-300 group-hover:scale-110">
                 <lucide-icon name="bar-chart-3" class="h-5 w-5"></lucide-icon>
               </div>
               <h3 class="font-black text-foreground">Visibilidad</h3>
@@ -57,10 +57,10 @@ interface WebPreviewTab {
           </div>
         </div>
 
-        <div class="mt-12 overflow-hidden rounded-[34px] border border-border bg-card shadow-lg">
+        <div class="mt-12 overflow-hidden rounded-[34px] border border-border bg-card shadow-xl transition-all duration-300">
           <div class="flex flex-col gap-4 border-b border-border bg-background p-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex items-center gap-3">
-              <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
                 <lucide-icon name="monitor" class="h-5 w-5"></lucide-icon>
               </span>
               <div>
@@ -74,12 +74,14 @@ interface WebPreviewTab {
                 <button
                   type="button"
                   (click)="activeKey.set(tab.key)"
-                  class="shrink-0 rounded-full border px-4 py-2 text-xs font-black transition-colors"
+                  class="shrink-0 cursor-pointer rounded-full border px-4 py-2 text-xs font-black transition-all duration-200 hover:-translate-y-0.5"
                   [class.bg-primary]="activeKey() === tab.key"
                   [class.text-primary-foreground]="activeKey() === tab.key"
+                  [class.shadow-sm]="activeKey() === tab.key"
                   [class.bg-card]="activeKey() !== tab.key"
                   [class.text-primary]="activeKey() !== tab.key"
-                  [class.border-border]="activeKey() !== tab.key">
+                  [class.border-border]="activeKey() !== tab.key"
+                  [class.hover:bg-accent]="activeKey() !== tab.key">
                   {{ tab.label }}
                 </button>
               }
