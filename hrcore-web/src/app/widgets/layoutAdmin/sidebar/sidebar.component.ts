@@ -6,6 +6,8 @@ import { NavigationScope, PLATFORM_NAVIGATION, TenantNavigationItem } from '../.
 import { TenantNavigationService } from '../../../shared/lib/navigation/tenant-navigation.service';
 import { PlatformFacade } from '../../../features/platform/lib/platform.facade';
 import { PermissionService } from '../../../shared/lib/auth/permission.service';
+import { TenantLanguageStateService } from '../../../shared/lib/i18n/tenant-language-state.service';
+import { TenantTextKey } from '../../../shared/lib/i18n/keys';
 
 @Component({
   selector: 'app-sidebar',
@@ -171,7 +173,6 @@ import { PermissionService } from '../../../shared/lib/auth/permission.service';
             </div>
           </div>
         </section>
-
         <div
           *ngIf="showUpgrade"
           class="mx-1 mt-5 rounded-3xl border border-primary/20 bg-gradient-to-br from-accent via-card to-accent p-4 shadow-sm transition-all duration-300 hover:shadow-md">
@@ -180,16 +181,16 @@ import { PermissionService } from '../../../shared/lib/auth/permission.service';
               <lucide-icon name="sparkles" class="h-5 w-5" />
             </div>
             <div class="min-w-0 flex-1">
-              <p class="text-xs font-black uppercase tracking-[0.18em] text-primary">Upgrade</p>
-              <h3 class="mt-1 text-sm font-black text-accent-foreground">Mejora tu plan</h3>
-              <p class="mt-1 text-xs leading-5 text-muted-foreground">Amplía la capacidad de usuarios y módulos de tu organización.</p>
+              <p class="text-xs font-black uppercase tracking-[0.18em] text-primary">{{ t('upgrade.eyebrow') }}</p>
+              <h3 class="mt-1 text-sm font-black text-accent-foreground">{{ t('upgrade.title') }}</h3>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ t('upgrade.description') }}</p>
             </div>
           </div>
           <a
             routerLink="/dashboard/subscription"
             (click)="closeMobileMenu()"
             class="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl bg-primary px-4 text-sm font-black text-primary-foreground shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-sm">
-            Ver planes
+            {{ t('upgrade.plans') }}
           </a>
         </div>
       </nav>
@@ -234,15 +235,15 @@ import { PermissionService } from '../../../shared/lib/auth/permission.service';
           (click)="onLogout()"
           class="group flex w-full cursor-pointer items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-all duration-200 hover:bg-destructive/10 hover:text-destructive">
           <lucide-icon name="log-out" class="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
-          <span>Cerrar sesión</span>
+          <span>{{ scope === 'TENANT' ? t('shell.logout') : 'Cerrar Sesión' }}</span>
         </button>
 
         <button
           *ngIf="isCollapsed"
           type="button"
           (click)="onLogout()"
-          title="Cerrar sesión"
-          aria-label="Cerrar sesión"
+          [title]="scope === 'TENANT' ? t('shell.logout') : 'Cerrar Sesión'"
+          [attr.aria-label]="scope === 'TENANT' ? t('shell.logout') : 'Cerrar Sesión'"
           class="group mx-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl text-muted-foreground transition-all duration-200 hover:scale-105 hover:bg-destructive/10 hover:text-destructive">
           <lucide-icon name="log-out" class="h-5 w-5" />
         </button>
@@ -257,6 +258,7 @@ export class SidebarComponent {
   private readonly platformFacade = inject(PlatformFacade);
   private readonly permissions = inject(PermissionService);
   private readonly router = inject(Router);
+  private readonly languageState = inject(TenantLanguageStateService);
   isMobileOpen = false;
   isCollapsed = false;
   isSidebarHovered = false;
@@ -270,7 +272,7 @@ export class SidebarComponent {
       { id: 'organization', label: 'Organización', icon: 'building-2', ids: ['users', 'departments', 'positions', 'organization-chart', 'my-team', 'employees'] },
       { id: 'operations', label: 'Gestión laboral', icon: 'briefcase', ids: ['contracts', 'dossiers', 'shifts', 'attendance', 'absences', 'incidents'] },
       { id: 'personal', label: 'Mi espacio', icon: 'user-circle-2', ids: ['profile', 'my-employment', 'notifications'] },
-      { id: 'administration', label: 'Administración', icon: 'shield-check', ids: ['roles', 'permissions', 'subscription', 'hr-reports', 'company-settings', 'audit', 'backups', 'security', 'settings'] }
+      { id: 'administration', label: 'Administración', icon: 'shield-check', ids: ['roles', 'permissions', 'subscription', 'hr-reports', 'company-settings', 'appearance-settings', 'audit', 'backups', 'security', 'settings'] }
     ],
     PLATFORM: [
       { id: 'platform', label: 'Plataforma', icon: 'building-2', ids: ['tenants', 'plans', 'subscriptions', 'audit', 'backups'] },
@@ -279,8 +281,9 @@ export class SidebarComponent {
   };
   get allVisibleItems(): TenantNavigationItem[] { return this.scope === 'PLATFORM' ? (this.platformFacade.currentSuperadmin() ? PLATFORM_NAVIGATION : []) : this.tenantNavigation.visibleItems(); }
   get standaloneItems(): TenantNavigationItem[] { const grouped = new Set(this.groupDefinitions[this.scope].flatMap(group => group.ids)); return this.allVisibleItems.filter(item => !grouped.has(item.id)); }
-  get navigationGroups() { const items = this.allVisibleItems; if (this.groupsCacheItems === items && this.groupsCacheScope === this.scope) return this.groupsCache; this.groupsCacheItems = items; this.groupsCacheScope = this.scope; this.groupsCache = this.buildGroups(items); return this.groupsCache; }
-  private buildGroups(items: TenantNavigationItem[]) { return this.groupDefinitions[this.scope].map(group => ({ ...group, items: group.ids.map(id => items.find(item => item.id === id)).filter((item): item is TenantNavigationItem => !!item) })).filter(group => group.items.length); }
+  get navigationGroups() { return this.buildGroups(this.allVisibleItems); }
+  private buildGroups(items: TenantNavigationItem[]) { return this.groupDefinitions[this.scope].map(group => ({ ...group, label: this.scope === 'TENANT' ? this.t(`group.${group.id}` as TenantTextKey) : group.label, items: group.ids.map(id => items.find(item => item.id === id)).filter((item): item is TenantNavigationItem => !!item) })).filter(group => group.items.length); }
+  t(key: TenantTextKey): string { return this.languageState.t(key); }
   isGroupActive(group: { items: TenantNavigationItem[] }): boolean {
     return group.items.some(item => this.router.url.startsWith(item.route));
   }

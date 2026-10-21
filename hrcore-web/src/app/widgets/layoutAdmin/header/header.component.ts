@@ -10,6 +10,8 @@ import { PermissionService } from '../../../shared/lib/auth/permission.service';
 import { NotificationsService, NotificationResponse } from '../../../entities/notifications';
 import { AuthService } from '../../../entities/auth/api/auth.service';
 import { NavigationScope } from '../../../shared/lib/navigation';
+import { TenantLanguageStateService } from '../../../shared/lib/i18n/tenant-language-state.service';
+import { TenantTextKey } from '../../../shared/lib/i18n/keys';
 
 interface MenuItem {
   label: string;
@@ -43,7 +45,7 @@ interface MenuItem {
             @if (isPlatformRoute) {
               Panel de Control · Plataforma
             } @else {
-              Panel de Control
+              {{ t('shell.dashboard') }}
             }
           </h1>
         </div>
@@ -97,14 +99,14 @@ interface MenuItem {
                 class="absolute right-0 z-50 mt-2.5 w-96 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[24px] border border-border bg-card shadow-2xl">
                 <div class="flex items-center justify-between border-b border-border bg-accent/70 px-4 py-3.5">
                   <div>
-                    <p class="text-sm font-black text-primary">Notificaciones</p>
-                    <p class="text-xs text-muted-foreground">{{ unreadNotifications() }} pendientes de lectura</p>
+                    <p class="text-sm font-black text-primary">{{ t('shell.notifications') }}</p>
+                    <p class="text-xs text-muted-foreground">{{ unreadNotifications() }} {{ t('shell.unread') }}</p>
                   </div>
                   <button
                     type="button"
                     (click)="markAllAsRead()"
                     class="cursor-pointer rounded-full border border-border bg-card px-3 py-1 text-xs font-bold text-primary transition-colors hover:bg-accent">
-                    Marcar todo
+                    {{ t('shell.markAll') }}
                   </button>
                 </div>
 
@@ -112,7 +114,7 @@ interface MenuItem {
                   @if (notificationsLoading) {
                     <div class="flex items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
                       <lucide-icon name="loader-2" [size]="16" class="animate-spin"></lucide-icon>
-                      Cargando...
+                      {{ t('shell.loading') }}
                     </div>
                   } @else {
                     @for (notification of notificationPreview(); track notification.id) {
@@ -127,7 +129,7 @@ interface MenuItem {
                           <div class="flex items-center justify-between gap-2">
                             <p class="truncate text-sm font-bold text-accent-foreground">{{ notification.title }}</p>
                             @if (notification.status === 'UNREAD') {
-                              <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">Nueva</span>
+                              <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">{{ t('shell.new') }}</span>
                             }
                           </div>
                           <p class="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{{ notification.body }}</p>
@@ -136,7 +138,7 @@ interface MenuItem {
                       </button>
                     } @empty {
                       <div class="p-6 text-center text-sm text-muted-foreground">
-                        No hay notificaciones recientes.
+                        {{ t('shell.noNotifications') }}
                       </div>
                     }
                   }
@@ -147,7 +149,7 @@ interface MenuItem {
                     type="button"
                     (click)="goToNotifications()"
                     class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-xs transition-all hover:bg-primary/90">
-                    Ver bandeja completa
+                    {{ t('shell.inbox') }}
                   </button>
                 </div>
               </div>
@@ -172,7 +174,7 @@ interface MenuItem {
               @if (getProfilePhotoUrl()) {
                 <img
                   [src]="getProfilePhotoUrl()"
-                  [alt]="getDisplayName() || 'Usuario'"
+                  [alt]="getDisplayName() || (isPlatformRoute ? 'Usuario' : t('shell.user'))"
                   class="h-full w-full object-cover">
               } @else {
                 <div class="flex h-full w-full items-center justify-center">
@@ -284,7 +286,7 @@ interface MenuItem {
                   <lucide-icon name="log-out" class="h-4 w-4"></lucide-icon>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-bold text-destructive">Cerrar sesión</p>
+                  <p class="text-sm font-bold text-destructive">{{ isPlatformRoute ? 'Cerrar Sesión' : t('shell.logout') }}</p>
                   <p class="text-[11px] text-muted-foreground">Salir de tu cuenta de forma segura</p>
                 </div>
               </button>
@@ -317,6 +319,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private platformFacade = inject(PlatformFacade);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationsService = inject(NotificationsService);
+  private readonly languageState = inject(TenantLanguageStateService);
   private readonly authService = inject(AuthService);
   private readonly profilePhotoSource = signal<string | null>(null);
   private profilePhotoObjectUrl: string | null = null;
@@ -346,10 +349,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   get tenantMenuOptions(): MenuItem[] {
     return [
-      { label: 'Panel principal', description: 'Estadísticas y resumen operativo', route: this.dashboardRoute, icon: 'layout-dashboard' },
-      { label: 'Mi perfil', description: 'Información personal y biometría', route: '/dashboard/profile', icon: 'user-circle-2' },
+      { label: this.t('shell.dashboard'), description: 'Estadísticas y resumen operativo', route: this.dashboardRoute, icon: 'layout-dashboard' },
+      { label: this.t('nav.profile'), description: 'Información personal y biometría', route: '/dashboard/profile', icon: 'user-circle-2' },
       { label: 'Mi espacio laboral', description: 'Contrato, turnos y asistencias', route: '/dashboard/my-employment', icon: 'briefcase' },
-      { label: 'Notificaciones', description: 'Avisos y alertas de tu cuenta', route: '/dashboard/notifications', icon: 'bell' },
+      { label: this.t('shell.notifications'), description: 'Avisos y alertas de tu cuenta', route: '/dashboard/notifications', icon: 'bell' },
       { label: 'Seguridad y sesiones', description: 'Control de accesos y contraseña', route: '/dashboard/security', icon: 'shield-check' }
     ];
   }
@@ -366,6 +369,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   get isPlatformRoute(): boolean {
     return this.scope === 'PLATFORM';
   }
+
+  t(key: TenantTextKey): string { return this.languageState.t(key); }
 
   get isOwnerAdmin(): boolean {
     return this.permissionService.isCurrentOwner();
@@ -451,14 +456,14 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
 
     if (this.authFacade.status() === 'loading' && !this.tenantUser()) {
-      return 'Cargando...';
+      return this.t('shell.loading');
     }
 
     const user = this.tenantUser();
     if (user) {
       return `${user.firstName} ${user.lastName}`;
     }
-    return 'Usuario';
+    return this.t('shell.user');
   }
 
   getEmail(): string {
@@ -467,7 +472,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
 
     if (this.authFacade.status() === 'loading' && !this.tenantUser()) {
-      return 'Cargando...';
+      return this.t('shell.loading');
     }
 
     return this.tenantUser()?.email || '';
@@ -530,9 +535,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
       return 'Super Administrador';
     }
 
-    if (this.isOwnerAdmin) return 'Propietario de la organización';
+    if (this.isOwnerAdmin) return this.t('shell.owner');
     const roles = this.tenantUser()?.roles ?? [];
-    return roles.length > 0 ? roles.join(', ') : 'Usuario de la organización';
+    return roles.length > 0 ? roles.join(', ') : this.t('shell.member');
   }
 
   toggleProfileMenu(): void {

@@ -1,0 +1,81 @@
+<section class="rounded-[28px] border border-border bg-card p-6 shadow-sm sm:p-8">
+  <div class="mb-5 flex items-start gap-3">
+    <span class="flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-primary/10 text-xs font-black text-primary">06</span>
+    <div><h2 class="text-lg font-black text-accent-foreground">{{ t('title') }}</h2>
+    <p class="mt-1 text-sm text-muted-foreground">{{ t('help') }}</p></div>
+  </div>
+  <label class="block max-w-sm text-sm font-bold text-foreground">{{ t('country') }}
+    <select name="regionalCountry" class="mt-2 block w-full rounded-xl border border-border bg-background p-3 text-foreground"
+            [ngModel]="country" (ngModelChange)="selectCountry($event)" [disabled]="!!saving">
+      <option value="">{{ t('selectCountry') }}</option>
+      <option *ngFor="let option of countries" [value]="option.code">{{ countryName(option.code, option.name) }}</option>
+    </select>
+  </label>
+  <p *ngIf="loading" class="mt-4 text-sm text-muted-foreground" role="status">{{ t('loading') }}</p>
+  <p *ngIf="loadError" class="mt-4 text-sm text-destructive" role="alert">{{ loadError }}</p>
+  <p *ngIf="message" class="mt-4 text-sm text-primary" role="status">{{ message }}</p>
+  <p *ngIf="error" class="mt-4 text-sm text-destructive" role="alert">{{ error }}</p>
+
+  <div *ngIf="loaded" class="mt-8 space-y-8">
+    <section aria-labelledby="holidays-title" class="border-t border-border pt-7">
+      <h3 id="holidays-title" class="font-black text-foreground">{{ t('holidays') }}</h3>
+      <p class="mt-1 text-xs text-muted-foreground">{{ t('holidaysHelp') }}</p>
+      <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
+        <label class="text-sm font-bold text-foreground">{{ t('date') }}<input name="holidayDate" type="date" [(ngModel)]="holidayDate" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('name') }}<input name="holidayName" [(ngModel)]="holidayName" maxlength="120" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <button type="button" (click)="stageHoliday()" [disabled]="!!saving" class="rounded-full border border-primary px-5 py-3 text-sm font-bold text-primary disabled:opacity-50">{{ holidayIndex === null ? t('add') : t('update') }}</button>
+      </div>
+      <p *ngIf="!holidaysDraft.holidays.length" class="mt-4 text-sm text-muted-foreground">{{ t('noHolidays') }}</p>
+      <ul *ngIf="holidaysDraft.holidays.length" class="mt-4 divide-y divide-border rounded-xl border border-border">
+        <li *ngFor="let holiday of holidaysDraft.holidays; let i = index" class="flex flex-wrap items-center justify-between gap-3 p-3 text-sm text-foreground">
+          <span><strong>{{ holiday.date }}</strong> · {{ holiday.name }}</span>
+          <span class="flex gap-3"><button type="button" (click)="editHoliday(i)" [disabled]="!!saving" class="font-bold text-primary">{{ t('edit') }}</button><button type="button" (click)="removeHoliday(i)" [disabled]="!!saving" class="font-bold text-destructive">{{ t('remove') }}</button></span>
+        </li>
+      </ul>
+      <div class="mt-4 flex gap-3">
+        <button type="button" (click)="saveHolidays()" [disabled]="!!saving || !holidaysDirty" class="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">{{ saving === 'holidays' ? t('saving') : t('saveHolidays') }}</button>
+        <button type="button" (click)="cancelHolidays()" [disabled]="!!saving || !holidaysDirty" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-foreground disabled:opacity-50">{{ t('cancel') }}</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="workday-title" class="border-t border-border pt-7">
+      <h3 id="workday-title" class="font-black text-foreground">{{ t('workday') }}</h3>
+      <p class="mt-1 text-xs text-muted-foreground">{{ t('workdayHelp') }}</p>
+      <div class="mt-4 flex flex-wrap gap-3">
+        <label *ngFor="let day of weekdays" class="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
+          <input type="checkbox" [checked]="workdayDraft.days.includes(day.code)" (change)="toggleDay(day.code)" [disabled]="!!saving" class="accent-primary">{{ weekdayName(day.code) }}
+        </label>
+      </div>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label class="text-sm font-bold text-foreground">{{ t('start') }}<input name="workStart" type="time" [(ngModel)]="workdayDraft.start" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('end') }}<input name="workEnd" type="time" [(ngModel)]="workdayDraft.end" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('breakStart') }}<input name="breakStart" type="time" [(ngModel)]="workdayDraft.breakStart" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('breakEnd') }}<input name="breakEnd" type="time" [(ngModel)]="workdayDraft.breakEnd" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+      </div>
+      <p class="mt-3 text-sm text-muted-foreground" role="status">
+        <ng-container *ngIf="workdayDailyMinutes !== null; else invalidWorkday">{{ (workdayDailyMinutes || 0) / 60 | number:'1.0-2' }} {{ t('hoursDay') }} · {{ ((workdayDailyMinutes || 0) * workdayDraft.days.length) / 60 | number:'1.0-2' }} {{ t('hoursWeek') }}</ng-container>
+        <ng-template #invalidWorkday>{{ t('invalidWorkday') }}</ng-template>
+      </p>
+      <div class="mt-4 flex gap-3">
+        <button type="button" (click)="saveWorkday()" [disabled]="!!saving || !workdayDirty || workdayDailyMinutes === null" class="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">{{ saving === 'workday' ? t('saving') : t('saveWorkday') }}</button>
+        <button type="button" (click)="cancelWorkday()" [disabled]="!!saving || !workdayDirty" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-foreground disabled:opacity-50">{{ t('cancel') }}</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="rules-title" class="border-t border-border pt-7">
+      <h3 id="rules-title" class="font-black text-foreground">{{ t('rules') }}</h3>
+      <p class="mt-1 text-xs text-muted-foreground">{{ t('rulesHelp') }}</p>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <label class="text-sm font-bold text-foreground">{{ t('contracts') }}<input name="contractReminderDays" type="number" min="0" max="365" step="1" [(ngModel)]="rulesDraft.contractReminderDays" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('shifts') }}<input name="shiftBufferMinutes" type="number" min="0" max="1440" step="1" [(ngModel)]="rulesDraft.shiftBufferMinutes" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('attendance') }}<input name="attendanceToleranceMinutes" type="number" min="0" max="240" step="1" [(ngModel)]="rulesDraft.attendanceToleranceMinutes" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+        <label class="text-sm font-bold text-foreground">{{ t('absences') }}<input name="absenceNoticeHours" type="number" min="0" max="720" step="1" [(ngModel)]="rulesDraft.absenceNoticeHours" [disabled]="!!saving" class="mt-1 block w-full rounded-xl border border-border bg-background p-3 text-foreground"></label>
+      </div>
+      <p *ngIf="!rulesValid" class="mt-3 text-sm text-destructive" role="alert">{{ t('invalidRules') }}</p>
+      <div class="mt-4 flex gap-3">
+        <button type="button" (click)="saveRules()" [disabled]="!!saving || !rulesDirty || !rulesValid" class="rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-50">{{ saving === 'rules' ? t('saving') : t('saveRules') }}</button>
+        <button type="button" (click)="cancelRules()" [disabled]="!!saving || !rulesDirty" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold text-foreground disabled:opacity-50">{{ t('cancel') }}</button>
+      </div>
+    </section>
+  </div>
+</section>

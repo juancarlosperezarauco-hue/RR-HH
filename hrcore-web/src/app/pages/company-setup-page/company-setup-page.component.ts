@@ -4,7 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize, forkJoin, switchMap } from 'rxjs';
 import { CompanySettings, CompanySettingsService, HrSettings } from '../../entities/company';
+import { companySettingsText, CompanySettingsTextKey } from '../../entities/company/model/company-language-translations';
 import { CompanySetupStateService } from '../../shared/lib/company/company-setup-state.service';
+import { TenantLanguageStateService } from '../../shared/lib/i18n/tenant-language-state.service';
+import { TenantTextKey } from '../../shared/lib/i18n/keys';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 
 type CountryOption = { code: string; name: string; currency: string; timezones: string[] };
@@ -17,12 +20,13 @@ export class CompanySetupPageComponent implements OnInit {
   private readonly state = inject(CompanySetupStateService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly languageState = inject(TenantLanguageStateService);
   readonly steps = [
-    { number: 1, eyebrow: 'Identidad', title: 'Cuéntanos sobre tu empresa', description: 'Estos datos aparecerán en tu espacio de trabajo y comunicaciones.' },
-    { number: 2, eyebrow: 'Localización', title: 'Define tu contexto regional', description: 'Usaremos estos valores para fechas, moneda y operaciones laborales.' },
-    { number: 3, eyebrow: 'Políticas', title: 'Configura la operación de RR. HH.', description: 'Activa las reglas que tu equipo necesita desde el primer día.' },
-    { number: 4, eyebrow: 'Confirmación', title: 'Tu espacio está listo', description: 'Revisa el resumen y confirma para comenzar a trabajar.' }
-  ];
+    { number: 1, eyebrow: 'setup.identity', title: 'setup.identityTitle', description: 'setup.identityDescription' },
+    { number: 2, eyebrow: 'setup.location', title: 'setup.locationTitle', description: 'setup.locationDescription' },
+    { number: 3, eyebrow: 'setup.policies', title: 'setup.policiesTitle', description: 'setup.policiesDescription' },
+    { number: 4, eyebrow: 'setup.confirmation', title: 'setup.confirmationTitle', description: 'setup.confirmationDescription' }
+  ] as const;
   readonly countries: CountryOption[] = [
     { code: 'BO', name: 'Bolivia', currency: 'BOB', timezones: ['America/La_Paz'] },
     { code: 'AR', name: 'Argentina', currency: 'ARS', timezones: ['America/Argentina/Buenos_Aires', 'America/Argentina/Catamarca', 'America/Argentina/Cordoba', 'America/Argentina/Jujuy', 'America/Argentina/La_Rioja', 'America/Argentina/Mendoza', 'America/Argentina/Rio_Gallegos', 'America/Argentina/Salta', 'America/Argentina/San_Juan', 'America/Argentina/San_Luis', 'America/Argentina/Tucuman', 'America/Argentina/Ushuaia'] },
@@ -55,7 +59,7 @@ export class CompanySetupPageComponent implements OnInit {
         this.missingFields = response.status.data.missingFields ?? [];
         this.loading = false;
       },
-      error: () => { this.loading = false; this.loadError = true; this.toast.error('No se pudo cargar la configuración de la empresa.'); }
+      error: () => { this.loading = false; this.loadError = true; this.toast.error(this.companyT('settingsLoadToast')); }
     });
   }
   next(): void {
@@ -68,7 +72,7 @@ export class CompanySetupPageComponent implements OnInit {
       switchMap(() => this.service.completeSetup(this.company.timezone)),
       finalize(() => this.saving = false)
     ).subscribe({
-      next: response => { this.state.setConfigured(response.data); this.toast.success('Configuración completada.'); this.router.navigateByUrl('/dashboard/home'); },
+      next: response => { this.state.setConfigured(response.data); this.toast.success(this.t('setup.completedToast')); this.router.navigateByUrl('/dashboard/home'); },
       error: error => this.fail(error)
     });
   }
@@ -77,12 +81,15 @@ export class CompanySetupPageComponent implements OnInit {
   onCountryChange(): void { const country = this.countries.find(option => option.code === this.company.country); if (!country) { this.company.timezone = ''; return; } this.company.currency = country.currency; this.company.timezone = country.timezones[0]; }
   enabledPolicies(): number { return Object.values(this.hr).filter(Boolean).length; }
   fieldMissing(field: string): boolean { return this.missingFields.some(value => value.toLowerCase().includes(field.toLowerCase())); }
-  missingFieldLabel(field: string): string { const labels: Record<string, string> = { 'company.name': 'Nombre comercial', companyName: 'Nombre comercial', 'company.country': 'País', country: 'País', 'company.currency': 'Moneda', currency: 'Moneda', 'company.timezone': 'Zona horaria', timezone: 'Zona horaria', 'attendance.adjustment_approval_required': 'Aprobación de ajustes', 'attendance.adjustmentApprovalRequired': 'Aprobación de ajustes', adjustmentApprovalRequired: 'Aprobación de ajustes' }; return labels[field] ?? field; }
+  t(key: TenantTextKey): string { return this.languageState.t(key); }
+  companyT(key: CompanySettingsTextKey): string { return companySettingsText(this.languageState.language(), key); }
+  countryName(country: CountryOption): string { return new Intl.DisplayNames([this.languageState.language()], { type: 'region' }).of(country.code) ?? country.name; }
+  missingFieldLabel(field: string): string { const labels: Record<string, CompanySettingsTextKey> = { 'company.name': 'companyName', companyName: 'companyName', 'company.country': 'country', country: 'country', 'company.currency': 'currency', currency: 'currency', 'company.timezone': 'timezone', timezone: 'timezone', 'attendance.adjustment_approval_required': 'adjustmentApproval', 'attendance.adjustmentApprovalRequired': 'adjustmentApproval', adjustmentApprovalRequired: 'adjustmentApproval' }; return labels[field] ? this.companyT(labels[field]) : field; }
   private validateCurrentStep(): boolean {
-    if (this.currentStep === 1 && !this.company.companyName.trim()) { this.toast.error('Ingresa el nombre comercial.'); return false; }
-    if (this.currentStep === 2 && (!this.company.country || !this.company.currency || !this.company.timezone)) { this.toast.error('Completa país, zona horaria y moneda.'); return false; }
-    if (this.currentStep === 3 && !this.hr.adjustmentApprovalRequired) { this.hr.adjustmentApprovalRequired = true; this.toast.error('La aprobación de ajustes es obligatoria.'); return false; }
+    if (this.currentStep === 1 && !this.company.companyName.trim()) { this.toast.error(this.companyT('requiredCompanyName')); return false; }
+    if (this.currentStep === 2 && (!this.company.country || !this.company.currency || !this.company.timezone)) { this.toast.error(this.t('setup.requiredRegion')); return false; }
+    if (this.currentStep === 3 && !this.hr.adjustmentApprovalRequired) { this.hr.adjustmentApprovalRequired = true; this.toast.error(this.t('setup.adjustmentRequired')); return false; }
     return true;
   }
-  private fail(error: unknown): void { this.toast.error(error instanceof Error ? error.message : 'No se pudo completar la configuración.'); }
+  private fail(error: unknown): void { this.toast.error(error instanceof Error ? error.message : this.t('setup.completeError')); }
 }
