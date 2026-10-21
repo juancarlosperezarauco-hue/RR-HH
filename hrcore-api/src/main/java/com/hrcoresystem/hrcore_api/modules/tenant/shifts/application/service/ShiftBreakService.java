@@ -46,9 +46,6 @@ public class ShiftBreakService {
     public ShiftBreakResponse create(UUID shiftId, ShiftBreakRequest request) {
         plans.assertCanOperate();
         WorkShift shift = requireLockedShift(shiftId);
-        if (assignments.existsAnyByShiftId(shiftId)) {
-            throw new BusinessException("A shift with assignment history cannot add breaks");
-        }
         ShiftBreak candidate = normalize(null, shiftId, request, null);
         validatePlacement(shift, candidate, null);
         ShiftBreak saved = breaks.save(candidate);

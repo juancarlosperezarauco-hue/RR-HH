@@ -4,4 +4,5 @@ export interface SystemPermissionResponse {
   description: string;
   scope: 'TENANT' | 'PLATFORM';
   customRoleAssignable: boolean;
+  includedInPlan?: boolean;
 }

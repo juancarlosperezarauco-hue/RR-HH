@@ -3,11 +3,25 @@ package com.hrcoresystem.hrcore_api.modules.governance.audit.application.mapper;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.dto.AuditEventResponse;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.PlatformAuditEvent;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.TenantAuditEvent;
+import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Component
 public class AuditEventMapper {
+
+    private static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+
+    private final TenantUserRepository tenantUserRepository;
+
+    @Autowired
+    public AuditEventMapper(@Autowired(required = false) TenantUserRepository tenantUserRepository) {
+        this.tenantUserRepository = tenantUserRepository;
+    }
 
     public AuditEventResponse toResponse(PlatformAuditEvent event) {
         return new AuditEventResponse(
@@ -33,9 +47,10 @@ public class AuditEventMapper {
     }
 
     public AuditEventResponse toResponse(TenantAuditEvent event) {
+        String resolvedActor = resolveActorName(event.actorSubject(), event.actorId(), event.actorEmail());
         return new AuditEventResponse(
                 event.id(),
-                event.actorSubject(),
+                resolvedActor,
                 event.actorId(),
                 event.actorEmail(),
                 event.tenantSlug(),
@@ -53,6 +68,36 @@ public class AuditEventMapper {
                 toJson(event.afterState()),
                 event.createdAt()
         );
+    }
+
+    private String resolveActorName(String actorSubject, UUID actorId, String actorEmail) {
+        String actor = actorSubject != null ? actorSubject.trim() : null;
+        boolean needsResolution = actor == null || "SYSTEM".equalsIgnoreCase(actor) || UUID_PATTERN.matcher(actor).matches();
+
+        if (needsResolution && tenantUserRepository != null) {
+            if (actorId != null) {
+                var userOpt = tenantUserRepository.findById(actorId);
+                if (userOpt.isPresent()) {
+                    var u = userOpt.get();
+                    String full = ((u.firstName() != null ? u.firstName() : "") + " " + (u.lastName() != null ? u.lastName() : "")).trim();
+                    if (!full.isBlank()) return full;
+                }
+            }
+            if (actorEmail != null && !actorEmail.isBlank()) {
+                var userOpt = tenantUserRepository.findByEmail(actorEmail.trim());
+                if (userOpt.isPresent()) {
+                    var u = userOpt.get();
+                    String full = ((u.firstName() != null ? u.firstName() : "") + " " + (u.lastName() != null ? u.lastName() : "")).trim();
+                    if (!full.isBlank()) return full;
+                }
+            }
+        }
+
+        if (actor == null || "SYSTEM".equalsIgnoreCase(actor)) {
+            return "Sistema";
+        }
+
+        return actor;
     }
 
     private String toJson(JsonNode node) {

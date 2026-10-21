@@ -44,7 +44,14 @@ public class DeactivateTenantUseCase {
                 tenant.schemaName(),
                 PlatformTenantStatus.INACTIVE,
                 tenant.planId(),
+                tenant.stripeCustomerId(),
                 false,
+                tenant.legalName(),
+                tenant.taxIdentifier(),
+                tenant.contactEmail(),
+                tenant.contactPhone(),
+                tenant.ownerName(),
+                tenant.ownerEmail(),
                 tenant.createdAt(),
                 tenant.updatedAt()
         );

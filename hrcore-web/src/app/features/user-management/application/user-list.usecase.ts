@@ -26,11 +26,11 @@ export class UserListUseCase {
   readonly data = computed(() => this.state().page?.content ?? []);
   readonly error = computed(() => this.state().error);
 
-  async loadUsers(page = 0, size = 20): Promise<void> {
+  async loadUsers(page = 0, size = 20, filters?: { search?: string; status?: string; active?: boolean }): Promise<void> {
     this.state.set({ status: 'loading', page: this.state().page, error: null });
 
     try {
-      const response = await firstValueFrom(this.userService.getUsers(page, size));
+      const response = await firstValueFrom(this.userService.getUsers(page, size, filters));
 
       if (response.success && response.data) {
         this.state.set({ 

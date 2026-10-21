@@ -4,6 +4,8 @@ import com.hrcoresystem.hrcore_api.common.response.ApiErrorResponse;
 import com.hrcoresystem.hrcore_api.common.tenancy.exception.TenantResolutionException;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.application.exception.FaceRecognitionUnavailableException;
 import com.hrcoresystem.hrcore_api.modules.identity.auth.domain.exception.AuthenticationFailedException;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.exception.TenantRoleAlreadyExistsException;
+import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.domain.exception.TenantSubscriptionAccessDeniedException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,18 @@ public class GlobalExceptionHandler {
         .body(ApiErrorResponse.of("Recurso no encontrado", safeMessage(exception.getMessage())));
   }
 
+  @ExceptionHandler(TenantRoleAlreadyExistsException.class)
+  public ResponseEntity<ApiErrorResponse> handleTenantRoleAlreadyExists(TenantRoleAlreadyExistsException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ApiErrorResponse.of("Nombre de rol duplicado", safeMessage(exception.getMessage())));
+  }
+
+  @ExceptionHandler(TenantSubscriptionAccessDeniedException.class)
+  public ResponseEntity<ApiErrorResponse> handleTenantSubscriptionAccessDenied(TenantSubscriptionAccessDeniedException exception) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+        .body(ApiErrorResponse.of("Límite de suscripción excedido", safeMessage(exception.getMessage())));
+  }
+
   @ExceptionHandler(BusinessException.class)
   public ResponseEntity<ApiErrorResponse> handleBusinessException(BusinessException exception) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -49,6 +63,18 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiErrorResponse> handleInvalidBusinessState(InvalidBusinessStateException exception) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
         .body(ApiErrorResponse.of("La operación no está disponible en el estado actual", safeMessage(exception.getMessage())));
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiErrorResponse.of("Solicitud inválida", safeMessage(exception.getMessage())));
+  }
+
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiErrorResponse.of("Operación no permitida", safeMessage(exception.getMessage())));
   }
 
   @ExceptionHandler(AuthenticationFailedException.class)
@@ -82,6 +108,13 @@ public class GlobalExceptionHandler {
         userMessage = "Falta el identificador del tenant";
       } else if (message.contains("was not found")) {
         userMessage = "El tenant no existe";
+      } else if (message.contains("not active")) {
+        userMessage = "Tu cuenta de empresa fue desactivada por el momento";
+        guidance = "La organización se encuentra desactivada o suspendida. Comuníquese con el superadministrador de la plataforma.";
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ApiErrorResponse.of(
+                userMessage,
+                List.of(guidance)));
       } else if (message.contains("not ready")) {
         userMessage = "El esquema del tenant aún no está disponible";
       } else if (message.contains("does not match any registered tenant")) {

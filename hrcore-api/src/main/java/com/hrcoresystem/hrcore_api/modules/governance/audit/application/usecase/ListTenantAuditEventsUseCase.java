@@ -1,8 +1,11 @@
 package com.hrcoresystem.hrcore_api.modules.governance.audit.application.usecase;
 
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.dto.AuditEventResponse;
+import com.hrcoresystem.hrcore_api.modules.governance.audit.application.dto.TenantAuditFilterCriteria;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.mapper.AuditEventMapper;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.repository.TenantAuditEventRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,6 +22,12 @@ public class ListTenantAuditEventsUseCase {
     ) {
         this.tenantAuditEventRepository = tenantAuditEventRepository;
         this.auditEventMapper = auditEventMapper;
+    }
+
+    public Page<AuditEventResponse> execute(TenantAuditFilterCriteria criteria, Pageable pageable) {
+        TenantAuditFilterCriteria safeCriteria = criteria != null ? criteria : TenantAuditFilterCriteria.empty();
+        return tenantAuditEventRepository.findAll(safeCriteria, pageable)
+                .map(auditEventMapper::toResponse);
     }
 
     public List<AuditEventResponse> execute() {

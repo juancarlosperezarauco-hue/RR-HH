@@ -1,0 +1,67 @@
+<div class="space-y-4 p-4 sm:p-5">
+  @if (facade.loadingHistory()) { <p role="status" class="text-sm text-muted-foreground">Cargando historial…</p> }
+  @if (facade.history(); as page) {
+    <nav aria-label="Páginas del historial" class="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"><button type="button" (click)="facade.loadHistory(page.page - 1)" [disabled]="facade.loadingHistory() || page.page === 0" class="rounded-md border px-3 py-2 disabled:opacity-40">Mensajes anteriores</button><span>Página {{ page.page + 1 }} de {{ page.totalPages || 1 }}</span><button type="button" (click)="facade.loadHistory(page.page + 1)" [disabled]="facade.loadingHistory() || page.page + 1 >= page.totalPages" class="rounded-md border px-3 py-2 disabled:opacity-40">Mensajes siguientes</button></nav>
+  }
+  <div role="log" aria-label="Mensajes de la conversación" aria-live="polite" class="max-h-[65vh] min-h-52 space-y-4 overflow-y-auto overscroll-contain">
+    @for (message of facade.messages(); track message.id) {
+      <article class="rounded-lg border p-4" [class.bg-accent]="message.role === 'USER'" [class.border-destructive/30]="message.messageType === 'ERROR'" [attr.aria-label]="message.role === 'USER' ? 'Tu pregunta' : labels[message.messageType]">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><span class="font-semibold">{{ message.role === 'USER' ? 'Tú' : 'Asistente' }} · {{ labels[message.messageType] }}</span><time>{{ message.createdAt | date:'dd/MM/yyyy HH:mm' }}</time></div>
+        <p class="whitespace-pre-wrap break-words text-sm leading-6">{{ message.content }}</p>
+        @if (message.state === 'PENDING') { <p class="mt-2 text-xs text-warning" role="status">Turno pendiente. Recarga manualmente el historial para consultar su estado.</p> }
+        @if (message.state === 'FAILED') { <p class="mt-2 text-xs text-destructive">La consulta no se completó.</p> }
+        @if (message.messageType === 'REPORT' && message.reportRunId) {
+          @if (facade.results()[message.id]; as view) { <app-ai-report-result [view]="view" [busy]="!!facade.refreshing()[message.id]" [blocked]="!!facade.attempt() || facade.updatingReport()" (refresh)="facade.refresh(message)" (pageChange)="facade.refresh(message, $event)" /> }
+          @else { <div class="mt-3 border-t pt-3"><p class="text-xs text-muted-foreground">Las filas históricas no se almacenan. Puedes consultar datos actuales mediante una nueva ejecución sin IA.</p><button type="button" (click)="facade.refresh(message)" [disabled]="!!facade.attempt() || facade.updatingReport()" class="mt-2 rounded-md border px-3 py-2 text-sm text-primary disabled:opacity-50">{{ facade.refreshing()[message.id] ? 'Consultando…' : 'Consultar datos actuales' }}</button></div> }
+          @if (facade.canExport()) {
+            <div class="mt-3 space-y-2 border-t pt-3" [attr.aria-busy]="!!facade.exporting()[message.id]">
+              <div class="flex flex-wrap gap-2" role="group" aria-label="Descargar reporte">
+                @for (item of formats; track item.format) {
+                  <button type="button" (click)="facade.export(message, item.format)" [disabled]="facade.downloading()"
+                    class="rounded-md border px-3 py-2 text-xs text-primary hover:bg-muted disabled:opacity-50">
+                    {{ facade.exporting()[message.id] === item.format ? 'Preparando…' : 'Descargar ' + item.label }}
+                  </button>
+                }
+              </div>
+              <p class="text-xs text-muted-foreground">La descarga consulta el reporte completo con datos actuales, sin IA. Puede diferir de lo mostrado. PDF admite hasta 8 columnas; usa filtros si se supera un límite.</p>
+              @if (facade.exporting()[message.id]) { <p role="status" class="text-xs text-muted-foreground">Preparando archivo…</p> }
+            </div>
+          }
+        }
+      </article>
+    } @empty { @if (!facade.loadingHistory()) { <p class="rounded-lg bg-muted p-5 text-sm text-muted-foreground">Esta conversación está vacía. Incluye el período y el reporte que necesitas en tu primera pregunta.</p> } }
+    @if (facade.showLocalAttempt()) { <article class="rounded-lg border bg-accent p-4"><p class="mb-2 text-xs font-semibold text-muted-foreground">Tú · Envío {{ facade.attempt()?.phase === 'sending' ? 'en curso' : 'sin confirmar' }}</p><p class="whitespace-pre-wrap break-words text-sm">{{ facade.attempt()?.message }}</p></article> }
+  </div>
+  @if (facade.attempt(); as attempt) {
+    <div role="status" class="rounded-md border bg-muted p-3 text-sm">
+      @if (attempt.phase === 'sending') { <span class="flex items-center gap-2"><lucide-icon name="loader-circle" class="h-4 w-4 animate-spin" />Procesando tu pregunta…</span> }
+      @else { <p>{{ attempt.phase === 'pending' ? 'El backend tiene esta solicitud pendiente. Puedes recargar el historial o reintentar el mismo envío.' : attempt.error }}</p><button type="button" (click)="facade.retry()" class="mt-2 rounded-md border bg-card px-3 py-2 text-xs text-primary">Reintentar el mismo envío</button> }
+    </div>
+  }
+  <form (ngSubmit)="facade.send()" class="space-y-2 border-t pt-4">
+    @if (facade.updatingReport()) { <p role="status" class="text-xs text-muted-foreground">Espera a que termine la actualización del reporte para enviar una pregunta.</p> }
+    <label for="ai-report-question" class="block text-sm font-medium">Tu pregunta</label>
+    <textarea id="ai-report-question" name="question" rows="3" [maxlength]="maxQuestionLength" [ngModel]="facade.draft()" (ngModelChange)="facade.setDraft($event)" (keydown.enter)="onEnter($event)" [readonly]="!!facade.attempt()" aria-describedby="ai-question-help" placeholder="Por ejemplo: listar empleados al 2026-01-15" class="w-full resize-y rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"></textarea>
+    <div class="flex flex-wrap items-center gap-2 text-xs" aria-live="polite">
+      @if (voiceState() === 'available' || voiceState() === 'error') {
+        <button type="button" (click)="startVoice()" class="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-primary hover:bg-muted"><lucide-icon name="mic" class="h-4 w-4" />Dictar pregunta</button>
+      }
+      @if (voiceState() === 'recording') {
+        <span role="status" class="text-destructive">Grabando… máximo {{ voiceConfigDuration }} s</span>
+        <button type="button" (click)="stopVoice()" class="rounded-md border px-3 py-2">Detener y transcribir</button>
+        <button type="button" (click)="cancelVoice()" class="rounded-md border px-3 py-2">Cancelar</button>
+      }
+      @if (voiceState() === 'processing') {
+        <span role="status">Transcribiendo audio…</span>
+        <button type="button" (click)="cancelVoice()" class="rounded-md border px-3 py-2">Cancelar</button>
+      }
+      @if (voiceState() === 'loading') { <span role="status">Preparando micrófono…</span> }
+      @if (voiceState() === 'requesting') { <span role="status">Solicitando acceso al micrófono…</span><button type="button" (click)="cancelVoice()" class="rounded-md border px-3 py-2">Cancelar</button> }
+      @if (voiceState() === 'disabled') { <span>Dictado no disponible en este entorno.</span> }
+      @if (voiceState() === 'unsupported') { <span>Este navegador no admite grabación de audio compatible.</span> }
+      @if (voiceState() === 'error') { <span role="alert" class="text-destructive">{{ voiceError() }}</span> }
+    </div>
+    @if (voiceState() !== 'disabled') { <p class="text-xs text-muted-foreground">Al dictar, el audio se envía a GroqCloud para transcribirlo. Revisa el texto antes de enviarlo.</p> }
+    <div class="flex flex-wrap items-center justify-between gap-3"><p id="ai-question-help" class="text-xs text-muted-foreground">Enter para enviar · Shift+Enter para un salto de línea · {{ characterCount }}/{{ maxQuestionLength }}</p><button type="submit" [disabled]="!!facade.attempt() || facade.updatingReport() || !facade.draft().trim() || characterCount > maxQuestionLength" class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"><lucide-icon name="send" class="h-4 w-4" />Enviar</button></div>
+  </form>
+</div>

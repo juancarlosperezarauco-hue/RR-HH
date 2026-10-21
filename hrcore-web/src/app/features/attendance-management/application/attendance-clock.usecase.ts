@@ -9,7 +9,7 @@ export class AttendanceClockUseCase {
   private readonly toastService = inject(ToastService);
 
   private readonly DEBOUNCE_KEY = 'hrcore_last_clock_timestamp';
-  private readonly DEBOUNCE_MS = 2 * 60 * 1000; // 120 segundos (2 minutos)
+  private readonly DEBOUNCE_MS = 10 * 1000; // 10 segundos anti-doble marcación
   private debounceTimerInterval: any = null;
 
   readonly clocking = signal<boolean>(false);
@@ -41,6 +41,7 @@ export class AttendanceClockUseCase {
         const remaining = this.remainingDebounceSeconds() - 1;
         if (remaining <= 0) {
           this.remainingDebounceSeconds.set(0);
+          localStorage.removeItem(this.DEBOUNCE_KEY);
           clearInterval(this.debounceTimerInterval);
           this.debounceTimerInterval = null;
         } else {
@@ -49,6 +50,7 @@ export class AttendanceClockUseCase {
       }, 1000);
     } else {
       this.remainingDebounceSeconds.set(0);
+      localStorage.removeItem(this.DEBOUNCE_KEY);
     }
   }
 
@@ -123,7 +125,20 @@ export class AttendanceClockUseCase {
       this.lastPunchResult.set(today);
       return today;
     } catch (err: any) {
-      const msg = err?.error?.message || err?.message || 'Error al procesar marcación';
+      let msg = err?.error?.errors?.[0] || err?.error?.message || err?.message || 'Error al procesar marcación';
+      if (typeof msg !== 'string') {
+        msg = JSON.stringify(msg);
+      }
+      const rawText = (JSON.stringify(err?.error || {}) + ' ' + (err?.message || '')).toLowerCase();
+      if (rawText.includes('invalid punch sequence')) {
+        msg = 'Secuencia de marcación inválida: Verifique el estado del colaborador. No puede marcar entrada si ya está dentro, ni salir si está en pausa o fuera.';
+      } else if (rawText.includes('duplicate punch')) {
+        msg = 'Marcación duplicada: Debe esperar al menos 10 segundos entre marcaciones idénticas.';
+      } else if (rawText.includes('no se pudo asociar la marcación a una jornada laboral') || rawText.includes('inequívoca')) {
+        msg = 'El colaborador no tiene un turno asignado para el día de hoy o su horario es indeterminado. Asigne un turno activo en "Gestión de Turnos" antes de registrar marcaciones.';
+      } else if (msg === 'Solicitud inválida' || msg === 'Bad Request') {
+        msg = 'Secuencia o datos de marcación inválidos para el estado actual del colaborador.';
+      }
       this.error.set(msg);
       this.toastService.error(msg);
       return null;
@@ -149,7 +164,13 @@ export class AttendanceClockUseCase {
       this.toastService.success('Marcación registrada correctamente.');
       return true;
     } catch (err: any) {
-      const message = err?.error?.message || err?.message || 'No se pudo registrar la marcación.';
+      let message = err?.error?.errors?.[0] || err?.error?.message || err?.message || 'No se pudo registrar la marcación.';
+      const rawText = (JSON.stringify(err?.error || {}) + ' ' + (err?.message || '')).toLowerCase();
+      if (rawText.includes('invalid punch sequence')) {
+        message = 'Secuencia de marcación inválida: No puede realizar esta acción en el estado actual de su jornada.';
+      } else if (rawText.includes('duplicate punch')) {
+        message = 'Marcación duplicada: Debe esperar al menos 10 segundos entre marcaciones idénticas.';
+      }
       this.error.set(message);
       this.toastService.error(message);
       return false;

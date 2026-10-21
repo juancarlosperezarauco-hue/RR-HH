@@ -4,11 +4,12 @@ import { RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { BillingInterval, TenantBillingPlan } from '../../entities/billing';
 import { TenantSubscriptionUseCase } from '../../features/billing';
+import { EnterpriseContactComponent } from '../../widgets/pricing/enterprise-contact/enterprise-contact.component';
 
 @Component({
   selector: 'app-subscription-settings-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, EnterpriseContactComponent],
   template: `
     <section class="space-y-8">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -125,12 +126,12 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                 </p>
 
                 <div class="mt-7">
-                  <p class="text-4xl font-black text-foreground">
-                    {{ priceLabel(plan) }}
-                  </p>
-                  <p class="mt-2 text-sm font-bold text-muted-foreground">
-                    {{ billingInterval() === 'MONTHLY' ? 'Facturación mensual' : 'Facturación anual' }}
-                  </p>
+                  <p class="text-4xl font-black text-foreground">{{ priceLabel(plan) }}</p>
+                  @if (plan.planType !== 'ENTERPRISE') {
+                    <p class="mt-2 text-sm font-bold text-muted-foreground">
+                      {{ billingInterval() === 'MONTHLY' ? 'Facturación mensual' : 'Facturación anual' }}
+                    </p>
+                  }
                 </div>
 
                 <ul class="mt-7 space-y-3 text-sm text-muted-foreground">
@@ -142,10 +143,12 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                     <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
                     Roles y permisos para tu equipo
                   </li>
+                  @if (plan.planType !== 'ENTERPRISE') {
                   <li class="flex gap-3">
                     <lucide-icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0 text-primary"></lucide-icon>
                     Pago seguro con Stripe
                   </li>
+                  }
                 </ul>
               </div>
 
@@ -157,6 +160,8 @@ import { TenantSubscriptionUseCase } from '../../features/billing';
                     class="h-11 w-full rounded-xl bg-muted text-sm font-black text-muted-foreground">
                     Plan actual
                   </button>
+                } @else if (plan.planType === 'ENTERPRISE') {
+                  <app-enterprise-contact />
                 } @else if (!canUpgrade(plan)) {
                   <button
                     type="button"

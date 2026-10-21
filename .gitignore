@@ -9,3 +9,7 @@ claude/
 SDD/
 
 backups/
+hrcore-ai-planner/.venv/
+hrcore-ai-planner/.testdeps/
+hrcore-ai-planner/.pytest_cache/
+hrcore-ai-planner/**/__pycache__/

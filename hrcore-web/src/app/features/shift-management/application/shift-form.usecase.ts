@@ -106,8 +106,8 @@ export class ShiftFormUseCase {
       }
       return true;
     } catch (err: unknown) {
-      const errorResponse = err as { error?: { message?: string } };
-      const msg = errorResponse?.error?.message || 'Error al guardar la configuración del turno';
+      const errorResponse = err as { error?: { message?: string; errors?: string[] } };
+      const msg = errorResponse?.error?.errors?.[0] || errorResponse?.error?.message || 'Error al guardar la configuración del turno';
       this.validationError.set(msg);
       this.toastService.error(msg);
       return false;

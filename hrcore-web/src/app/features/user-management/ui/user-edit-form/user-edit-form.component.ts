@@ -2,6 +2,7 @@ import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChange
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UpdateTenantUserRequest, TenantUserResponse } from '../../../../entities/user';
+import { EmployeeSummary } from '../../../../entities/employees/model/employees.model';
 
 @Component({
   selector: 'app-user-edit-form',
@@ -9,6 +10,27 @@ import { UpdateTenantUserRequest, TenantUserResponse } from '../../../../entitie
   imports: [CommonModule, ReactiveFormsModule],
   template: `
     <form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-5">
+      <!-- Vinculación con empleado -->
+      <div class="space-y-2">
+        <label for="employeeEdit" class="text-sm font-semibold text-muted-foreground">
+          Empleado vinculado
+        </label>
+        <select
+          id="employeeEdit"
+          formControlName="employeeId"
+          class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card">
+          <option [ngValue]="null">Sin vincular a empleado</option>
+          @for (emp of availableEmployees; track emp.id) {
+            <option [ngValue]="emp.id">
+              {{ emp.employeeNumber }} — {{ emp.firstName }} {{ emp.lastName }}
+            </option>
+          }
+        </select>
+        <p class="text-xs text-muted-foreground">
+          Puedes asociar este usuario a una ficha de empleado o desvincularlo.
+        </p>
+      </div>
+
       <div class="grid gap-5 sm:grid-cols-2">
         <div class="space-y-2">
           <label for="firstNameEdit" class="text-sm font-semibold text-muted-foreground">Nombre</label>
@@ -44,10 +66,10 @@ import { UpdateTenantUserRequest, TenantUserResponse } from '../../../../entitie
           class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
           [class.border-destructive/30]="isFieldInvalid('email')"
           placeholder="usuario@empresa.com">
-        <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive">Ingresa un correo válido.</span>
+          <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive">Ingresa un correo válido.</span>
       </div>
 
-      <div class="app-modal-footer mt-2 border-t border-border pt-5">
+      <div class="app-modal-footer mt-2 border-t border-border pt-5 flex items-center justify-end gap-3">
         <button
           type="button"
           (click)="onCancel()"
@@ -77,7 +99,8 @@ import { UpdateTenantUserRequest, TenantUserResponse } from '../../../../entitie
 export class UserEditFormComponent implements OnChanges {
   @Input() status: 'idle' | 'loading' | 'success' | 'error' = 'idle';
   @Input() user!: TenantUserResponse;
-  
+  @Input() availableEmployees: EmployeeSummary[] = [];
+
   @Output() formSubmit = new EventEmitter<UpdateTenantUserRequest>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -86,7 +109,8 @@ export class UserEditFormComponent implements OnChanges {
   userForm: FormGroup = this.fb.group({
     firstName: ['', [Validators.required]],
     lastName: ['', [Validators.required]],
-    email: ['', [Validators.required, Validators.email]]
+    email: ['', [Validators.required, Validators.email]],
+    employeeId: [null]
   });
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -94,14 +118,26 @@ export class UserEditFormComponent implements OnChanges {
       this.userForm.patchValue({
         firstName: this.user.firstName,
         lastName: this.user.lastName,
-        email: this.user.email
+        email: this.user.email,
+        employeeId: this.user.employeeId ?? null
       });
     }
   }
 
   onSubmit(): void {
     if (this.userForm.valid && this.status !== 'loading') {
-      this.formSubmit.emit(this.userForm.value);
+      const val = this.userForm.value;
+      const first = (val.firstName || '').trim();
+      const last = (val.lastName || '').trim();
+      const payload: UpdateTenantUserRequest = {
+        email: (val.email || '').trim().toLowerCase(),
+        firstName: first,
+        lastName: last,
+        displayName: `${first} ${last}`.trim(),
+        employeeId: val.employeeId || null
+      };
+
+      this.formSubmit.emit(payload);
     } else {
       this.userForm.markAllAsTouched();
     }

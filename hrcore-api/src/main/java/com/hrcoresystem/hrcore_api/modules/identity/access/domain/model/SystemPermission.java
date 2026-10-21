@@ -12,4 +12,15 @@ public record SystemPermission(
     boolean customRoleAssignable,
     boolean active,
     Instant createdAt) {
+
+    public SystemPermission(
+            String code,
+            String module,
+            String description,
+            PermissionScope scope,
+            boolean customRoleAssignable,
+            boolean active
+    ) {
+        this(UUID.randomUUID(), code, module, description, scope, customRoleAssignable, active, Instant.now());
+    }
 }

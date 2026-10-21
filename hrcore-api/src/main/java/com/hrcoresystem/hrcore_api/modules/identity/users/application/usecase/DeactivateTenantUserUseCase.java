@@ -1,5 +1,6 @@
 package com.hrcoresystem.hrcore_api.modules.identity.users.application.usecase;
 
+import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
 import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
@@ -10,9 +11,10 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUse
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
+import com.hrcoresystem.hrcore_api.common.security.session.domain.repository.TenantAuthSessionRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.hrcoresystem.hrcore_api.common.security.session.domain.repository.TenantAuthSessionRepository;
 
 import java.util.UUID;
 
@@ -24,18 +26,33 @@ public class DeactivateTenantUserUseCase {
     private final AuditTrailService auditTrailService;
     private final TenantAuthorizationStateRepository authorizationStateRepository;
     private final TenantAuthSessionRepository sessions;
+    private final SecurityContextFacade securityContextFacade;
 
+    @Autowired
     public DeactivateTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
             TenantUserMapper tenantUserMapper,
             AuditTrailService auditTrailService,
-            TenantAuthorizationStateRepository authorizationStateRepository, TenantAuthSessionRepository sessions
+            TenantAuthorizationStateRepository authorizationStateRepository,
+            TenantAuthSessionRepository sessions,
+            @Autowired(required = false) SecurityContextFacade securityContextFacade
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserMapper = tenantUserMapper;
         this.auditTrailService = auditTrailService;
         this.authorizationStateRepository = authorizationStateRepository;
         this.sessions = sessions;
+        this.securityContextFacade = securityContextFacade;
+    }
+
+    public DeactivateTenantUserUseCase(
+            TenantUserRepository tenantUserRepository,
+            TenantUserMapper tenantUserMapper,
+            AuditTrailService auditTrailService,
+            TenantAuthorizationStateRepository authorizationStateRepository,
+            TenantAuthSessionRepository sessions
+    ) {
+        this(tenantUserRepository, tenantUserMapper, auditTrailService, authorizationStateRepository, sessions, null);
     }
 
     @Transactional
@@ -45,6 +62,11 @@ public class DeactivateTenantUserUseCase {
 
         if (id.equals(authorizationStateRepository.ownerUserId())) {
             throw new IllegalStateException("The tenant owner cannot be deactivated");
+        }
+
+        UUID currentUserId = securityContextFacade != null ? securityContextFacade.getCurrentUserId() : null;
+        if (currentUserId != null && currentUserId.equals(id)) {
+            throw new IllegalStateException("No es posible desactivar tu propia cuenta activa de administrador o propietario");
         }
 
         TenantUser updatedUser = new TenantUser(

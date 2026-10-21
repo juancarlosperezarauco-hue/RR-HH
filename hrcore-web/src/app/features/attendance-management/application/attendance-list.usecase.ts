@@ -99,9 +99,15 @@ export class AttendanceListUseCase {
         )),
         firstValueFrom(this.employeesService.list(0, 100)).catch(() => null)
       ]);
-      const employees = employeesRes?.data?.content || [];
-      const directory = new Map<string, EmployeeSummary>(employees.map((employee) => [employee.id, employee]));
-      this.records.set((res.data.content || []).map((record) => {
+      const rawEmployees: EmployeeSummary[] = Array.isArray(employeesRes?.data)
+        ? (employeesRes.data as EmployeeSummary[])
+        : (employeesRes?.data?.content || []);
+      const rawRecords: AttendanceRecordResponse[] = Array.isArray(res?.data)
+        ? (res.data as AttendanceRecordResponse[])
+        : (res?.data?.content || []);
+
+      const directory = new Map<string, EmployeeSummary>(rawEmployees.map((employee) => [employee.id, employee]));
+      this.records.set(rawRecords.map((record) => {
         const employee = directory.get(record.employeeId);
         return {
           ...record,

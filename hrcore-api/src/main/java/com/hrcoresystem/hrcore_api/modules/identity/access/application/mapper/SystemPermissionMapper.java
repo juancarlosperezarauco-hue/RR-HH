@@ -8,12 +8,17 @@ import org.springframework.stereotype.Component;
 public class SystemPermissionMapper {
 
     public SystemPermissionResponse toResponse(SystemPermission systemPermission) {
+        return toResponse(systemPermission, true);
+    }
+
+    public SystemPermissionResponse toResponse(SystemPermission systemPermission, boolean includedInPlan) {
         return new SystemPermissionResponse(
                 systemPermission.code(),
                 systemPermission.module(),
                 systemPermission.description(),
                 systemPermission.scope(),
-                systemPermission.customRoleAssignable()
+                systemPermission.customRoleAssignable(),
+                includedInPlan
         );
     }
 }

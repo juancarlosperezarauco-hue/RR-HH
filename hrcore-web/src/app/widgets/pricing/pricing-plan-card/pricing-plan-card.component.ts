@@ -4,11 +4,12 @@ import { RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { PublicBillingPlan } from '../../../entities/billing';
 import { BillingInterval } from '../pricing-page/pricing-page.component';
+import { EnterpriseContactComponent } from '../enterprise-contact/enterprise-contact.component';
 
 @Component({
   selector: 'app-pricing-plan-card',
   standalone: true,
-  imports: [CommonModule, RouterModule, LucideAngularModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule, EnterpriseContactComponent],
   template: `
     <article
       class="relative flex min-h-[650px] flex-col rounded-[30px] border bg-card p-6 shadow-lg"
@@ -65,11 +66,7 @@ import { BillingInterval } from '../pricing-page/pricing-page.component';
             <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
           </a>
         } @else if (plan.contactSales) {
-          <button
-            type="button"
-            class="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-black text-accent-foreground transition-colors hover:bg-background">
-            Contactar ventas
-          </button>
+          <app-enterprise-contact />
         } @else {
           <a
             routerLink="/onboarding"

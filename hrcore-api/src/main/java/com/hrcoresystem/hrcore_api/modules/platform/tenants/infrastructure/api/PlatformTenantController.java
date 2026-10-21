@@ -3,8 +3,10 @@ package com.hrcoresystem.hrcore_api.modules.platform.tenants.infrastructure.api;
 import com.hrcoresystem.hrcore_api.common.response.ApiResponse;
 import com.hrcoresystem.hrcore_api.common.pagination.PaginationSupport;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.dto.CreatePlatformTenantRequest;
+import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.dto.PlatformTenantFilterCriteria;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.dto.PlatformTenantResponse;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.usecase.*;
+import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenantStatus;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
@@ -54,10 +56,39 @@ public class PlatformTenantController {
   @GetMapping
   @PreAuthorize("@authorizationGuards.isPlatformAdmin()")
   public ApiResponse<Page<PlatformTenantResponse>> listTenants(
+      @RequestParam(required = false) String search,
+      @RequestParam(required = false) String name,
+      @RequestParam(required = false) String taxIdentifier,
+      @RequestParam(required = false) String nit,
+      @RequestParam(required = false) String plan,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) Boolean active,
       @ParameterObject @PageableDefault(size = 50) Pageable pageable) {
+
+    String effectiveNit = (taxIdentifier != null && !taxIdentifier.isBlank())
+        ? taxIdentifier
+        : ((nit != null && !nit.isBlank()) ? nit : null);
+
+    PlatformTenantStatus tenantStatus = null;
+    if (status != null && !status.isBlank() && !"all".equalsIgnoreCase(status)) {
+      try {
+        tenantStatus = PlatformTenantStatus.valueOf(status.trim().toUpperCase());
+      } catch (IllegalArgumentException ignored) {
+      }
+    }
+
+    PlatformTenantFilterCriteria criteria = new PlatformTenantFilterCriteria(
+        search,
+        name,
+        effectiveNit,
+        plan,
+        tenantStatus,
+        active
+    );
+
     return ApiResponse.success(
         "Tenants retrieved successfully",
-        PaginationSupport.page(listTenantsUseCase.execute(), pageable));
+        PaginationSupport.page(listTenantsUseCase.execute(criteria), pageable));
   }
 
   @GetMapping("/{id}")

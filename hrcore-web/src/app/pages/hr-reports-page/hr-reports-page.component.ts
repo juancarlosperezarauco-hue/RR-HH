@@ -7,6 +7,7 @@ import { EmployeesService, EmployeeSummary, EmploymentPeriod } from '../../entit
 import { PositionsService, Position } from '../../entities/positions';
 import { HrReportFilters, HrReportId, ReportsService } from '../../entities/reports';
 import { ToastService } from '../../shared/ui/toast/toast.service';
+import { AiConversationPanelComponent } from '../../features/ai-reports/ui/ai-conversation-panel/ai-conversation-panel.component';
 
 type ReportTab = 'classic' | 'custom';
 type ChartType = 'bar' | 'horizontal' | 'donut' | 'line' | 'area';
@@ -19,7 +20,7 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
 @Component({
   selector: 'app-hr-reports-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AiConversationPanelComponent],
   styles: [`
     @media print {
       .no-print { display: none !important; }
@@ -28,7 +29,11 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
     }
   `],
   template: `
-    <section class="report-shell space-y-6 p-6">
+    <nav role="tablist" aria-label="Área de reportes" class="no-print mb-4 flex flex-wrap gap-2 px-6 pt-6">
+      <button id="operational-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='operational'" [attr.tabindex]="area()==='operational'?0:-1" aria-controls="operational-reports" (click)="openArea('operational')" (keydown.arrowright)="focusArea($event, 'assistant')" (keydown.arrowleft)="focusArea($event, 'assistant')" class="rounded-md border px-4 py-2 text-sm" [class.bg-primary]="area()==='operational'" [class.text-primary-foreground]="area()==='operational'">Reportes operativos</button>
+      <button id="assistant-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='assistant'" [attr.tabindex]="area()==='assistant'?0:-1" aria-controls="assistant-reports" (click)="openArea('assistant')" (keydown.arrowright)="focusArea($event, 'operational')" (keydown.arrowleft)="focusArea($event, 'operational')" class="rounded-md border px-4 py-2 text-sm" [class.bg-primary]="area()==='assistant'" [class.text-primary-foreground]="area()==='assistant'">Asistente de reportes</button>
+    </nav>
+    <section id="operational-reports" role="tabpanel" aria-labelledby="operational-reports-tab" [hidden]="area()!=='operational'" class="report-shell space-y-6 p-6">
       <header class="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p class="text-sm font-medium text-primary">Recursos Humanos · información estadística del tenant</p>
@@ -151,14 +156,32 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
         </ng-container>
       </ng-template>
     </section>
+    @if (assistantOpened()) {
+      <div id="assistant-reports" role="tabpanel" aria-labelledby="assistant-reports-tab" [hidden]="area()!=='assistant'">
+        <app-ai-conversation-panel />
+      </div>
+    }
   `
 })
 export class HrReportsPageComponent implements OnInit {
+  readonly area = signal<'operational' | 'assistant'>('operational');
+  readonly assistantOpened = signal(false);
   private readonly reports = inject(ReportsService);
   private readonly departmentsService = inject(DepartmentsService);
   private readonly positionsService = inject(PositionsService);
   private readonly employeesService = inject(EmployeesService);
   private readonly toast = inject(ToastService);
+
+  openArea(area: 'operational' | 'assistant') {
+    this.area.set(area);
+    if (area === 'assistant') this.assistantOpened.set(true);
+  }
+
+  focusArea(event: Event, area: 'operational' | 'assistant') {
+    event.preventDefault();
+    this.openArea(area);
+    document.getElementById(area === 'assistant' ? 'assistant-reports-tab' : 'operational-reports-tab')?.focus();
+  }
 
   readonly tabs: { id: ReportTab; label: string }[] = [
     { id: 'classic', label: 'Estáticos' }, { id: 'custom', label: 'Paramétricos' }

@@ -3,11 +3,20 @@ export interface TenantUserResponse {
   email: string;
   firstName: string | null;
   lastName: string | null;
+  displayName?: string | null;
   active: boolean;
   status: string;
   createdAt: string;
   updatedAt: string;
   roles: AssignedRoleResponse[];
+  employeeId?: string | null;
+  employeeNumber?: string | null;
+  employeeFullName?: string | null;
 }
 
-export interface AssignedRoleResponse { id: string; code: string; name: string; active: boolean; }
+export interface AssignedRoleResponse {
+  id: string;
+  code: string;
+  name: string;
+  active: boolean;
+}

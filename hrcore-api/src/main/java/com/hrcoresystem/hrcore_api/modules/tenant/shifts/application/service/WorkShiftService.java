@@ -137,9 +137,11 @@ public class WorkShiftService {
         ShiftTimeRules.validateShift(request.startTime(), request.endTime(), request.crossesMidnight());
         ShiftTimeRules.validateTolerances(request.startTime(), request.endTime(), request.crossesMidnight(),
                 request.lateToleranceMinutes(), request.earlyDepartureToleranceMinutes());
-        String code = before == null
-                ? (sequences == null ? "TUR-000000" : sequences.nextCode("work_shift"))
-                : before.code();
+        String code = before != null
+                ? before.code()
+                : (request.code() != null && !request.code().isBlank()
+                        ? request.code().trim()
+                        : (sequences == null ? "TUR-000000" : sequences.nextCode("work_shift")));
         return new WorkShift(id, code,
                 required(request.name(), 150, "name"), optional(request.description()),
                 request.startTime(), request.endTime(), request.crossesMidnight(),
