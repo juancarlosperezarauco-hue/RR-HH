@@ -1,13 +1,16 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AccessService, PageResponse, SystemPermissionResponse } from '../../../entities/access';
+import { AuthStorageService } from '../../../shared/lib/storage/auth-storage.service';
 
 export interface PermissionListState { status: 'idle' | 'loading' | 'success' | 'error'; page: PageResponse<SystemPermissionResponse> | null; error: string | null; }
 
 @Injectable({ providedIn: 'root' })
 export class PermissionListUseCase {
   private readonly accessService = inject(AccessService);
+  private readonly authStorage = inject(AuthStorageService);
   private readonly state = signal<PermissionListState>({ status: 'idle', page: null, error: null });
+  private loadedSessionKey = '';
   readonly status = computed(() => this.state().status);
   readonly page = computed(() => this.state().page);
   readonly data = computed(() => this.state().page?.content ?? []);
@@ -17,7 +20,8 @@ export class PermissionListUseCase {
   readonly error = computed(() => this.state().error);
 
   async loadPermissions(_page = 0, size = 200, force = false): Promise<void> {
-    if (!force && this.status() === 'success') return;
+    const sessionKey = this.authStorage.getSessionKey();
+    if (!force && this.status() === 'success' && this.loadedSessionKey === sessionKey) return;
     this.state.set({ status: 'loading', page: null, error: null });
     try {
       const content: SystemPermissionResponse[] = [];
@@ -35,10 +39,11 @@ export class PermissionListUseCase {
       }
       if (!lastPage) throw new Error('El catálogo de permisos está vacío o incompleto');
       this.state.set({ status: 'success', page: { ...lastPage, content, number: 0, first: true, last: true, totalElements: content.length, totalPages: 1, numberOfElements: content.length }, error: null });
+      this.loadedSessionKey = sessionKey;
     } catch (err: any) {
       this.state.set({ status: 'error', page: null, error: err.error?.message || err.message || 'Error al conectar con el servidor' });
     }
   }
 
-  invalidate(): void { this.state.set({ status: 'idle', page: null, error: null }); }
+  invalidate(): void { this.loadedSessionKey = ''; this.state.set({ status: 'idle', page: null, error: null }); }
 }

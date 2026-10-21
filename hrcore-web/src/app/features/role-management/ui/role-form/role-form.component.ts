@@ -29,6 +29,9 @@ export class RoleFormComponent implements OnInit, OnChanges {
 
   roleForm!: FormGroup;
   groupedPermissions: PermissionGroup[] = [];
+  permissionSearch = '';
+  permissionFilter: 'all' | 'selected' | 'available' = 'all';
+  private readonly expandedModules = new Set<string>();
 
   ngOnInit(): void {
     this.initForm();
@@ -71,6 +74,7 @@ export class RoleFormComponent implements OnInit, OnChanges {
       this.roleToEdit.permissionCodes.forEach(code => {
         permissionsArray.push(new FormControl(code));
       });
+      this.syncExpandedModulesToSelection();
     } else {
       this.roleForm.reset();
       (this.roleForm.get('permissionCodes') as FormArray).clear();
@@ -103,6 +107,73 @@ export class RoleFormComponent implements OnInit, OnChanges {
         includedInPlan: included
       };
     }).sort((a, b) => a.module.localeCompare(b.module));
+
+    this.syncExpandedModulesToSelection();
+  }
+
+  private syncExpandedModulesToSelection(): void {
+    this.expandedModules.clear();
+    this.groupedPermissions.forEach(group => {
+      if (group.permissions.some(permission => this.isPermissionSelected(permission.code))) {
+        this.expandedModules.add(group.module);
+      }
+    });
+  }
+
+  visiblePermissionGroups(): PermissionGroup[] {
+    const search = this.permissionSearch.trim().toLowerCase();
+    return this.groupedPermissions
+      .map(group => {
+        const moduleMatches = !search || this.getModuleLabel(group.module).toLowerCase().includes(search);
+        const permissions = group.permissions.filter(permission => {
+          const matchesSearch = moduleMatches
+            || this.getPermissionLabel(permission).toLowerCase().includes(search)
+            || this.getPermissionDescription(permission).toLowerCase().includes(search)
+            || permission.code.toLowerCase().includes(search);
+          const matchesFilter = this.permissionFilter === 'all'
+            || (this.permissionFilter === 'selected' && this.isPermissionSelected(permission.code))
+            || (this.permissionFilter === 'available' && permission.includedInPlan !== false);
+          return matchesSearch && matchesFilter;
+        });
+        return { ...group, permissions };
+      })
+      .filter(group => group.permissions.length > 0);
+  }
+
+  setPermissionSearch(event: Event): void {
+    this.permissionSearch = (event.target as HTMLInputElement).value;
+  }
+
+  setPermissionFilter(filter: 'all' | 'selected' | 'available'): void {
+    this.permissionFilter = filter;
+  }
+
+  isModuleExpanded(module: string): boolean {
+    return this.expandedModules.has(module);
+  }
+
+  toggleModuleExpanded(module: string): void {
+    if (this.expandedModules.has(module)) {
+      this.expandedModules.delete(module);
+    } else {
+      this.expandedModules.add(module);
+    }
+  }
+
+  selectedPermissionCount(): number {
+    return this.permissionsArray.value.length;
+  }
+
+  availablePermissionCount(): number {
+    return this.getAllPermissionCodes().length;
+  }
+
+  selectableCountForGroup(group: PermissionGroup): number {
+    return group.permissions.filter(permission => permission.includedInPlan !== false).length;
+  }
+
+  selectedCountForGroup(group: PermissionGroup): number {
+    return group.permissions.filter(permission => permission.includedInPlan !== false && this.isPermissionSelected(permission.code)).length;
   }
 
   private get permissionsArray(): FormArray {

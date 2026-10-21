@@ -83,6 +83,23 @@ public class TenantPlanEnforcementService {
         assertTenantOperational(currentPolicy());
     }
 
+    /**
+     * Enforces product entitlements independently from role permissions. The
+     * OWNER_ADMIN role intentionally keeps its permissions, but cannot use a
+     * module that is not part of the active subscription.
+     */
+    public void assertModuleIncluded(String module) {
+        TenantSubscriptionPolicySnapshot policy = currentPolicy();
+        assertTenantOperational(policy);
+        String normalized = module == null ? "" : module.trim().toLowerCase();
+        if (!getIncludedModulesForPlan(policy.planCode()).contains(normalized)) {
+            throw new TenantSubscriptionAccessDeniedException(
+                    "El módulo '" + normalized + "' no está incluido en el plan activo '"
+                            + policy.planCode() + "'. Actualiza tu plan para continuar."
+            );
+        }
+    }
+
     public void assertCanCreateUser(long currentActiveUsers) {
         TenantSubscriptionPolicySnapshot policy = currentPolicy();
         assertTenantOperational(policy);

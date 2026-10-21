@@ -13,10 +13,13 @@ import java.util.Set;
 import java.util.TreeMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Coordinates one request synchronously so Spring's security and tenant context remain intact. */
 @Service
 public final class AiQueryOrchestrator {
+    private static final Logger log = LoggerFactory.getLogger(AiQueryOrchestrator.class);
     public record PlannedQuery(AiQueryResponse response, JsonNode validatedPlan) {}
 
     private final AnalyticAuthorizationPolicy authorization;
@@ -67,19 +70,34 @@ public final class AiQueryOrchestrator {
         if (capabilities.isEmpty())
             throw new QueryPlanException(QueryPlanException.Code.QUERY_NOT_ALLOWED);
 
+        log.info("AI report orchestration started datasets={} questionLength={} hasConversationContext={}",
+                capabilities.keySet(), question == null ? 0 : question.length(), conversationContext != null);
+
         AiPlannerClient.Reply reply = planner.plan(new AiPlannerClient.Request(
                 "1", question, SemanticCatalogV1.VERSION, capabilities, semanticContext(capabilities),
                 safeConversationContext(conversationContext)));
         return switch (reply.status()) {
             case "query_plan" -> {
                 JsonNode plan = reply.plan().deepCopy();
-                yield new PlannedQuery(AiQueryResponse.ok(queries.execute(plan.toString())), plan);
+                log.info("AI plan accepted; validating, authorizing and executing dataset={} mode={}",
+                        plan.path("dataset").asText(), plan.path("mode").asText());
+                QueryResultV1 result = queries.execute(plan.toString());
+                log.info("AI report query completed dataset={} rows={} columns={} hasMore={} warnings={}",
+                        plan.path("dataset").asText(), result.rows().size(), result.columns().size(),
+                        result.hasMore(), result.warnings());
+                yield new PlannedQuery(AiQueryResponse.ok(result), plan);
             }
-            case "needs_clarification" -> new PlannedQuery(AiQueryResponse.clarification(
-                    reply.question() == null ? "¿Qué información adicional necesitas proporcionar?"
-                            : reply.question(), reply.reasonCode()), null);
-            case "unsupported" -> new PlannedQuery(AiQueryResponse.unsupported(safeUnsupported(reply.reasonCode()),
-                    reply.reasonCode()), null);
+            case "needs_clarification" -> {
+                log.info("AI planner requested clarification reasonCode={}", reply.reasonCode());
+                yield new PlannedQuery(AiQueryResponse.clarification(
+                        reply.question() == null ? "¿Qué información adicional necesitas proporcionar?"
+                                : reply.question(), reply.reasonCode()), null);
+            }
+            case "unsupported" -> {
+                log.info("AI planner rejected request reasonCode={}", reply.reasonCode());
+                yield new PlannedQuery(AiQueryResponse.unsupported(safeUnsupported(reply.reasonCode()),
+                        reply.reasonCode()), null);
+            }
             default -> throw new AiFlowException(AiFlowException.Code.INVALID_PLANNER_RESPONSE);
         };
     }
