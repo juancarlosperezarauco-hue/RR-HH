@@ -10,6 +10,8 @@ import { RoleListUseCase } from '../../features/role-management';
 import { AuthFacade } from '../../shared/lib/auth/auth.facade';
 import { PermissionService } from '../../shared/lib/auth/permission.service';
 import { TenantNavigationService } from '../../shared/lib/navigation/tenant-navigation.service';
+import { TenantLanguageStateService } from '../../shared/lib/i18n/tenant-language-state.service';
+import { TenantTextKey } from '../../shared/lib/i18n/keys';
 
 interface DashboardItem { key: string; label: string; value: unknown; }
 interface DashboardGroup { key: string; label: string; max: number; items: DashboardItem[]; }
@@ -114,6 +116,8 @@ export class TenantHomePageComponent implements OnInit {
   readonly auth = inject(AuthFacade);
   readonly permissions = inject(PermissionService);
   readonly navigation = inject(TenantNavigationService);
+  private readonly languageState = inject(TenantLanguageStateService);
+  t(key: TenantTextKey): string { return this.languageState.t(key); }
   readonly dashboard = inject(TenantDashboardUseCase);
   readonly roles = inject(RoleListUseCase);
   readonly loadingSkeleton = [1, 2, 3, 4];

@@ -11,6 +11,14 @@ public final class TenantSettingKeys {
     public static final String COMPANY_COUNTRY = "company.country";
     public static final String COMPANY_ADDRESS = "company.address";
     public static final String COMPANY_TAX_IDENTIFIER = "company.tax_identifier";
+    public static final String APPEARANCE_PRESET = "appearance.preset";
+    public static final String APPEARANCE_PRIMARY = "appearance.primary";
+    public static final String APPEARANCE_SECONDARY = "appearance.secondary";
+    public static final String APPEARANCE_SIDEBAR = "appearance.sidebar";
+    public static final String APPEARANCE_MODE = "appearance.mode";
+    public static final String REGIONAL_LANGUAGE = "regional.language";
+    public static final String REGIONAL_DATE_FORMAT = "regional.date_format";
+    public static final String REGIONAL_NUMBER_FORMAT = "regional.number_format";
     public static final String HR_SETUP_COMPLETED = "hr.setup_completed";
     public static final String ATTENDANCE_EMPLOYEE_WEB_PUNCH_ENABLED = "attendance.employee_web_punch_enabled";
     public static final String ATTENDANCE_GEOLOCATION_REQUIRED = "attendance.geolocation_required";
