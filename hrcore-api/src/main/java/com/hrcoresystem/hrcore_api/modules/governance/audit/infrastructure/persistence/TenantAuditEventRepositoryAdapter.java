@@ -1,12 +1,17 @@
 package com.hrcoresystem.hrcore_api.modules.governance.audit.infrastructure.persistence;
 
+import com.hrcoresystem.hrcore_api.modules.governance.audit.application.dto.TenantAuditFilterCriteria;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.TenantAuditEvent;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.repository.TenantAuditEventRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public class TenantAuditEventRepositoryAdapter implements TenantAuditEventRepository {
@@ -30,11 +35,27 @@ public class TenantAuditEventRepositoryAdapter implements TenantAuditEventReposi
     }
 
     @Override
+    public Optional<TenantAuditEvent> findById(UUID id) {
+        return jpaRepository.findById(id).map(this::toDomain);
+    }
+
+    @Override
     public List<TenantAuditEvent> findAll() {
         return jpaRepository.findAll(AUDIT_SORT)
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Page<TenantAuditEvent> findAll(TenantAuditFilterCriteria criteria, Pageable pageable) {
+        Pageable effectivePageable = pageable;
+        if (pageable.getSort().isUnsorted()) {
+            effectivePageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), AUDIT_SORT);
+        }
+
+        return jpaRepository.findAll(TenantAuditEventSpecifications.fromCriteria(criteria), effectivePageable)
+                .map(this::toDomain);
     }
 
     @Override

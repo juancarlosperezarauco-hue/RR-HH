@@ -36,6 +36,24 @@ public class PlatformTenantEntity {
     @Column(nullable = false)
     private boolean active;
 
+    @Column(length = 200)
+    private String legalName;
+
+    @Column(length = 50)
+    private String taxIdentifier;
+
+    @Column(length = 150)
+    private String contactEmail;
+
+    @Column(length = 50)
+    private String contactPhone;
+
+    @Column(length = 200)
+    private String ownerName;
+
+    @Column(length = 150)
+    private String ownerEmail;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -116,6 +134,54 @@ public class PlatformTenantEntity {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public String getLegalName() {
+        return legalName;
+    }
+
+    public void setLegalName(String legalName) {
+        this.legalName = legalName;
+    }
+
+    public String getTaxIdentifier() {
+        return taxIdentifier;
+    }
+
+    public void setTaxIdentifier(String taxIdentifier) {
+        this.taxIdentifier = taxIdentifier;
+    }
+
+    public String getContactEmail() {
+        return contactEmail;
+    }
+
+    public void setContactEmail(String contactEmail) {
+        this.contactEmail = contactEmail;
+    }
+
+    public String getContactPhone() {
+        return contactPhone;
+    }
+
+    public void setContactPhone(String contactPhone) {
+        this.contactPhone = contactPhone;
+    }
+
+    public String getOwnerName() {
+        return ownerName;
+    }
+
+    public void setOwnerName(String ownerName) {
+        this.ownerName = ownerName;
+    }
+
+    public String getOwnerEmail() {
+        return ownerEmail;
+    }
+
+    public void setOwnerEmail(String ownerEmail) {
+        this.ownerEmail = ownerEmail;
     }
 
     public Instant getCreatedAt() {

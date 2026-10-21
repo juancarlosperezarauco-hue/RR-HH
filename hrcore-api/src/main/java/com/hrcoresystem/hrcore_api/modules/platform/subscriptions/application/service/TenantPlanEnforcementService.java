@@ -14,6 +14,10 @@ import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.Platfor
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.repository.PlatformTenantRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 @Service
 public class TenantPlanEnforcementService {
 
@@ -85,8 +89,8 @@ public class TenantPlanEnforcementService {
 
         if (currentActiveUsers >= policy.maxUsers()) {
             throw new TenantSubscriptionAccessDeniedException(
-                    "Your current plan '" + policy.planCode() + "' allows a maximum of "
-                    + policy.maxUsers() + " users (active or pending). Upgrade is required to create more users."
+                    "El plan contratado '" + policy.planCode() + "' permite un máximo de "
+                    + policy.maxUsers() + " usuarios (activos o pendientes). Para registrar más usuarios debe mejorar su plan de suscripción."
             );
         }
     }
@@ -97,8 +101,8 @@ public class TenantPlanEnforcementService {
 
         if (currentActiveUsers >= policy.maxUsers()) {
             throw new TenantSubscriptionAccessDeniedException(
-                    "Your current plan '" + policy.planCode() + "' allows a maximum of "
-                    + policy.maxUsers() + " users (active or pending). Upgrade is required to activate more users."
+                    "El plan contratado '" + policy.planCode() + "' permite un máximo de "
+                    + policy.maxUsers() + " usuarios activos. Para activar más usuarios debe desactivar otro usuario o mejorar su plan."
             );
         }
     }
@@ -124,6 +128,70 @@ public class TenantPlanEnforcementService {
                     "Your current plan '" + policy.planCode() + "' allows a maximum of "
                     + policy.maxRoles() + " active custom roles. Upgrade is required to activate more roles."
             );
+        }
+    }
+
+    public Set<String> getIncludedModulesForPlan(String planCode) {
+        if (planCode == null) return Set.of();
+        String code = planCode.trim().toUpperCase();
+        return switch (code) {
+            case "BASIC" -> Set.of(
+                    "users", "departments", "positions", "employees", "contracts",
+                    "employee_files", "tenantsettings", "dashboard", "notifications"
+            );
+            case "PRO", "PROFESSIONAL" -> Set.of(
+                    "users", "departments", "positions", "employees", "contracts",
+                    "employee_files", "shifts", "attendance", "leaves",
+                    "tenantsettings", "dashboard", "notifications"
+            );
+            case "ENTERPRISE", "DEMO", "FREE" -> Set.of(
+                    "users", "departments", "positions", "employees", "contracts",
+                    "employee_files", "shifts", "attendance", "leaves", "incidents",
+                    "hr.reports", "backups", "tenantsettings", "dashboard", "notifications"
+            );
+            default -> Set.of(
+                    "users", "departments", "positions", "employees", "contracts",
+                    "employee_files", "tenantsettings", "dashboard", "notifications"
+            );
+        };
+    }
+
+    public boolean isModuleIncludedInCurrentPlan(String module) {
+        if (module == null || module.isBlank()) return false;
+        try {
+            TenantSubscriptionPolicySnapshot policy = currentPolicy();
+            return getIncludedModulesForPlan(policy.planCode()).contains(module.trim().toLowerCase());
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public void assertCanAssignPermissions(List<String> permissionCodes, Map<String, String> codeToModuleMap) {
+        if (permissionCodes == null || permissionCodes.isEmpty()) {
+            return;
+        }
+
+        TenantSubscriptionPolicySnapshot policy = currentPolicy();
+        assertTenantOperational(policy);
+
+        Set<String> allowedModules = getIncludedModulesForPlan(policy.planCode());
+
+        for (String permissionCode : permissionCodes) {
+            if (permissionCode == null || permissionCode.isBlank()) continue;
+            String normalizedCode = permissionCode.trim();
+            String module = codeToModuleMap != null ? codeToModuleMap.get(normalizedCode) : null;
+            if (module == null) {
+                int firstDot = normalizedCode.indexOf('.');
+                module = firstDot > 0 ? normalizedCode.substring(0, firstDot) : normalizedCode;
+            }
+
+            if (!allowedModules.contains(module.toLowerCase())) {
+                throw new TenantSubscriptionAccessDeniedException(
+                        "El módulo '" + module + "' (permiso: " + normalizedCode
+                        + ") no está incluido en el plan activo '" + policy.planCode()
+                        + "'. Actualiza tu plan de suscripción para asignar permisos sobre este módulo."
+                );
+            }
         }
     }
 

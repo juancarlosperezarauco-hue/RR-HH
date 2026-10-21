@@ -33,18 +33,28 @@ export class UserRoleUseCase {
     this.state.set({ status: 'loading', userId, userRoles: [], availableRoles: [], error: null });
 
     try {
-      // Cargamos en paralelo los roles del usuario y todos los roles del tenant para mostrar opciones
       const [userRolesRes, allRolesRes] = await Promise.all([
         firstValueFrom(this.accessService.getUserRoles(userId)),
         this.loadAllRoles()
       ]);
 
       if (userRolesRes.success && userRolesRes.data && userRolesRes.data.userId === userId && allRolesRes.length >= 0) {
+        const userRoles = userRolesRes.data.roles;
+        const activeRoles = allRolesRes.filter(r => r.active && !r.systemRole && r.code !== 'OWNER_ADMIN');
+        
+        // Incluir roles previamente asignados que puedan estar inactivos para permitir su revocación
+        const availableRoles = [...activeRoles];
+        for (const assigned of userRoles) {
+          if (!availableRoles.some(r => r.id === assigned.id) && !assigned.systemRole && assigned.code !== 'OWNER_ADMIN') {
+            availableRoles.push(assigned);
+          }
+        }
+
         this.state.set({ 
-          status: 'idle', // Lo dejamos ready pero idle para asignación
+          status: 'idle',
           userId,
-          userRoles: userRolesRes.data.roles,
-          availableRoles: allRolesRes.filter(r => r.active && !r.systemRole && r.code !== 'OWNER_ADMIN'),
+          userRoles,
+          availableRoles,
           error: null 
         });
       } else {

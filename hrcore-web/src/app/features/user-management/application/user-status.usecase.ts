@@ -42,7 +42,8 @@ export class UserStatusUseCase {
         return false;
       }
     } catch (err: any) {
-      const errorMsg = err.error?.message || err.message || 'Error al conectar con el servidor';
+      const detailError = Array.isArray(err.error?.errors) && err.error.errors.length > 0 ? err.error.errors[0] : null;
+      const errorMsg = detailError || err.error?.message || err.message || 'Error al conectar con el servidor';
       this.state.set({ status: 'error', error: errorMsg });
       return false;
     }
