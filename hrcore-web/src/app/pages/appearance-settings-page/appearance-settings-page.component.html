@@ -1,0 +1,94 @@
+<main class="appearance-page" aria-labelledby="appearance-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">{{ t('appearance.eyebrow') }}</p>
+      <h1 id="appearance-title">{{ t('appearance.title') }}</h1>
+      <p class="intro">{{ t('appearance.intro') }}</p>
+      @if (loading) { <p class="appearance-notice" role="status">{{ t('appearance.loading') }}</p> }
+      @if (loadError) { <p class="appearance-notice is-error" role="alert">{{ message(loadError) }} <button type="button" [disabled]="loading || saving" (click)="loadAppearance()">{{ t('appearance.retry') }}</button></p> }
+    </div>
+    <span class="stage-badge"><lucide-icon name="eye" [size]="16" aria-hidden="true"></lucide-icon> {{ t('appearance.preview') }}</span>
+  </header>
+
+  <div class="workspace-grid">
+    <div class="editor-column">
+      <section class="editor-section" aria-labelledby="presets-title">
+        <div class="section-heading"><span class="section-number">01</span><div><h2 id="presets-title">{{ t('appearance.presetsTitle') }}</h2><p>{{ t('appearance.presetsHelp') }}</p></div></div>
+        <div class="preset-grid">
+          @for (preset of presets; track preset.id) {
+            <button type="button" class="preset-card" [disabled]="saving" [class.is-selected]="selectedPresetId === preset.id" [attr.aria-pressed]="selectedPresetId === preset.id" (click)="selectPreset(preset)">
+              <span class="mini-dashboard" [ngStyle]="thumbnailStyles(preset)" aria-hidden="true"><span class="mini-sidebar"><span></span><span></span><span></span></span><span class="mini-main"><span class="mini-bar"></span><span class="mini-cards"><span></span><span></span></span><span class="mini-line"></span></span></span>
+              <span class="preset-copy"><strong>{{ presetName(preset) }}</strong><small>{{ presetDescription(preset) }}</small></span>
+              @if (selectedPresetId === preset.id) { <lucide-icon class="preset-check" name="check" [size]="16" aria-hidden="true"></lucide-icon> }
+            </button>
+          }
+        </div>
+        @if (customized) { <p class="custom-note" role="status"><lucide-icon name="pencil" [size]="15" aria-hidden="true"></lucide-icon> {{ t('appearance.customized') }} {{ selectedPresetName }}</p> }
+      </section>
+
+      <section class="editor-section" aria-labelledby="palette-title">
+        <div class="section-heading"><span class="section-number">02</span><div><h2 id="palette-title">{{ t('appearance.paletteTitle') }}</h2><p>{{ t('appearance.paletteHelp') }}</p></div></div>
+        <div class="base-color-row">
+          <label class="color-picker-label" for="base-color-picker">{{ t('appearance.baseColor') }}
+            <input id="base-color-picker" type="color" [disabled]="saving" [value]="baseColor" (input)="onBaseColorPicker($any($event.target).value)">
+          </label>
+          <label class="hex-label" for="base-color-hex">{{ t('appearance.hexCode') }}
+            <input id="base-color-hex" type="text" inputmode="text" maxlength="7" spellcheck="false" [disabled]="saving" [value]="baseColorDraft" [attr.aria-invalid]="!isHexColor(baseColorDraft)" aria-describedby="base-color-help" (input)="onBaseColorInput($any($event.target).value)">
+          </label>
+          <button type="button" class="generate-button" [disabled]="saving || !isHexColor(baseColorDraft)" (click)="generate()"><lucide-icon name="wand-2" [size]="16" aria-hidden="true"></lucide-icon> {{ t('appearance.generate') }}</button>
+        </div>
+        <p id="base-color-help" class="field-help">{{ t('appearance.hexHelp') }}</p>
+        @if (!isHexColor(baseColorDraft)) { <p class="hex-error" role="alert">{{ t('appearance.hexGenerateError') }}</p> }
+        @if (palettes.length) {
+          <div class="palette-grid" [attr.aria-label]="t('appearance.generatedPalettes')">
+            @for (option of palettes; track option.id) {
+              <button type="button" class="palette-card" [disabled]="saving" [class.is-selected]="selectedPaletteId === option.id" [attr.aria-pressed]="selectedPaletteId === option.id" (click)="applyPalette(option)">
+                <span class="palette-swatches" [ngStyle]="paletteStyles(option)" aria-hidden="true"><span></span><span></span><span></span></span>
+                <strong>{{ paletteName(option) }}</strong><small>{{ paletteDescription(option) }}</small>
+              </button>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="editor-section" aria-labelledby="manual-title">
+        <div class="section-heading"><span class="section-number">03</span><div><h2 id="manual-title">{{ t('appearance.manualTitle') }}</h2><p>{{ t('appearance.manualHelp') }}</p></div></div>
+        <div class="manual-fields">
+          @for (field of colorFields; track field.key) {
+            <div class="manual-field">
+              <div class="manual-field-copy"><label [for]="field.key + '-picker'">{{ colorLabel(field.key) }}</label><small>{{ colorDescription(field.key) }}</small></div>
+              <input class="manual-color-picker" [id]="field.key + '-picker'" type="color" [disabled]="saving" [value]="colors[field.key]" [attr.aria-label]="t('appearance.chooseColor') + ' ' + colorLabel(field.key)" (input)="onColorPicker(field.key, $any($event.target).value)">
+              <div class="manual-hex"><label class="sr-only" [for]="field.key + '-hex'">{{ t('appearance.hexOf') }} {{ colorLabel(field.key) }}</label><input [id]="field.key + '-hex'" type="text" maxlength="7" spellcheck="false" [disabled]="saving" [value]="colorDrafts[field.key]" [attr.aria-invalid]="isColorDraftInvalid(field.key)" [attr.aria-describedby]="isColorDraftInvalid(field.key) ? field.key + '-error' : null" (input)="onHexInput(field.key, $any($event.target).value)"></div>
+              @if (isColorDraftInvalid(field.key)) { <p class="hex-error" [id]="field.key + '-error'" role="alert">{{ t('appearance.hexError') }}</p> }
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="editor-section" aria-labelledby="logo-title">
+        <div class="section-heading"><span class="section-number">04</span><div><h2 id="logo-title">{{ t('appearance.logoTitle') }}</h2><p>{{ t('appearance.logoHelp') }}</p></div></div>
+        <div class="logo-row">
+          <div class="logo-sample" aria-hidden="true"><img [src]="logoUrl || '/logo.png'" alt=""></div>
+          <div class="logo-controls"><label for="logo-file">{{ t('appearance.logoSelect') }}</label><input id="logo-file" type="file" [disabled]="saving" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" (change)="onLogoSelected($event)" aria-describedby="logo-help"><p id="logo-help" class="field-help">{{ t('appearance.logoFormats') }}</p></div>
+        </div>
+        @if (logoName) { <div class="logo-selected"><span class="truncate">{{ logoName }}</span><button type="button" [disabled]="saving" (click)="removeLogo()">{{ t('appearance.logoRemove') }}</button></div> }
+        @if (logoError) { <p class="logo-error" role="alert">{{ t(logoError) }}</p> }
+      </section>
+    </div>
+
+    <div class="preview-column">
+      <section class="preview-panel" aria-labelledby="preview-title">
+        <div class="preview-toolbar"><div><p class="eyebrow">{{ t('appearance.previewEyebrow') }}</p><h2 id="preview-title">{{ t('appearance.previewTitle') }}</h2></div><span class="preview-only">{{ t('appearance.previewOnly') }}</span></div>
+        <div class="mode-controls" role="group" [attr.aria-label]="t('appearance.previewMode')"><button type="button" [disabled]="saving" [class.is-active]="mode === 'light'" [attr.aria-pressed]="mode === 'light'" (click)="setMode('light')"><lucide-icon name="monitor" [size]="16" aria-hidden="true"></lucide-icon> {{ t('appearance.light') }}</button><button type="button" [disabled]="saving" [class.is-active]="mode === 'dark'" [attr.aria-pressed]="mode === 'dark'" (click)="setMode('dark')"><lucide-icon name="eye" [size]="16" aria-hidden="true"></lucide-icon> {{ t('appearance.dark') }}</button></div>
+
+        <div class="preview-shell" [ngStyle]="previewStyles" [attr.data-mode]="mode" [attr.aria-label]="t('appearance.previewPanel')">
+          <aside class="demo-sidebar"><div class="demo-brand"><img [src]="logoUrl || '/logo.png'" alt=""><strong>{{ t('appearance.demoCompany') }}</strong></div><div class="demo-nav"><span class="demo-nav-active"><lucide-icon name="layout-dashboard" [size]="15" aria-hidden="true"></lucide-icon> {{ t('appearance.demoHome') }}</span><span><lucide-icon name="users" [size]="15" aria-hidden="true"></lucide-icon> {{ t('appearance.demoTeam') }}</span><span><lucide-icon name="calendar" [size]="15" aria-hidden="true"></lucide-icon> {{ t('appearance.demoCalendar') }}</span></div><span class="demo-sidebar-foot">HRCore · {{ t('appearance.demoPreview') }}</span></aside>
+          <div class="demo-content"><header class="demo-header"><div><small>{{ t('appearance.demoPanel') }}</small><strong>{{ t('appearance.demoSummary') }}</strong></div><span class="demo-avatar" aria-hidden="true">A</span></header><div class="demo-body"><div class="demo-welcome"><div><small>{{ t('appearance.demoWelcome') }}</small><h3>{{ t('appearance.demoTeamOverview') }}</h3></div><span class="demo-primary-action">{{ t('appearance.demoNewRequest') }}</span></div><div class="demo-stats"><div class="demo-stat"><small>{{ t('appearance.demoActivePeople') }}</small><strong>128</strong><span>+8 {{ t('appearance.demoThisMonth') }}</span></div><div class="demo-stat"><small>{{ t('appearance.demoAttendance') }}</small><strong>96%</strong><span>{{ t('appearance.demoGoodPerformance') }}</span></div><div class="demo-stat"><small>{{ t('appearance.demoPending') }}</small><strong>05</strong><span>{{ t('appearance.demoToReview') }}</span></div></div><div class="demo-bottom"><div class="demo-table-card"><div class="demo-card-heading"><strong>{{ t('appearance.demoRecentActivity') }}</strong><span class="demo-text-action">{{ t('appearance.demoViewAll') }}</span></div><table><thead><tr><th>{{ t('appearance.demoPerson') }}</th><th>{{ t('appearance.demoArea') }}</th><th>{{ t('appearance.demoStatus') }}</th></tr></thead><tbody><tr><td>María López</td><td>{{ t('appearance.demoOperations') }}</td><td><span class="demo-status">{{ t('appearance.demoActive') }}</span></td></tr><tr><td>Carlos Vega</td><td>{{ t('appearance.demoTalent') }}</td><td><span class="demo-status">{{ t('appearance.demoActive') }}</span></td></tr></tbody></table></div><div class="demo-form-card"><strong>{{ t('appearance.demoQuickAction') }}</strong><label>{{ t('appearance.demoFindPerson') }}<span class="demo-input">{{ t('appearance.demoNameOrEmail') }}</span></label><span class="demo-secondary-action">{{ t('appearance.demoFindInTeam') }}</span></div></div></div></div>
+        </div>
+        @if (contrastWarnings.length) { <div class="contrast-alert" role="status"><lucide-icon name="alert-triangle" [size]="17" aria-hidden="true"></lucide-icon><span>{{ t('appearance.contrastReview') }} {{ contrastWarnings.join('; ') }}. {{ t('appearance.contrastAdjusted') }}</span></div> }
+        @else { <p class="contrast-ok" role="status"><lucide-icon name="check-circle" [size]="16" aria-hidden="true"></lucide-icon> {{ t('appearance.contrastOk') }}</p> }
+      </section>
+      <div class="actions-panel"><div class="secondary-actions"><button type="button" [disabled]="saving || !hasConfirmedSettings" (click)="cancel()">{{ t('appearance.cancel') }}</button><button type="button" [disabled]="saving" (click)="restoreOriginal()"><lucide-icon name="rotate-ccw" [size]="16" aria-hidden="true"></lucide-icon> {{ t('appearance.restore') }}</button></div><div class="save-area"><button type="button" [disabled]="!canSave" aria-describedby="save-help" (click)="save()"><lucide-icon name="save" [size]="16" aria-hidden="true"></lucide-icon> {{ saving ? t('appearance.saving') : t('appearance.save') }}</button><p id="save-help">@if (loading) { {{ t('appearance.saveLoading') }} } @else if (loadFailed) { {{ t('appearance.saveBlocked') }} } @else { {{ t('appearance.saveHelp') }} }</p>@if (saveMessage) { <p class="appearance-notice is-success" role="status">{{ message(saveMessage) }}</p> }@if (saveError) { <p class="appearance-notice is-error" role="alert">{{ message(saveError) }}</p> }</div></div>
+    </div>
+  </div>
+</main>

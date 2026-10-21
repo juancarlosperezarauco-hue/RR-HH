@@ -61,6 +61,7 @@ export const routes: Routes = [
       { path: 'home', loadComponent: () => import('./pages/tenant-home-page/tenant-home-page.component').then(m => m.TenantHomePageComponent) },
       { path: 'company-setup', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/company-setup-page/company-setup-page.component').then(m => m.CompanySetupPageComponent) },
       { path: 'company-settings', canActivate: [tenantSetupGuard], loadComponent: () => import('./pages/company-settings-page/company-settings-page.component').then(m => m.CompanySettingsPageComponent) },
+      { path: 'appearance-settings', canActivate: [tenantRoleGuard('OWNER_ADMIN', '/dashboard/access-denied')], loadComponent: () => import('./pages/appearance-settings-page/appearance-settings-page.component').then(m => m.AppearanceSettingsPageComponent) },
       {
         path: 'audit',
         canActivate: [tenantRoleGuard('OWNER_ADMIN', '/dashboard/access-denied'), permissionGuard(TENANT_ROUTE_PERMISSIONS.audit)],

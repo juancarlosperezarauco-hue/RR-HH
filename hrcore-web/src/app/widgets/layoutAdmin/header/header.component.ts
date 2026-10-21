@@ -10,6 +10,8 @@ import { PermissionService } from '../../../shared/lib/auth/permission.service';
 import { NotificationsService, NotificationResponse } from '../../../entities/notifications';
 import { environment } from '../../../../environments/environment';
 import { NavigationScope } from '../../../shared/lib/navigation';
+import { TenantLanguageStateService } from '../../../shared/lib/i18n/tenant-language-state.service';
+import { TenantTextKey } from '../../../shared/lib/i18n/keys';
 
 interface MenuItem {
   label: string;
@@ -38,10 +40,8 @@ interface MenuItem {
         <h1 class="ml-10 text-xl font-semibold tracking-tight text-primary md:ml-0">
           @if (isPlatformRoute) {
             Panel de Control - Plataforma
-          } @else if (isOwnerAdmin) {
-            Panel de Control
           } @else {
-            Panel de Control
+            {{ t('shell.dashboard') }}
           }
         </h1>
       </div>
@@ -68,14 +68,14 @@ interface MenuItem {
                 class="absolute right-0 mt-2 w-96 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-border bg-card shadow-lg z-50">
                 <div class="flex items-center justify-between border-b border-border bg-accent px-4 py-3">
                   <div>
-                    <p class="text-sm font-semibold text-primary">Notificaciones</p>
-                    <p class="text-xs text-muted-foreground">{{ unreadNotifications() }} sin leer</p>
+                    <p class="text-sm font-semibold text-primary">{{ t('shell.notifications') }}</p>
+                    <p class="text-xs text-muted-foreground">{{ unreadNotifications() }} {{ t('shell.unread') }}</p>
                   </div>
                   <button
                     type="button"
                     (click)="markAllAsRead()"
                     class="cursor-pointer rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-accent">
-                    Marcar todo
+                    {{ t('shell.markAll') }}
                   </button>
                 </div>
 
@@ -83,7 +83,7 @@ interface MenuItem {
                   @if (notificationsLoading) {
                     <div class="flex items-center justify-center gap-3 p-6 text-sm text-muted-foreground">
                       <lucide-icon name="loader-2" [size]="16" class="animate-spin"></lucide-icon>
-                      Cargando...
+                      {{ t('shell.loading') }}
                     </div>
                   } @else {
                     @for (notification of notificationPreview(); track notification.id) {
@@ -98,7 +98,7 @@ interface MenuItem {
                           <div class="flex items-center justify-between gap-2">
                             <p class="truncate text-sm font-semibold text-accent-foreground">{{ notification.title }}</p>
                             @if (notification.status === 'UNREAD') {
-                              <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">Nueva</span>
+                              <span class="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{{ t('shell.new') }}</span>
                             }
                           </div>
                           <p class="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{{ notification.body }}</p>
@@ -107,7 +107,7 @@ interface MenuItem {
                       </button>
                     } @empty {
                       <div class="p-6 text-center text-sm text-muted-foreground">
-                        No hay notificaciones recientes.
+                        {{ t('shell.noNotifications') }}
                       </div>
                     }
                   }
@@ -118,7 +118,7 @@ interface MenuItem {
                     type="button"
                     (click)="goToNotifications()"
                     class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
-                    Ver bandeja
+                    {{ t('shell.inbox') }}
                   </button>
                 </div>
               </div>
@@ -138,7 +138,7 @@ interface MenuItem {
               @if (getProfilePhotoUrl()) {
                 <img
                   [src]="getProfilePhotoUrl()"
-                  [alt]="getDisplayName() || 'Usuario'"
+                  [alt]="getDisplayName() || (isPlatformRoute ? 'Usuario' : t('shell.user'))"
                   class="h-full w-full object-cover">
               } @else {
                 <div class="flex h-full w-full items-center justify-center">
@@ -205,7 +205,7 @@ interface MenuItem {
                 class="group flex w-full cursor-pointer items-center px-4 py-2 text-sm text-destructive transition-colors hover:bg-destructive/5"
               >
                 <lucide-icon name="log-out" class="mr-3 h-4 w-4 text-destructive/70 group-hover:text-destructive"></lucide-icon>
-                Cerrar Sesión
+                {{ isPlatformRoute ? 'Cerrar Sesión' : t('shell.logout') }}
               </button>
             </div>
           </div>
@@ -236,15 +236,16 @@ export class HeaderComponent implements OnInit {
   private platformFacade = inject(PlatformFacade);
   private readonly permissionService = inject(PermissionService);
   private readonly notificationsService = inject(NotificationsService);
+  private readonly languageState = inject(TenantLanguageStateService);
 
   readonly platformSuperadmin = this.platformFacade.currentSuperadmin;
   readonly tenantUser = this.authFacade.currentUser;
 
   get tenantMenuOptions(): MenuItem[] {
     return [
-      { label: 'Dashboard', route: this.dashboardRoute, icon: 'layout-dashboard' },
-      { label: 'Mi perfil', route: '/dashboard/profile', icon: 'user-circle-2' },
-      { label: 'Notificaciones', route: '/dashboard/notifications', icon: 'bell' }
+      { label: this.t('shell.dashboard'), route: this.dashboardRoute, icon: 'layout-dashboard' },
+      { label: this.t('nav.profile'), route: '/dashboard/profile', icon: 'user-circle-2' },
+      { label: this.t('shell.notifications'), route: '/dashboard/notifications', icon: 'bell' }
     ];
   }
 
@@ -260,6 +261,8 @@ export class HeaderComponent implements OnInit {
   get isPlatformRoute(): boolean {
     return this.scope === 'PLATFORM';
   }
+
+  t(key: TenantTextKey): string { return this.languageState.t(key); }
 
   get isOwnerAdmin(): boolean {
     return this.permissionService.isCurrentOwner();
@@ -279,14 +282,14 @@ export class HeaderComponent implements OnInit {
     }
 
     if (this.authFacade.status() === 'loading' && !this.tenantUser()) {
-      return 'Cargando...';
+      return this.t('shell.loading');
     }
 
     const user = this.tenantUser();
     if (user) {
       return `${user.firstName} ${user.lastName}`;
     }
-    return 'Usuario';
+    return this.t('shell.user');
   }
 
   getEmail(): string {
@@ -295,7 +298,7 @@ export class HeaderComponent implements OnInit {
     }
 
     if (this.authFacade.status() === 'loading' && !this.tenantUser()) {
-      return 'Cargando...';
+      return this.t('shell.loading');
     }
 
     return this.tenantUser()?.email || '';
@@ -337,9 +340,9 @@ export class HeaderComponent implements OnInit {
       return 'Super Administrador';
     }
 
-    if (this.isOwnerAdmin) return 'Propietario de la organización';
+    if (this.isOwnerAdmin) return this.t('shell.owner');
     const roles = this.tenantUser()?.roles ?? [];
-    return roles.length > 0 ? roles.join(', ') : 'Usuario de la organización';
+    return roles.length > 0 ? roles.join(', ') : this.t('shell.member');
   }
 
   toggleProfileMenu(): void {
