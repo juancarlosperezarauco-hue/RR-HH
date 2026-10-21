@@ -11,6 +11,8 @@ import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContext;
 import com.hrcoresystem.hrcore_api.common.tenancy.context.TenantContextHolder;
 import com.hrcoresystem.hrcore_api.common.tenancy.schema.TenantSchemaNamingStrategy;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.service.AiConversationTurnPersistence;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.voice.AudioProbe;
+import com.hrcoresystem.hrcore_api.modules.tenant.reports.application.voice.TranscriptionProvider;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -70,11 +72,15 @@ class AiQueryHttpIntegrationTest {
         registry.add("app.ai.planner.url", () -> System.getenv("AI_PLANNER_TEST_URL"));
         registry.add("app.ai.planner.service-token", () -> TOKEN);
         registry.add("app.auth.face-recognition.enabled", () -> false);
+        registry.add("app.ai.voice.enabled", () -> true);
+        registry.add("app.ai.voice.api-key", () -> "synthetic-voice-key");
         registry.add("hrcore.attendance.processing-ms", () -> 3_600_000_000L);
     }
 
     @MockitoBean private PlatformBootstrapRunner bootstrap;
     @MockitoBean private S3Client documentS3Client;
+    @MockitoBean private AudioProbe audioProbe;
+    @MockitoBean private TranscriptionProvider transcriptionProvider;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
     private AiPlannerClient plannerClient;
     @Autowired private JwtTokenService tokens;
@@ -84,6 +90,37 @@ class AiQueryHttpIntegrationTest {
     private String slugA, slugB, schemaA, schemaB;
     private UUID tenantA, tenantB, userA, userB, userA2;
     private long catalogVersion;
+
+    @Test void voiceEndpointsRequireTenantReportsAccessAndDoNotSendAudioToPlanner() throws Exception {
+        String owner = session(schemaA, slugA, userA, ALL);
+        String unauthorized = session(schemaA, slugA, userA, "employees.list");
+        String path = "/api/hr/ai/transcriptions";
+        assertEquals(200, conversation(slugA, owner, "GET", path + "/config", null).status());
+        assertEquals(403, conversation(slugA, unauthorized, "GET", path + "/config", null).status());
+        assertEquals(401, conversation(slugA, "invalid.jwt", "GET", path + "/config", null).status());
+        assertNotEquals(200, conversation(slugB, owner, "GET", path + "/config", null).status());
+        org.mockito.Mockito.when(audioProbe.inspect(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("audio/webm"))).thenReturn("webm");
+        org.mockito.Mockito.when(transcriptionProvider.transcribe(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq("webm"))).thenReturn("pregunta sintética");
+        String boundary = "synthetic-boundary";
+        byte[] body = ("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; "
+                + "filename=\"recording.webm\"\r\nContent-Type: audio/webm\r\n\r\n"
+                + "synthetic audio\r\n--" + boundary + "--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header("X-Tenant-Slug", slugA)
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary);
+        org.mockito.Mockito.clearInvocations(plannerClient);
+        var accepted = HTTP.send(request.header("Authorization", "Bearer " + owner)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, accepted.statusCode(), accepted.body());
+        assertEquals("pregunta sintética", mapper.readTree(accepted.body()).at("/data/text").asText());
+        assertEquals(403, HTTP.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header("X-Tenant-Slug", slugA).header("Authorization", "Bearer " + unauthorized)
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body)).build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+        org.mockito.Mockito.verifyNoInteractions(plannerClient);
+    }
 
     @BeforeAll
     void seed() throws SQLException {

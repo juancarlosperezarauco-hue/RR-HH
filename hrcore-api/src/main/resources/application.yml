@@ -33,6 +33,21 @@ logging:
 
 app:
   ai:
+    voice:
+      enabled: ${AI_VOICE_ENABLED:false}
+      api-key: ${GROQ_API_KEY:}
+      model: ${GROQ_STT_MODEL:whisper-large-v3-turbo}
+      max-duration-seconds: ${AI_VOICE_MAX_DURATION_SECONDS:30}
+      max-bytes: ${AI_VOICE_MAX_BYTES:8388608}
+      user-rpm: ${AI_VOICE_USER_RPM:5}
+      tenant-rpm: ${AI_VOICE_TENANT_RPM:10}
+      global-rpm: ${AI_VOICE_GLOBAL_RPM:15}
+      user-concurrent: ${AI_VOICE_USER_CONCURRENT:1}
+      tenant-concurrent: ${AI_VOICE_TENANT_CONCURRENT:2}
+      max-concurrent: ${AI_VOICE_MAX_CONCURRENT:2}
+      probe-timeout-seconds: ${AI_VOICE_PROBE_TIMEOUT_SECONDS:3}
+      provider-timeout-seconds: ${AI_VOICE_PROVIDER_TIMEOUT_SECONDS:30}
+      ffprobe-path: ${AI_VOICE_FFPROBE_PATH:ffprobe}
     reports:
       export:
         tabular-max-rows: ${AI_EXPORT_TABULAR_MAX_ROWS:10000}

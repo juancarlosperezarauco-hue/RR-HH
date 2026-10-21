@@ -5,6 +5,10 @@ import { AiConversationFacade, AiSendAttempt } from '../../application/ai-conver
 import { AiMessage, AiReportView } from '../../../../entities/reports/model/ai-conversation.model';
 import { AiConversationChatComponent } from './ai-conversation-chat.component';
 import { AiConversationPanelComponent } from '../ai-conversation-panel/ai-conversation-panel.component';
+import { AiVoiceService } from '../../../../entities/reports/api/ai-voice.service';
+import { AuthFacade } from '../../../../shared/lib/auth/auth.facade';
+import { of } from 'rxjs';
+import { Mic } from 'lucide-angular';
 
 describe('AI Reports: chat y confirmación accesible', () => {
   let fixture: ComponentFixture<AiConversationChatComponent>;
@@ -24,7 +28,9 @@ describe('AI Reports: chat y confirmación accesible', () => {
     messages = signal<AiMessage[]>([]); attempt = signal<AiSendAttempt | null>(null); fake = makeFacade();
     await TestBed.configureTestingModule({ imports: [AiConversationChatComponent, AiConversationPanelComponent], providers: [
       { provide: AiConversationFacade, useValue: fake },
-      importProvidersFrom(LucideAngularModule.pick({ Send, LoaderCircle, Sparkles, Trash2, Plus, RefreshCcw, FileChartColumn }))
+      { provide: AiVoiceService, useValue: { config: () => of({ enabled: false, maxDurationSeconds: 30, maxBytes: 8388608 }), transcribe: jasmine.createSpy('transcribe') } },
+      { provide: AuthFacade, useValue: { currentUser: signal({ scope: 'TENANT', tenantSlug: 'test', id: 'u', authorizationVersion: 1, securityVersion: 1 }), status: signal('ready') } },
+      importProvidersFrom(LucideAngularModule.pick({ Send, LoaderCircle, Sparkles, Trash2, Plus, RefreshCcw, FileChartColumn, Mic }))
     ] }).overrideComponent(AiConversationPanelComponent, { set: { providers: [{ provide: AiConversationFacade, useValue: fake }] } }).compileComponents();
     fixture = TestBed.createComponent(AiConversationChatComponent); fixture.detectChanges();
   });

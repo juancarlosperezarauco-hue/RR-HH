@@ -42,6 +42,26 @@
     @if (facade.updatingReport()) { <p role="status" class="text-xs text-muted-foreground">Espera a que termine la actualización del reporte para enviar una pregunta.</p> }
     <label for="ai-report-question" class="block text-sm font-medium">Tu pregunta</label>
     <textarea id="ai-report-question" name="question" rows="3" [maxlength]="maxQuestionLength" [ngModel]="facade.draft()" (ngModelChange)="facade.setDraft($event)" (keydown.enter)="onEnter($event)" [readonly]="!!facade.attempt()" aria-describedby="ai-question-help" placeholder="Por ejemplo: listar empleados al 2026-01-15" class="w-full resize-y rounded-md border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"></textarea>
+    <div class="flex flex-wrap items-center gap-2 text-xs" aria-live="polite">
+      @if (voiceState() === 'available' || voiceState() === 'error') {
+        <button type="button" (click)="startVoice()" class="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-primary hover:bg-muted"><lucide-icon name="mic" class="h-4 w-4" />Dictar pregunta</button>
+      }
+      @if (voiceState() === 'recording') {
+        <span role="status" class="text-destructive">Grabando… máximo {{ voiceConfigDuration }} s</span>
+        <button type="button" (click)="stopVoice()" class="rounded-md border px-3 py-2">Detener y transcribir</button>
+        <button type="button" (click)="cancelVoice()" class="rounded-md border px-3 py-2">Cancelar</button>
+      }
+      @if (voiceState() === 'processing') {
+        <span role="status">Transcribiendo audio…</span>
+        <button type="button" (click)="cancelVoice()" class="rounded-md border px-3 py-2">Cancelar</button>
+      }
+      @if (voiceState() === 'loading') { <span role="status">Preparando micrófono…</span> }
+      @if (voiceState() === 'requesting') { <span role="status">Solicitando acceso al micrófono…</span><button type="button" (click)="cancelVoice()" class="rounded-md border px-3 py-2">Cancelar</button> }
+      @if (voiceState() === 'disabled') { <span>Dictado no disponible en este entorno.</span> }
+      @if (voiceState() === 'unsupported') { <span>Este navegador no admite grabación de audio compatible.</span> }
+      @if (voiceState() === 'error') { <span role="alert" class="text-destructive">{{ voiceError() }}</span> }
+    </div>
+    @if (voiceState() !== 'disabled') { <p class="text-xs text-muted-foreground">Al dictar, el audio se envía a GroqCloud para transcribirlo. Revisa el texto antes de enviarlo.</p> }
     <div class="flex flex-wrap items-center justify-between gap-3"><p id="ai-question-help" class="text-xs text-muted-foreground">Enter para enviar · Shift+Enter para un salto de línea · {{ characterCount }}/{{ maxQuestionLength }}</p><button type="submit" [disabled]="!!facade.attempt() || facade.updatingReport() || !facade.draft().trim() || characterCount > maxQuestionLength" class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"><lucide-icon name="send" class="h-4 w-4" />Enviar</button></div>
   </form>
 </div>
