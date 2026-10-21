@@ -44,7 +44,14 @@ public class ActivateTenantUseCase {
                 tenant.schemaName(),
                 PlatformTenantStatus.ACTIVE,
                 tenant.planId(),
+                tenant.stripeCustomerId(),
                 true,
+                tenant.legalName(),
+                tenant.taxIdentifier(),
+                tenant.contactEmail(),
+                tenant.contactPhone(),
+                tenant.ownerName(),
+                tenant.ownerEmail(),
                 tenant.createdAt(),
                 tenant.updatedAt()
         );

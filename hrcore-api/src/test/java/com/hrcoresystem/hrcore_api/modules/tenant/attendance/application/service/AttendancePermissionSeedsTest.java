@@ -1,44 +1,36 @@
 package com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.service;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.hrcoresystem.hrcore_api.bootstrap.platform.PlatformBootstrapService;
-import com.hrcoresystem.hrcore_api.bootstrap.platform.SuperadminBootstrapProperties;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.util.HashSet;
+import com.hrcoresystem.hrcore_api.modules.identity.access.application.catalog.PermissionCatalogRegistry;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.PermissionDefinition;
+import com.hrcoresystem.hrcore_api.modules.identity.access.domain.model.PermissionScope;
 import java.util.Set;
-import javax.sql.DataSource;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 class AttendancePermissionSeedsTest {
     @Test
-    void bootstrapRegistersExactlyTheAttendanceAuthoritiesIdempotently() throws Exception {
-        DataSource dataSource = mock(DataSource.class);
-        Connection connection = mock(Connection.class);
-        PreparedStatement statement = mock(PreparedStatement.class);
-        when(dataSource.getConnection()).thenReturn(connection);
-        when(connection.prepareStatement(anyString())).thenReturn(statement);
-        when(statement.executeUpdate()).thenReturn(1);
+    void permissionCatalogRegistersExactlyTheAttendanceAuthorities() {
+        Set<String> expected = Set.of(
+                "attendance.records.list", "attendance.records.detail", "attendance.records.calculate",
+                "attendance.team.read", "attendance.punches.create", "attendance.punches.manage",
+                "attendance.punches.list", "attendance.punches.detail", "attendance.adjustments.create",
+                "attendance.adjustments.list", "attendance.adjustments.detail", "attendance.adjustments.approve",
+                "attendance.adjustments.reject", "attendance.adjustments.cancel", "attendance.overtime.create",
+                "attendance.overtime.list", "attendance.overtime.detail", "attendance.overtime.approve",
+                "attendance.overtime.reject", "attendance.overtime.cancel");
 
-        new PlatformBootstrapService(dataSource, mock(PasswordEncoder.class),
-                new SuperadminBootstrapProperties()).seedBaseSystemPermissions();
+        Set<PermissionDefinition> definitions = Set.copyOf(PermissionCatalogRegistry.definitions());
+        Set<String> attendanceCodes = definitions.stream()
+                .map(PermissionDefinition::code)
+                .filter(code -> code.startsWith("attendance."))
+                .collect(Collectors.toSet());
 
-        ArgumentCaptor<String> codes = ArgumentCaptor.forClass(String.class);
-        verify(statement, atLeastOnce()).setString(eq(1), codes.capture());
-        Set<String> attendance = new HashSet<>();
-        for (String code : codes.getAllValues()) if (code.startsWith("attendance.")) attendance.add(code);
-        assertEquals(19, attendance.size());
-        assertTrue(attendance.contains("attendance.punches.manage"));
-        assertTrue(attendance.contains("attendance.overtime.approve"));
-
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(connection, atLeastOnce()).prepareStatement(sql.capture());
-        assertTrue(sql.getAllValues().stream().allMatch(query -> query.contains("ON CONFLICT (code)")));
+        assertEquals(expected, attendanceCodes);
+        assertTrue(definitions.stream()
+                .filter(permission -> expected.contains(permission.code()))
+                .allMatch(permission -> permission.scope() == PermissionScope.TENANT && permission.active()));
     }
 }

@@ -26,7 +26,7 @@ public class TenantRoleRepositoryAdapter implements TenantRoleRepository {
     @Override
     public TenantRole save(TenantRole role) {
         if (role.id() == null) {
-            if (role.code() != null || role.roleType() != TenantRoleType.INTERNAL || role.systemRole()) {
+            if (role.roleType() != TenantRoleType.INTERNAL || role.systemRole()) {
                 throw new IllegalArgumentException("Only internal roles can be created here");
             }
             return jdbc.queryForObject("""

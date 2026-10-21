@@ -14,6 +14,7 @@ export interface TenantRoleResponse {
 }
 
 export interface CreateTenantRoleRequest {
+  code?: string;
   name: string;
   description?: string | null;
   permissionCodes: string[];

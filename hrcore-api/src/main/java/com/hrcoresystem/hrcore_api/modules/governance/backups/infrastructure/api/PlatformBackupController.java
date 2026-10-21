@@ -21,11 +21,15 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/platform/backups")
 @SecurityRequirement(name = "bearerAuth")
 public class PlatformBackupController {
+
+    private static final Logger log = LoggerFactory.getLogger(PlatformBackupController.class);
 
     private final CreatePlatformFullBackupUseCase full;
     private final CreatePlatformTenantBackupUseCase tenant;
@@ -96,6 +100,7 @@ public class PlatformBackupController {
             @RequestParam("confirmationText") String confirmationText,
             @RequestParam(value = "reason", required = false) String reason
     ) {
+        log.info("[RESTORE_UPLOAD] received file name={}, sizeBytes={}, scope={}, tenantId={}", file.getOriginalFilename(), file.getSize(), scope, tenantId);
         return ResponseEntity.accepted().body(ApiResponse.success(
                 "Platform restore file job accepted",
                 restoreFromFile.execute(file, scope, tenantId, confirmationText, reason)

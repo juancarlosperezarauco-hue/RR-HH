@@ -2,8 +2,10 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, computed, effect, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { firstValueFrom } from 'rxjs';
 import { HasPermissionPipe } from '../../shared/api';
 import { ToastService } from '../../shared/ui/toast/toast.service';
+import { ConfirmModalService } from '../../shared/ui/confirm-modal';
 import {
   UserCreateFormComponent,
   UserCreateUseCase,
@@ -17,6 +19,8 @@ import { TenantUserResponse, CreateTenantUserRequest, UpdateTenantUserRequest } 
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 import { PermissionService } from '../../shared/lib/auth/permission.service';
 import { AuthFacade } from '../../shared/lib/auth/auth.facade';
+import { EmployeesService } from '../../entities/employees/api/employees.service';
+import { EmployeeSummary } from '../../entities/employees/model/employees.model';
 
 @Component({
   selector: 'app-users-page',
@@ -39,14 +43,14 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
           <div class="space-y-3">
             <div class="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               <span class="h-2 w-2 rounded-full bg-secondary"></span>
-              Owner Admin
+              Gestión de Organización
             </div>
             <div>
               <h1 class="text-3xl font-black tracking-tight text-accent-foreground sm:text-4xl">
                 Usuarios del tenant
               </h1>
               <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Gestiona los accesos, el estado y los roles del equipo que opera dentro del tenant.
+                Administra el ciclo de vida de los usuarios de tu organización, vinculaciones con empleados, roles y control de acceso.
               </p>
             </div>
           </div>
@@ -72,7 +76,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
         </div>
       </section>
 
-      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p class="text-sm font-semibold text-muted-foreground">Usuarios en página</p>
           <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().total }}</p>
@@ -93,18 +97,13 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
           <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().inactive }}</p>
           <p class="mt-2 text-xs text-muted-foreground">Suspendidos o deshabilitados</p>
         </div>
-        <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <p class="text-sm font-semibold text-muted-foreground">Filtrados</p>
-          <p class="mt-4 text-3xl font-black text-accent-foreground">{{ stats().filtered }}</p>
-          <p class="mt-2 text-xs text-muted-foreground">Resultados visibles en pantalla</p>
-        </div>
       </section>
 
       <section class="rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-sm space-y-4">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 class="text-lg font-bold text-accent-foreground">Lista de usuarios</h2>
-            <p class="text-sm text-muted-foreground">Filtra por nombre, correo o estado</p>
+            <p class="text-sm text-muted-foreground">Filtra por nombre, correo, empleado vinculado o estado</p>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2">
@@ -112,7 +111,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
               [ngModel]="searchQuery()"
               (ngModelChange)="searchQuery.set($event); applyFilters()"
               type="text"
-              placeholder="Buscar usuario"
+              placeholder="Buscar usuario o empleado..."
               class="h-11 w-full rounded-2xl border border-border bg-muted px-4 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card" />
 
             <select
@@ -155,6 +154,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
                 <tr class="text-left text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                   <th class="px-4 py-3">Usuario</th>
                   <th class="px-4 py-3">Correo</th>
+                  <th class="px-4 py-3">Empleado vinculado</th>
                   <th class="px-4 py-3">Estado</th>
                   <th class="px-4 py-3 text-right">Acciones</th>
                 </tr>
@@ -163,10 +163,22 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
                 @for (user of filteredUsers(); track user.id) {
                   <tr class="hover:bg-background transition-colors">
                     <td class="px-4 py-3">
-                      <p class="font-semibold text-accent-foreground">{{ user.firstName }} {{ user.lastName }}</p>
-                      <p class="text-xs text-muted-foreground">ID {{ user.id }}</p>
+                      <p class="font-semibold text-accent-foreground">
+                        {{ user.displayName || (user.firstName + ' ' + user.lastName) }}
+                      </p>
+                      <p class="text-xs text-muted-foreground">ID: {{ user.id }}</p>
                     </td>
                     <td class="px-4 py-3 text-sm text-muted-foreground">{{ user.email }}</td>
+                    <td class="px-4 py-3 text-sm">
+                      @if (user.employeeNumber) {
+                        <span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 px-2.5 py-1 text-xs font-medium text-accent-foreground">
+                          <lucide-icon name="user-check" [size]="12" class="text-primary"></lucide-icon>
+                          {{ user.employeeNumber }} — {{ user.employeeFullName }}
+                        </span>
+                      } @else {
+                        <span class="text-xs text-muted-foreground/60 italic">Sin vincular</span>
+                      }
+                    </td>
                     <td class="px-4 py-3">
                       <span
                         class="inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]"
@@ -188,10 +200,10 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
                           <lucide-icon name="pencil" [size]="16"></lucide-icon>
                         </button>
                         <button
-                          *ngIf="!isCurrentOwner(user) && ((user.active && ('users.deactivate' | hasPermission)) || (!user.active && ('users.activate' | hasPermission)))"
+                          *ngIf="canToggleStatus(user)"
                           (click)="handleToggleStatus(user)"
                           class="cursor-pointer rounded-full border border-border p-2 text-primary hover:bg-accent transition-colors"
-                          [title]="user.active ? 'Desactivar' : 'Activar'">
+                          [title]="user.active ? 'Desactivar acceso' : 'Activar acceso'">
                           <lucide-icon [name]="user.active ? 'ban' : 'play'" [size]="16"></lucide-icon>
                         </button>
                       </div>
@@ -226,7 +238,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
           <div class="app-modal-header border-b border-border pb-5">
             <div>
               <h2 class="app-modal-title">Nuevo usuario</h2>
-              <p class="app-modal-subtitle">Crea un acceso para un integrante del tenant.</p>
+              <p class="app-modal-subtitle">Crea un acceso para un integrante del tenant y asócialo opcionalmente a un empleado.</p>
             </div>
             <button (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
               <lucide-icon name="x" [size]="20"></lucide-icon>
@@ -235,8 +247,10 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
           <div class="max-h-[70vh] overflow-y-auto pt-6">
             <app-user-create-form
               [status]="userCreateUseCase.status()"
+              [error]="userCreateUseCase.error()"
               [canAssignRoles]="permissionService.isCurrentOwner()"
               [availableRoles]="userRoleUseCase.availableRoles()"
+              [availableEmployees]="availableEmployees()"
               (formSubmit)="handleCreateUser($event)"
               (cancel)="closeCreateModal()">
             </app-user-create-form>
@@ -251,7 +265,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
           <div class="app-modal-header border-b border-border pb-5">
             <div>
               <h2 class="app-modal-title">Editar usuario</h2>
-              <p class="app-modal-subtitle">Actualiza nombre, apellido o correo.</p>
+              <p class="app-modal-subtitle">Actualiza nombre, apellido, correo o empleado vinculado.</p>
             </div>
             <button (click)="closeEditModal()" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
               <lucide-icon name="x" [size]="20"></lucide-icon>
@@ -261,6 +275,7 @@ import { AuthFacade } from '../../shared/lib/auth/auth.facade';
             <app-user-edit-form
               [status]="userUpdateUseCase.status()"
               [user]="selectedUserToEdit()!"
+              [availableEmployees]="availableEmployees()"
               (formSubmit)="handleUpdateUser($event)"
               (cancel)="closeEditModal()">
             </app-user-edit-form>
@@ -305,7 +320,11 @@ export class UsersPageComponent implements OnInit {
   public readonly userRoleUseCase = inject(UserRoleUseCase);
   readonly permissionService = inject(PermissionService);
   private readonly authFacade = inject(AuthFacade);
+  private readonly employeesService = inject(EmployeesService);
+  private readonly toastService = inject(ToastService);
+  private readonly confirmModalService = inject(ConfirmModalService);
 
+  readonly availableEmployees = signal<EmployeeSummary[]>([]);
   readonly isCreateModalOpen = signal(false);
   readonly isEditModalOpen = signal(false);
   readonly isRoleModalOpen = signal(false);
@@ -325,7 +344,10 @@ export class UsersPageComponent implements OnInit {
     return this.userListUseCase.data().filter((user) => {
       const matchesQuery =
         !query ||
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(query) ||
+        `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase().includes(query) ||
+        (user.displayName && user.displayName.toLowerCase().includes(query)) ||
+        (user.employeeNumber && user.employeeNumber.toLowerCase().includes(query)) ||
+        (user.employeeFullName && user.employeeFullName.toLowerCase().includes(query)) ||
         user.email.toLowerCase().includes(query) ||
         String(user.id).includes(query);
 
@@ -342,7 +364,6 @@ export class UsersPageComponent implements OnInit {
     const filtered = this.filteredUsers().length;
     return { total: users.length, active, pending, inactive, filtered };
   });
-  private readonly toastService = inject(ToastService);
 
   constructor() {
     effect(() => {
@@ -350,7 +371,9 @@ export class UsersPageComponent implements OnInit {
         this.closeCreateModal();
         this.userCreateUseCase.resetState();
         this.reload();
-        this.toastService.success('Usuario creado. Se envió un correo de activación.');
+        this.toastService.success('Usuario registrado exitosamente');
+      } else if (this.userCreateUseCase.status() === 'error') {
+        this.toastService.error(this.userCreateUseCase.error() || 'Error al crear usuario');
       }
     });
 
@@ -373,7 +396,19 @@ export class UsersPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.reload();
+    void this.loadEmployees();
+    void this.reload();
+  }
+
+  async loadEmployees(): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.employeesService.list(0, 100, { status: 'ACTIVE' }));
+      if (response?.success && response.data) {
+        this.availableEmployees.set(response.data.content);
+      }
+    } catch {
+      // Ignora si falla la precarga de empleados opcionales
+    }
   }
 
   async reload(): Promise<void> {
@@ -410,6 +445,7 @@ export class UsersPageComponent implements OnInit {
     this.userCreateUseCase.resetState();
     this.isCreateModalOpen.set(true);
     if (this.permissionService.isCurrentOwner()) void this.userRoleUseCase.loadAvailableRoles();
+    void this.loadEmployees();
   }
 
   closeCreateModal(): void {
@@ -418,13 +454,17 @@ export class UsersPageComponent implements OnInit {
   }
 
   handleCreateUser(request: CreateTenantUserRequest): void {
-    this.userCreateUseCase.createUser({ ...request, roleIds: this.permissionService.isCurrentOwner() ? [...new Set(request.roleIds ?? [])] : [] });
+    this.userCreateUseCase.createUser({
+      ...request,
+      roleIds: this.permissionService.isCurrentOwner() ? [...new Set(request.roleIds ?? [])] : []
+    });
   }
 
   openEditModal(user: TenantUserResponse): void {
     this.userUpdateUseCase.resetState();
     this.selectedUserToEdit.set(user);
     this.isEditModalOpen.set(true);
+    void this.loadEmployees();
   }
 
   closeEditModal(): void {
@@ -440,13 +480,37 @@ export class UsersPageComponent implements OnInit {
     }
   }
 
-  async handleToggleStatus(user: TenantUserResponse): Promise<void> {
-    if (this.isCurrentOwner(user)) return;
-    const confirmMessage = user.active
-      ? `¿Estás seguro de desactivar a ${user.firstName} ${user.lastName}?`
-      : `¿Estás seguro de activar a ${user.firstName} ${user.lastName}?`;
+  canToggleStatus(user: TenantUserResponse): boolean {
+    if (this.isCurrentOwner(user)) return false;
+    if (this.isCurrentUser(user)) return false;
+    return (user.active && this.permissionService.hasPermission('users.deactivate')) ||
+           (!user.active && this.permissionService.hasPermission('users.activate'));
+  }
 
-    if (!confirm(confirmMessage)) {
+  async handleToggleStatus(user: TenantUserResponse): Promise<void> {
+    if (this.isCurrentOwner(user)) {
+      this.toastService.warning('No es posible desactivar al propietario de la organización');
+      return;
+    }
+    if (this.isCurrentUser(user)) {
+      this.toastService.warning('No puedes desactivar tu propia cuenta activa de administrador');
+      return;
+    }
+
+    const confirmed = await this.confirmModalService.confirm({
+      title: user.active ? '¿Desactivar usuario?' : '¿Activar usuario?',
+      message: user.active
+        ? `¿Estás seguro de desactivar a ${user.firstName} ${user.lastName}?`
+        : `¿Estás seguro de activar a ${user.firstName} ${user.lastName}?`,
+      details: user.active
+        ? 'El usuario perderá de inmediato el acceso al sistema y no podrá iniciar sesión en la organización.'
+        : 'El usuario recuperará el acceso al sistema conforme a los roles y permisos que tenga asignados.',
+      confirmText: user.active ? 'Desactivar Usuario' : 'Activar Usuario',
+      cancelText: 'Cancelar',
+      variant: user.active ? 'danger' : 'success'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -480,12 +544,30 @@ export class UsersPageComponent implements OnInit {
     }
 
     await this.userRoleUseCase.assignRoles(String(user.id), roleIds);
+    if (this.userRoleUseCase.status() === 'success') {
+      this.toastService.success('Roles asignados exitosamente');
+      this.closeRoleModal();
+      await this.reload();
+    } else if (this.userRoleUseCase.status() === 'error') {
+      this.toastService.error(this.userRoleUseCase.error() || 'Error al asignar roles');
+    }
   }
 
   canReadUserRoles(user: TenantUserResponse): boolean {
     return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.users.roles.read') && !this.isCurrentOwner(user);
   }
 
-  canAssignUserRoles(): boolean { return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.users.roles.assign'); }
-  isCurrentOwner(user: TenantUserResponse): boolean { const current = this.authFacade.currentUser(); return !!current?.owner && current.id === user.id; }
+  canAssignUserRoles(): boolean {
+    return this.permissionService.isCurrentOwner() && this.permissionService.hasPermission('access.users.roles.assign');
+  }
+
+  isCurrentOwner(user: TenantUserResponse): boolean {
+    const current = this.authFacade.currentUser();
+    return !!current?.owner && current.id === user.id;
+  }
+
+  isCurrentUser(user: TenantUserResponse): boolean {
+    const current = this.authFacade.currentUser();
+    return current?.id === user.id;
+  }
 }

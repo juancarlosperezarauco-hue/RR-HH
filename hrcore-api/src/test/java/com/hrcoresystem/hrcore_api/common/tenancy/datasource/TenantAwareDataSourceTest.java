@@ -15,6 +15,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
@@ -76,7 +77,12 @@ class TenantAwareDataSourceTest {
 
         Connection resolvedConnection = dataSource.getConnection();
 
-        assertEquals(connection, resolvedConnection);
+        assertNotSame(connection, resolvedConnection);
         verify(statement).execute("SET search_path TO tenant_talentohumano, public");
+
+        resolvedConnection.close();
+
+        verify(statement).execute("SET search_path TO public");
+        verify(connection).close();
     }
 }

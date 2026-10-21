@@ -59,6 +59,10 @@ export class AuthService {
     return this.http.get<ApiResponse<TenantProfileResponse>>(`${this.API_URL}/profile`);
   }
 
+  getProfilePhoto(): Observable<Blob> {
+    return this.http.get(`${this.API_URL}/profile/photo`, { responseType: 'blob' });
+  }
+
   logout(): Observable<ApiResponse<{ status: string }>> {
     return this.http.post<ApiResponse<{ status: string }>>(`${this.API_URL}/logout`, {});
   }

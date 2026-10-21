@@ -97,8 +97,8 @@ public class AttendancePunchService {
         List<AttendancePunch> nearby = store.punches(employeeId, from, to);
         for (AttendancePunch previous : nearby) {
             if (previous.punchType() == request.punchType()
-                    && Math.abs(Duration.between(previous.punchedAt(), at).toSeconds()) < 60)
-                throw new BusinessException("Duplicate punch within one minute");
+                    && Math.abs(Duration.between(previous.punchedAt(), at).toSeconds()) < 10)
+                throw new BusinessException("Duplicate punch within 10 seconds");
         }
         List<PunchTimeline.Event> sequence = new ArrayList<>(nearby.stream()
                 .map(p -> new PunchTimeline.Event(p.id(), p.punchType(), p.punchedAt())).toList());
@@ -106,11 +106,13 @@ public class AttendancePunchService {
         if (!PunchTimeline.validSequencePrefix(sequence)) throw new BusinessException("Invalid punch sequence");
 
         Optional<LocalDate> workDate = workDateFor(employeeId, request.punchType(), at, nearby, zone);
-        LocalDate resolvedDate = workDate.orElseThrow(() -> new BusinessException(
-                "No se pudo asociar la marcación a una jornada laboral inequívoca"));
-        AttendanceRecord record = periods == null
-                ? store.lockOrCreate(employeeId, resolvedDate)
-                : store.lockOrCreate(employeeId, resolvedDate, periods.requireForDate(employeeId, resolvedDate).id());
+        AttendanceRecord record = null;
+        if (workDate.isPresent()) {
+            LocalDate resolvedDate = workDate.get();
+            record = periods == null
+                    ? store.lockOrCreate(employeeId, resolvedDate)
+                    : store.lockOrCreate(employeeId, resolvedDate, periods.requireForDate(employeeId, resolvedDate).id());
+        }
         AttendancePunch saved = store.save(new AttendancePunch(null, employeeId,
                 record == null ? null : record.id(), request.punchType(), at,
                 administrative ? PunchSource.MANUAL : PunchSource.WEB, null,

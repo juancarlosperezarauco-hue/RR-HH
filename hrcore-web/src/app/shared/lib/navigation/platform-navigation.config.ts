@@ -2,7 +2,7 @@ import { TenantNavigationItem } from './tenant-navigation.config';
 
 export const PLATFORM_NAVIGATION: TenantNavigationItem[] = [
   { id: 'dashboard', label: 'Dashboard', route: '/platform/dashboard', icon: 'layout-dashboard' },
-  { id: 'tenants', label: 'Tenants', route: '/platform/tenants', icon: 'building-2' },
+  { id: 'tenants', label: 'Organizaciones', route: '/platform/tenants', icon: 'building-2' },
   { id: 'plans', label: 'Planes', route: '/platform/plans', icon: 'credit-card' },
   { id: 'subscriptions', label: 'Suscripciones', route: '/platform/subscriptions', icon: 'dollar-sign' },
   { id: 'audit', label: 'Auditoría', route: '/platform/audit', icon: 'clipboard-list' },

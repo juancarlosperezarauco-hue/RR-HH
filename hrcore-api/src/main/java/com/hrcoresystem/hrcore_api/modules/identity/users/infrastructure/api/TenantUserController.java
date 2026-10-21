@@ -56,10 +56,14 @@ public class TenantUserController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('users.list')")
-    public ApiResponse<Page<TenantUserResponse>> listUsers(@ParameterObject @PageableDefault(size = 50) Pageable pageable) {
+    public ApiResponse<Page<TenantUserResponse>> listUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus status,
+            @RequestParam(required = false) Boolean active,
+            @ParameterObject @PageableDefault(size = 50) Pageable pageable) {
         return ApiResponse.success(
                 "Tenant users retrieved successfully",
-                PaginationSupport.page(listTenantUsersUseCase.execute(), pageable)
+                PaginationSupport.page(listTenantUsersUseCase.execute(search, status, active), pageable)
         );
     }
 

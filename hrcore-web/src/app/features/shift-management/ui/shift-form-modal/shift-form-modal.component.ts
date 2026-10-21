@@ -219,16 +219,16 @@ export class ShiftFormModalComponent implements OnChanges {
   earlyDepartureToleranceMinutes = 5;
   crossesMidnight = false;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['shiftToEdit'] && this.shiftToEdit) {
+  ngOnChanges(_changes: SimpleChanges): void {
+    if (this.isOpen && this.shiftToEdit) {
       this.name = this.shiftToEdit.name;
       this.description = this.shiftToEdit.description ?? '';
-      this.startTime = this.shiftToEdit.startTime.substring(0, 5);
-      this.endTime = this.shiftToEdit.endTime.substring(0, 5);
+      this.startTime = this.shiftToEdit.startTime ? this.shiftToEdit.startTime.substring(0, 5) : '08:30';
+      this.endTime = this.shiftToEdit.endTime ? this.shiftToEdit.endTime.substring(0, 5) : '16:30';
       this.lateToleranceMinutes = this.shiftToEdit.lateToleranceMinutes ?? this.shiftToEdit.gracePeriodMinutes ?? 10;
       this.earlyDepartureToleranceMinutes = this.shiftToEdit.earlyDepartureToleranceMinutes ?? 5;
       this.crossesMidnight = this.shiftToEdit.crossesMidnight ?? this.shiftToEdit.isOvernight ?? false;
-    } else if (changes['isOpen'] && this.isOpen && !this.shiftToEdit) {
+    } else if (this.isOpen && !this.shiftToEdit) {
       this.resetForm();
     }
   }

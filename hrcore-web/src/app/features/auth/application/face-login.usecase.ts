@@ -37,7 +37,24 @@ export class FaceLoginUseCase {
 
       this.state.set({ status: 'error', error: response.message || 'Error desconocido al iniciar sesión con rostro' });
     } catch (err: any) {
-      const errorMsg = err.error?.message || err.message || 'Error al conectar con el servidor';
+      const serverMessage =
+        err.error?.message ||
+        (Array.isArray(err.error?.errors) && err.error.errors[0]) ||
+        err.message ||
+        '';
+
+      if (
+        err.status === 403 ||
+        /desactivada|suspendida|not active|cuenta de empresa/i.test(serverMessage)
+      ) {
+        this.state.set({
+          status: 'error',
+          error: 'Tu cuenta de empresa fue desactivada por el momento. Comunícate con el superadministrador de la plataforma.'
+        });
+        return;
+      }
+
+      const errorMsg = serverMessage || 'Error al conectar con el servidor';
       this.state.set({ status: 'error', error: errorMsg });
     }
   }

@@ -44,7 +44,7 @@ import { firstValueFrom } from 'rxjs';
         <div class="flex items-center gap-2">
           <button
             type="button"
-            (click)="listUseCase.loadRecords()"
+            (click)="refreshAll()"
             class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors shadow-xs"
           >
             <lucide-icon name="refresh-ccw" class="h-4 w-4" [ngClass]="{ 'animate-spin': listUseCase.loading() }"></lucide-icon>
@@ -86,6 +86,7 @@ import { firstValueFrom } from 'rxjs';
 
       <!-- Live Clock Widget (Entrada / Salida & Anti-Debounce) -->
       <app-clock-in-widget
+        [employees]="employees"
         (clockRegistered)="onClockRegistered($event)"
       ></app-clock-in-widget>
 
@@ -185,12 +186,23 @@ export class AttendancePageComponent implements OnInit {
   selectedRecord: AttendanceRecordResponse | null = null;
 
   async ngOnInit(): Promise<void> {
+    await this.loadEmployees();
+    this.listUseCase.loadRecords();
+  }
+
+  async loadEmployees(): Promise<void> {
     try {
       const response = await firstValueFrom(this.employeesService.list(0, 100));
-      this.employees = response.data?.content || [];
+      this.employees = Array.isArray(response.data)
+        ? (response.data as EmployeeSummary[])
+        : (response.data?.content || []);
     } catch {
       this.employees = [];
     }
+  }
+
+  async refreshAll(): Promise<void> {
+    await this.loadEmployees();
     this.listUseCase.loadRecords();
   }
 

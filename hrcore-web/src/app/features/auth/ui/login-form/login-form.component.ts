@@ -149,16 +149,16 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
               </div>
             </div>
 
-            <div class="rounded-3xl border border-dashed border-border bg-muted p-4">
+            <div class="rounded-3xl border border-border bg-muted/70 p-4 shadow-sm">
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <p class="text-sm font-semibold text-accent-foreground">Acceso facial</p>
-                  <p class="mt-1 text-xs leading-5 text-muted-foreground">Usa la cámara frontal o la cámara del dispositivo. Necesitas tenant, correo e imagen.</p>
+                  <p class="mt-1 text-xs text-muted-foreground">Verifica tu identidad con la cámara.</p>
                 </div>
                 <lucide-icon name="camera" class="h-5 w-5 text-primary"></lucide-icon>
               </div>
 
-              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+              <div class="mt-4 grid gap-3">
                 <div class="space-y-2">
                   <button
                     type="button"
@@ -169,13 +169,14 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                   </button>
                 </div>
 
-                <div class="space-y-2">
+                <div class="hidden space-y-2">
                   <input
                     #galleryInput
                     type="file"
                     accept="image/*"
                     class="hidden"
                     (change)="onFaceFileSelected($event)">
+                  <!-- Opción temporalmente oculta: el acceso facial se realizará únicamente con la cámara.
                   <button
                     type="button"
                     (click)="openGallery()"
@@ -183,6 +184,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                     <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                     Usar foto
                   </button>
+                  -->
                 </div>
               </div>
 
@@ -220,6 +222,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                       <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
                       {{ cameraBusy ? 'Capturando...' : 'Capturar foto' }}
                     </button>
+                    <!-- La captura ya utiliza la cámara frontal; se conserva la acción para futuras variantes.
                     <button
                       type="button"
                       (click)="openSelfieCamera()"
@@ -227,28 +230,27 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
                       class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
                       Cambiar a selfie
                     </button>
+                    -->
                   </div>
                 </div>
               }
 
-              <p class="mt-4 text-xs text-muted-foreground">
-                Imagen seleccionada: <span class="font-semibold text-accent-foreground">{{ faceFileLabel() }}</span>
-              </p>
+              @if (selectedFacePreview) {
+                <div class="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
+                  <img [src]="selectedFacePreview" alt="Vista previa de rostro" class="h-40 w-full object-cover">
+                </div>
 
-              <div *ngIf="selectedFacePreview" class="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
-                <img [src]="selectedFacePreview" alt="Vista previa de rostro" class="h-40 w-full object-cover">
-              </div>
-
-              <div class="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  (click)="onFaceLogin()"
-                  [disabled]="status === 'loading' || !selectedFaceFile"
-                  class="inline-flex items-center gap-2 rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50">
-                  <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
-                  Entrar con rostro
-                </button>
-              </div>
+                <div class="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    (click)="onFaceLogin()"
+                    [disabled]="status === 'loading' || !selectedFaceFile"
+                    class="inline-flex items-center gap-2 rounded-full bg-accent-foreground px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50">
+                    <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
+                    Entrar con rostro
+                  </button>
+                </div>
+              }
             </div>
           </section>
         }

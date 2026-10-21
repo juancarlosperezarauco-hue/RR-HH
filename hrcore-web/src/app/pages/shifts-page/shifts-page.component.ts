@@ -248,7 +248,7 @@ import { ShiftResponse } from '../../entities/shift';
       <app-shift-form-modal
         [isOpen]="isFormOpen"
         [shiftToEdit]="selectedShiftToEdit"
-        (closeModal)="isFormOpen = false"
+        (closeModal)="isFormOpen = false; selectedShiftToEdit = null"
         (saved)="onShiftSaved()">
       </app-shift-form-modal>
 

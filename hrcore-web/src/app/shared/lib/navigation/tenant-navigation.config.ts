@@ -10,6 +10,7 @@ export interface TenantNavigationItem {
   icon: string;
   permission?: string;
   ownerOnly?: boolean;
+  hideForOwner?: boolean;
 }
 
 export const TENANT_NAVIGATION: TenantNavigationItem[] = [

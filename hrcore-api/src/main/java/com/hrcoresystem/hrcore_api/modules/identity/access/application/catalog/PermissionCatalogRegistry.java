@@ -24,7 +24,7 @@ public final class PermissionCatalogRegistry {
         add(list,"incidents","create","list","detail","update","assign","review","resolve","close","cancel","actions.create","actions.list","actions.update","attachments.upload","attachments.list","attachments.download","history.read");
         list.add(new PermissionDefinition("audit.events.read","audit","Read tenant audit events",PermissionScope.TENANT,false,true));
         add(list,"notifications","templates.read","templates.detail","deliveries.read");
-        add(list,"hr.reports","employees.read","contracts.read","attendance.read","leaves.read","incidents.read","export");
+        add(list,"hr.reports","employees.read","departments.read","positions.read","contracts.read","attendance.read","leaves.read","incidents.read","files.read","shifts.read","integrated.read","export");
         list.add(new PermissionDefinition("tenant-settings.read","tenantsettings","tenant settings read",PermissionScope.TENANT,true,true));
         list.add(new PermissionDefinition("tenant-settings.update","tenantsettings","tenant settings update",PermissionScope.TENANT,false,true));
         list.add(new PermissionDefinition("employees.team.read","employees","employees team read",PermissionScope.TENANT,true,true));

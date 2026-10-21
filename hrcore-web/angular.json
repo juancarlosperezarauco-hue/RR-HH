@@ -22,6 +22,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "qr-app.png",
+                "input": "public",
+                "output": "."
               }
             ],
             "styles": [

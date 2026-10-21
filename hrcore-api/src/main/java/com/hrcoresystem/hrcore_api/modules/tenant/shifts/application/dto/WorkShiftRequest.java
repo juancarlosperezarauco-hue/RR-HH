@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalTime;
 
 public record WorkShiftRequest(
+        String code,
         @NotBlank @Size(max = 150) String name,
         String description,
         @NotNull LocalTime startTime,
@@ -16,12 +17,10 @@ public record WorkShiftRequest(
         @NotNull @Min(0) Integer lateToleranceMinutes,
         @NotNull @Min(0) Integer earlyDepartureToleranceMinutes
 ) {
-    /** Compatibilidad binaria para pruebas/consumidores antiguos; el código se ignora. */
-    @Deprecated
-    public WorkShiftRequest(String ignoredCode, String name, String description,
+    public WorkShiftRequest(String name, String description,
                             LocalTime startTime, LocalTime endTime, Boolean crossesMidnight,
                             Integer lateToleranceMinutes, Integer earlyDepartureToleranceMinutes) {
-        this(name, description, startTime, endTime, crossesMidnight,
+        this(null, name, description, startTime, endTime, crossesMidnight,
                 lateToleranceMinutes, earlyDepartureToleranceMinutes);
     }
 }

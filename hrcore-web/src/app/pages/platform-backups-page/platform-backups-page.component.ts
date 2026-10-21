@@ -409,7 +409,7 @@ type BackupScope = 'FULL_DATABASE' | 'TENANT_SCHEMA';
                 <span class="mb-1 block text-sm font-semibold text-primary">Archivo</span>
                 <input
                   type="file"
-                  accept=".dump,.backup,.sql,application/octet-stream"
+                  accept=".dump,.backup,application/octet-stream"
                   (change)="onRestoreFromFileSelected($event)"
                   class="block w-full cursor-pointer rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary hover:file:bg-accent" />
                 <p class="mt-2 text-xs text-muted-foreground">
@@ -685,6 +685,10 @@ export class PlatformBackupsPageComponent implements OnInit, OnDestroy {
   }
 
   async submitRestoreFromFile(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const file = this.restoreFromFileFile();
     if (!file) {
       this.toast.error('Selecciona un archivo de respaldo');
@@ -715,8 +719,12 @@ export class PlatformBackupsPageComponent implements OnInit, OnDestroy {
 
       if (response.success) {
         this.toast.info('Restauración desde archivo solicitada correctamente. Revisa el estado en la tabla.');
-        await this.reload();
         this.closeRestoreFromFileModal();
+        // La restauración se procesa como un trabajo asíncrono. No debemos
+        // convertir un fallo de la recarga de la tabla en un fallo del upload.
+        void this.reload().catch(() => {
+          this.toast.warning('La restauración fue aceptada, pero no se pudo actualizar la tabla.');
+        });
       } else {
         this.toast.error(response.message || 'No se pudo restaurar desde el archivo');
       }
@@ -732,7 +740,7 @@ export class PlatformBackupsPageComponent implements OnInit, OnDestroy {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = backup.fileName || `backup-${backup.id}.sql`;
+    link.download = backup.fileName || `backup-${backup.id}.dump`;
     link.click();
     window.URL.revokeObjectURL(url);
   }
