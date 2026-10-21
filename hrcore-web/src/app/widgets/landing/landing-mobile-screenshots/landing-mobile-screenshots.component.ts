@@ -16,15 +16,15 @@ interface MobileScreenshot {
       <div class="mx-auto max-w-7xl">
         <div class="grid gap-6 sm:grid-cols-3">
           @for (shot of screenshots; track shot.title) {
-            <article class="text-center">
-              <div class="mx-auto flex h-[500px] w-full max-w-[245px] flex-col rounded-[34px] border-[8px] border-border bg-sidebar shadow-lg">
+            <article class="group text-center">
+              <div class="mx-auto flex h-[500px] w-full max-w-[245px] flex-col rounded-[34px] border-[8px] border-border bg-sidebar shadow-lg transition-all duration-300 group-hover:-translate-y-2 group-hover:border-primary/40 group-hover:shadow-2xl">
                 <div class="mx-auto mb-2 mt-1 h-5 w-20 rounded-full bg-sidebar"></div>
                 <div class="flex flex-1 flex-col overflow-hidden rounded-[24px] bg-card">
-                  <img [src]="shot.imageUrl" [alt]="shot.title" class="h-full w-full object-cover" />
+                  <img [src]="shot.imageUrl" [alt]="shot.title" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
                 </div>
               </div>
 
-              <h3 class="mt-5 font-black text-foreground">{{ shot.title }}</h3>
+              <h3 class="mt-5 font-black text-foreground transition-colors group-hover:text-primary">{{ shot.title }}</h3>
               <p class="mx-auto mt-2 max-w-[230px] text-sm leading-6 text-muted-foreground">
                 {{ shot.description }}
               </p>

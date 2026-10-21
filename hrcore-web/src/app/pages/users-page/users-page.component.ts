@@ -234,79 +234,88 @@ import { EmployeeSummary } from '../../entities/employees/model/employees.model'
 
     @if (isCreateModalOpen()) {
       <div class="app-modal-overlay">
-        <div class="app-modal-panel app-modal-panel-sm">
-          <div class="app-modal-header border-b border-border pb-5">
+        <div class="app-modal-panel max-w-3xl">
+          <div class="app-modal-header">
             <div>
+              <div class="mb-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                <lucide-icon name="user-plus" [size]="12"></lucide-icon>
+                Control de acceso
+              </div>
               <h2 class="app-modal-title">Nuevo usuario</h2>
               <p class="app-modal-subtitle">Crea un acceso para un integrante del tenant y asócialo opcionalmente a un empleado.</p>
             </div>
-            <button (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
-              <lucide-icon name="x" [size]="20"></lucide-icon>
+            <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Cerrar">
+              <lucide-icon name="x" [size]="18"></lucide-icon>
             </button>
           </div>
-          <div class="max-h-[70vh] overflow-y-auto pt-6">
-            <app-user-create-form
-              [status]="userCreateUseCase.status()"
-              [error]="userCreateUseCase.error()"
-              [canAssignRoles]="permissionService.isCurrentOwner()"
-              [availableRoles]="userRoleUseCase.availableRoles()"
-              [availableEmployees]="availableEmployees()"
-              (formSubmit)="handleCreateUser($event)"
-              (cancel)="closeCreateModal()">
-            </app-user-create-form>
-          </div>
+          <app-user-create-form
+            class="flex min-h-0 flex-1 flex-col overflow-hidden"
+            [status]="userCreateUseCase.status()"
+            [error]="userCreateUseCase.error()"
+            [canAssignRoles]="permissionService.isCurrentOwner()"
+            [availableRoles]="userRoleUseCase.availableRoles()"
+            [availableEmployees]="availableEmployees()"
+            (formSubmit)="handleCreateUser($event)"
+            (cancel)="closeCreateModal()">
+          </app-user-create-form>
         </div>
       </div>
     }
 
     @if (isEditModalOpen() && selectedUserToEdit()) {
       <div class="app-modal-overlay">
-        <div class="app-modal-panel app-modal-panel-sm">
-          <div class="app-modal-header border-b border-border pb-5">
+        <div class="app-modal-panel max-w-2xl">
+          <div class="app-modal-header">
             <div>
+              <div class="mb-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                <lucide-icon name="pencil" [size]="12"></lucide-icon>
+                Actualización de cuenta
+              </div>
               <h2 class="app-modal-title">Editar usuario</h2>
               <p class="app-modal-subtitle">Actualiza nombre, apellido, correo o empleado vinculado.</p>
             </div>
-            <button (click)="closeEditModal()" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
-              <lucide-icon name="x" [size]="20"></lucide-icon>
+            <button type="button" (click)="closeEditModal()" class="cursor-pointer rounded-full border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Cerrar">
+              <lucide-icon name="x" [size]="18"></lucide-icon>
             </button>
           </div>
-          <div class="max-h-[70vh] overflow-y-auto pt-6">
-            <app-user-edit-form
-              [status]="userUpdateUseCase.status()"
-              [user]="selectedUserToEdit()!"
-              [availableEmployees]="availableEmployees()"
-              (formSubmit)="handleUpdateUser($event)"
-              (cancel)="closeEditModal()">
-            </app-user-edit-form>
-          </div>
+          <app-user-edit-form
+            class="flex min-h-0 flex-1 flex-col overflow-hidden"
+            [status]="userUpdateUseCase.status()"
+            [user]="selectedUserToEdit()!"
+            [availableEmployees]="availableEmployees()"
+            (formSubmit)="handleUpdateUser($event)"
+            (cancel)="closeEditModal()">
+          </app-user-edit-form>
         </div>
       </div>
     }
 
     @if (isRoleModalOpen()) {
       <div class="app-modal-overlay">
-        <div class="app-modal-panel w-full max-w-2xl">
-          <div class="app-modal-header border-b border-border pb-5">
+        <div class="app-modal-panel max-w-2xl">
+          <div class="app-modal-header">
             <div>
+              <div class="mb-1 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                <lucide-icon name="shield-check" [size]="12"></lucide-icon>
+                Permisos RBAC
+              </div>
               <h2 class="app-modal-title">Asignar roles</h2>
               <p class="app-modal-subtitle">Define qué puede hacer este usuario dentro del tenant.</p>
             </div>
-            <button (click)="closeRoleModal()" class="cursor-pointer rounded-full border border-border p-2 text-primary transition-colors hover:bg-accent">
-              <lucide-icon name="x" [size]="20"></lucide-icon>
+            <button type="button" (click)="closeRoleModal()" class="cursor-pointer rounded-full border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" aria-label="Cerrar">
+              <lucide-icon name="x" [size]="18"></lucide-icon>
             </button>
           </div>
 
-          <div class="max-h-[70vh] overflow-y-auto pt-6">
-            <app-user-role-assignment
-              [status]="userRoleUseCase.status()"
-              [user]="selectedUser()"
-              [availableRoles]="userRoleUseCase.availableRoles()"
-              [assignedRoles]="userRoleUseCase.userRoles()"
-              (submitRoles)="handleAssignRoles($event)"
-              (cancel)="closeRoleModal()">
-            </app-user-role-assignment>
-          </div>
+          <app-user-role-assignment
+            class="flex min-h-0 flex-1 flex-col overflow-hidden"
+            [status]="userRoleUseCase.status()"
+            [user]="selectedUser()"
+            [availableRoles]="userRoleUseCase.availableRoles()"
+            [assignedRoles]="userRoleUseCase.userRoles()"
+            (submitRoles)="handleAssignRoles($event)"
+            (cancel)="closeRoleModal()">
+          </app-user-role-assignment>
         </div>
       </div>
     }

@@ -12,12 +12,12 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
   template: `
     <div
       *ngIf="isOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div
-        class="relative w-full max-w-xl rounded-[24px] border border-border bg-card p-6 shadow-2xl space-y-5 my-8">
+        class="app-modal-panel relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-2xl">
         
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-border pb-4">
+        <!-- Header fijo -->
+        <div class="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h3 class="text-xl font-bold text-accent-foreground">
               {{ shiftToEdit ? 'Editar Turno Laboral' : 'Nuevo Turno de Trabajo' }}
@@ -35,7 +35,8 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
         </div>
 
         <!-- Formulario -->
-        <form (ngSubmit)="submit()" class="space-y-4">
+        <form (ngSubmit)="submit()" novalidate class="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div class="flex-1 space-y-4 overflow-y-auto p-6">
           <!-- Nombre descriptivo -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -47,7 +48,11 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
               name="name"
               required
               placeholder="Ej: Turno Administrativo Central (8 horas)"
-              class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              [class.border-destructive]="submitted && !name.trim()"
+              class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary" />
+            <p *ngIf="submitted && !name.trim()" class="mt-1 text-xs font-medium text-destructive">
+              El nombre descriptivo del turno es obligatorio.
+            </p>
           </div>
 
           <div>
@@ -73,7 +78,9 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
                 [(ngModel)]="startTime"
                 name="startTime"
                 required
+                [class.border-destructive]="submitted && !startTime"
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <p *ngIf="submitted && !startTime" class="mt-1 text-xs font-medium text-destructive">Indica la hora de inicio.</p>
             </div>
 
             <div>
@@ -85,7 +92,9 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
                 [(ngModel)]="endTime"
                 name="endTime"
                 required
+                [class.border-destructive]="submitted && !endTime"
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <p *ngIf="submitted && !endTime" class="mt-1 text-xs font-medium text-destructive">Indica la hora de finalización.</p>
             </div>
 
           </div>
@@ -178,8 +187,10 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
             </div>
           </div>
 
-          <!-- Botones de Acción -->
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-border">
+          </div>
+
+          <!-- Botones de Acción (Footer fijo) -->
+          <div class="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-6 py-4">
             <button
               type="button"
               (click)="close()"
@@ -188,7 +199,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
             </button>
             <button
               type="submit"
-              [disabled]="!isValid() || formUseCase.saving()"
+              [disabled]="formUseCase.saving()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
               <lucide-icon
                 *ngIf="formUseCase.saving()"
@@ -218,9 +229,11 @@ export class ShiftFormModalComponent implements OnChanges {
   lateToleranceMinutes = 10;
   earlyDepartureToleranceMinutes = 5;
   crossesMidnight = false;
+  submitted = false;
 
   ngOnChanges(_changes: SimpleChanges): void {
     if (this.isOpen && this.shiftToEdit) {
+      this.submitted = false;
       this.name = this.shiftToEdit.name;
       this.description = this.shiftToEdit.description ?? '';
       this.startTime = this.shiftToEdit.startTime ? this.shiftToEdit.startTime.substring(0, 5) : '08:30';
@@ -252,10 +265,11 @@ export class ShiftFormModalComponent implements OnChanges {
   }
 
   isValid(): boolean {
-    return !!this.name && this.lawValidation.isValid;
+    return !!this.name.trim() && !!this.startTime && !!this.endTime && this.lawValidation.isValid;
   }
 
   async submit(): Promise<void> {
+    this.submitted = true;
     if (!this.isValid()) return;
 
     const request: WorkShiftRequest = {
@@ -276,10 +290,12 @@ export class ShiftFormModalComponent implements OnChanges {
   }
 
   close(): void {
+    this.submitted = false;
     this.closeModal.emit();
   }
 
   private resetForm(): void {
+    this.submitted = false;
     this.name = '';
     this.description = '';
     this.startTime = '08:30';

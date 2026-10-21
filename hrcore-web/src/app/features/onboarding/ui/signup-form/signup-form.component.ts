@@ -39,6 +39,7 @@ export class SignupFormComponent {
   @Output() formSubmit = new EventEmitter<PublicSignupRequest>();
 
   showPassword = false;
+  submitted = false;
 
   signupForm: FormGroup;
 
@@ -48,12 +49,27 @@ export class SignupFormComponent {
       tenantSlug: ['', [Validators.required, Validators.pattern(/^[a-z0-9-]+$/)]],
       adminEmail: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
-      firstName: ['', [Validators.required]],
-      lastName: ['', [Validators.required]]
+      firstName: ['', [Validators.required, Validators.minLength(2)]],
+      lastName: ['', [Validators.required, Validators.minLength(2)]]
+    });
+
+    this.signupForm.get('companyName')?.valueChanges.subscribe((value: string) => {
+      const slugCtrl = this.signupForm.get('tenantSlug');
+      if (slugCtrl && !slugCtrl.dirty) {
+        const suggested = (value || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 40);
+        slugCtrl.setValue(suggested, { emitEvent: false });
+      }
     });
   }
 
   onSubmit(): void {
+    this.submitted = true;
     if (this.signupForm.valid && !this.loading) {
       this.formSubmit.emit(this.signupForm.value);
     } else {
@@ -64,7 +80,31 @@ export class SignupFormComponent {
   // Helpers para la UI
   isFieldInvalid(fieldName: string): boolean {
     const field = this.signupForm.get(fieldName);
-    return field ? field.invalid && (field.dirty || field.touched) : false;
+    return field ? field.invalid && (field.dirty || field.touched || this.submitted) : false;
+  }
+
+  getFieldError(fieldName: string): string {
+    const field = this.signupForm.get(fieldName);
+    if (!field || !field.errors) return '';
+    if (field.errors['required']) {
+      const names: Record<string, string> = {
+        companyName: 'El nombre de la empresa es obligatorio.',
+        tenantSlug: 'El identificador único es obligatorio.',
+        firstName: 'El nombre es obligatorio.',
+        lastName: 'El apellido es obligatorio.',
+        adminEmail: 'El correo electrónico es obligatorio.',
+        password: 'La contraseña es obligatoria.'
+      };
+      return names[fieldName] || 'Este campo es obligatorio.';
+    }
+    if (field.errors['minlength']) {
+      if (fieldName === 'companyName') return 'Debe tener al menos 3 caracteres.';
+      if (fieldName === 'password') return 'Debe tener al menos 8 caracteres.';
+      return 'Ingresa al menos 2 caracteres.';
+    }
+    if (field.errors['email']) return 'Ingresa un formato de correo válido.';
+    if (field.errors['pattern']) return 'Usa solo letras minúsculas, números y guiones.';
+    return 'Verifica este campo.';
   }
 
   togglePasswordVisibility(): void {

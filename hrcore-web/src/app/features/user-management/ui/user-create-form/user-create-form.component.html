@@ -1,138 +1,175 @@
-<form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="space-y-5">
-  @if (status === 'error' && error) {
-    <div class="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-xs font-medium text-destructive leading-relaxed">
-      {{ error }}
-    </div>
-  }
+<form [formGroup]="userForm" (ngSubmit)="onSubmit()" class="flex min-h-0 flex-1 flex-col overflow-hidden" novalidate>
+  <!-- Cuerpo desplazable -->
+  <div class="flex-1 space-y-5 overflow-y-auto p-6">
+    @if (status === 'error' && error) {
+      <div class="animate-fade-in rounded-2xl border border-destructive/25 bg-destructive/10 p-4 text-xs font-semibold leading-relaxed text-destructive">
+        {{ error }}
+      </div>
+    }
 
-  <!-- Vinculación opcional con empleado -->
-  <div class="space-y-2">
-    <div class="flex items-center justify-between">
-      <label for="employeeLink" class="text-sm font-semibold text-muted-foreground">
-        Vinculación con empleado (Opcional)
-      </label>
-      <span class="text-xs text-muted-foreground">Asocia el usuario a su ficha de empleado</span>
+    <!-- Sección 1: Identidad y Vinculación -->
+    <div class="rounded-2xl border border-border/80 bg-muted/25 p-4 sm:p-5">
+      <div class="mb-3.5 flex items-center gap-2 border-b border-border/60 pb-2.5">
+        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">1</span>
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-wider text-accent-foreground">Identidad y vinculación laboral</h3>
+          <p class="text-[11px] text-muted-foreground">Asocia opcionalmente una ficha de empleado para autocompletar sus datos.</p>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <!-- Vinculación opcional con empleado -->
+        <div class="space-y-1.5">
+          <label for="employeeLink" class="block text-xs font-bold text-accent-foreground">
+            Vinculación con empleado <span class="font-normal text-muted-foreground">(Opcional)</span>
+          </label>
+          <select
+            id="employeeLink"
+            (change)="onEmployeeSelect($event)"
+            class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors focus:border-primary">
+            <option [value]="''">Sin vincular a empleado</option>
+            @for (emp of availableEmployees; track emp.id) {
+              <option [value]="emp.id">
+                {{ emp.employeeNumber }} — {{ emp.firstName }} {{ emp.lastName }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <!-- Estado Inicial -->
+        <div class="space-y-1.5">
+          <label for="initialStatus" class="block text-xs font-bold text-accent-foreground">Estado inicial de la cuenta *</label>
+          <select
+            id="initialStatus"
+            formControlName="status"
+            class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors focus:border-primary">
+            <option value="ACTIVE">Activo (Acceso inmediato al sistema)</option>
+            <option value="PENDING">Pendiente (Activación por correo)</option>
+          </select>
+        </div>
+
+        <!-- Nombre -->
+        <div class="space-y-1.5">
+          <label for="firstName" class="block text-xs font-bold text-accent-foreground">Nombre *</label>
+          <input
+            id="firstName"
+            type="text"
+            formControlName="firstName"
+            class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            [class.border-destructive]="isFieldInvalid('firstName')"
+            placeholder="Ej: Carlos">
+          <span *ngIf="isFieldInvalid('firstName')" class="block text-xs font-medium text-destructive">El nombre es obligatorio.</span>
+        </div>
+
+        <!-- Apellido -->
+        <div class="space-y-1.5">
+          <label for="lastName" class="block text-xs font-bold text-accent-foreground">Apellido *</label>
+          <input
+            id="lastName"
+            type="text"
+            formControlName="lastName"
+            class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            [class.border-destructive]="isFieldInvalid('lastName')"
+            placeholder="Ej: Rojas">
+          <span *ngIf="isFieldInvalid('lastName')" class="block text-xs font-medium text-destructive">El apellido es obligatorio.</span>
+        </div>
+      </div>
     </div>
-    <select
-      id="employeeLink"
-      (change)="onEmployeeSelect($event)"
-      class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card">
-      <option [value]="''">Sin vincular a empleado</option>
-      @for (emp of availableEmployees; track emp.id) {
-        <option [value]="emp.id">
-          {{ emp.employeeNumber }} — {{ emp.firstName }} {{ emp.lastName }}
-        </option>
-      }
-    </select>
+
+    <!-- Sección 2: Credenciales y Roles -->
+    <div class="rounded-2xl border border-border/80 bg-muted/25 p-4 sm:p-5">
+      <div class="mb-3.5 flex items-center gap-2 border-b border-border/60 pb-2.5">
+        <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">2</span>
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-wider text-accent-foreground">Credenciales de acceso y roles</h3>
+          <p class="text-[11px] text-muted-foreground">Define el correo corporativo, contraseña temporal y permisos iniciales.</p>
+        </div>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <!-- Correo electrónico -->
+        <div class="space-y-1.5">
+          <label for="email" class="block text-xs font-bold text-accent-foreground">Correo electrónico *</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            [class.border-destructive]="isFieldInvalid('email')"
+            placeholder="usuario@empresa.com">
+          <span *ngIf="isFieldInvalid('email')" class="block text-xs font-medium text-destructive">Ingresa un correo electrónico válido.</span>
+        </div>
+
+        <!-- Contraseña temporal -->
+        <div class="space-y-1.5">
+          <label for="password" class="block text-xs font-bold text-accent-foreground">Contraseña temporal *</label>
+          <div class="relative">
+            <input
+              id="password"
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              class="flex h-11 w-full rounded-xl border border-border bg-card px-3.5 pr-10 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              [class.border-destructive]="isFieldInvalid('password')"
+              placeholder="Mínimo 8 caracteres">
+            <button
+              type="button"
+              (click)="togglePasswordVisibility()"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-primary"
+              tabindex="-1">
+              <lucide-icon [name]="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></lucide-icon>
+            </button>
+          </div>
+          <span *ngIf="isFieldInvalid('password')" class="block text-xs font-medium text-destructive">Mínimo 8 caracteres requeridos.</span>
+        </div>
+
+        <!-- Roles iniciales -->
+        <div class="sm:col-span-2 pt-1">
+          @if (canAssignRoles) {
+            <div class="space-y-2">
+              <span class="block text-xs font-bold text-accent-foreground">Roles iniciales <span class="font-normal text-muted-foreground">(Opcional)</span></span>
+              <div class="grid gap-2.5 sm:grid-cols-2">
+                @for (role of availableRoles; track role.id) {
+                  <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm text-accent-foreground transition-all hover:border-primary/40 hover:bg-accent/50">
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      [checked]="userForm.get('roleIds')?.value?.includes(role.id)"
+                      (change)="toggleRole(role.id, $event)">
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-xs font-bold text-accent-foreground">{{ role.name }}</p>
+                      <p class="truncate text-[10px] text-muted-foreground">{{ role.code }}</p>
+                    </div>
+                  </label>
+                } @empty {
+                  <p class="text-xs text-muted-foreground sm:col-span-2">No hay roles personalizados activos.</p>
+                }
+              </div>
+            </div>
+          } @else {
+            <p class="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+              El usuario se creará sin roles. Solo el propietario puede asignar roles iniciales.
+            </p>
+          }
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Nombres y apellidos -->
-  <div class="grid gap-5 sm:grid-cols-2">
-    <div class="space-y-2">
-      <label for="firstName" class="text-sm font-semibold text-muted-foreground">Nombre</label>
-      <input
-        id="firstName"
-        type="text"
-        formControlName="firstName"
-        class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-        [class.border-destructive/30]="isFieldInvalid('firstName')"
-        placeholder="Ej: Carlos">
-      <span *ngIf="isFieldInvalid('firstName')" class="text-xs text-destructive">El nombre es requerido.</span>
-    </div>
-
-    <div class="space-y-2">
-      <label for="lastName" class="text-sm font-semibold text-muted-foreground">Apellido</label>
-      <input
-        id="lastName"
-        type="text"
-        formControlName="lastName"
-        class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-        [class.border-destructive/30]="isFieldInvalid('lastName')"
-        placeholder="Ej: Rojas">
-      <span *ngIf="isFieldInvalid('lastName')" class="text-xs text-destructive">El apellido es requerido.</span>
-    </div>
-  </div>
-
-  <!-- Correo electrónico -->
-  <div class="space-y-2">
-    <label for="email" class="text-sm font-semibold text-muted-foreground">Correo electrónico</label>
-    <input
-      id="email"
-      type="email"
-      formControlName="email"
-      class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-      [class.border-destructive/30]="isFieldInvalid('email')"
-      placeholder="usuario@empresa.com">
-    <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive">Ingresa un correo válido.</span>
-  </div>
-
-  <!-- Estado Inicial -->
-  <div class="space-y-2">
-    <label for="initialStatus" class="text-sm font-semibold text-muted-foreground">Estado inicial</label>
-    <select
-      id="initialStatus"
-      formControlName="status"
-      class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 text-sm text-accent-foreground outline-none transition-colors focus:border-primary focus:bg-card">
-      <option value="ACTIVE">Activo (Acceso inmediato al sistema)</option>
-      <option value="PENDING">Pendiente (Requiere activación previa por correo)</option>
-    </select>
-  </div>
-
-  @if (canAssignRoles) {
-    <fieldset class="space-y-2 rounded-2xl border border-border bg-muted p-4">
-      <legend class="px-1 text-sm font-semibold text-accent-foreground">Roles iniciales (opcional)</legend>
-      @for (role of availableRoles; track role.id) {
-        <label class="flex items-center gap-2 text-sm text-accent-foreground cursor-pointer">
-          <input type="checkbox" [checked]="userForm.get('roleIds')?.value?.includes(role.id)" (change)="toggleRole(role.id, $event)">
-          {{ role.name }} <span class="text-xs text-muted-foreground">({{ role.code }})</span>
-        </label>
-      } @empty {
-        <p class="text-xs text-muted-foreground">No hay roles personalizados activos.</p>
-      }
-    </fieldset>
-  } @else {
-    <p class="rounded-2xl border border-border bg-muted p-3 text-xs text-muted-foreground">
-      El usuario se creará sin roles. Solo el propietario puede asignar roles iniciales.
-    </p>
-  }
-
-  <!-- Contraseña temporal -->
-  <div class="space-y-2">
-    <label for="password" class="text-sm font-semibold text-muted-foreground">Contraseña temporal</label>
-    <div class="relative">
-      <input
-        id="password"
-        [type]="showPassword ? 'text' : 'password'"
-        formControlName="password"
-        class="flex h-11 w-full rounded-2xl border border-border bg-muted px-3 py-2 pr-10 text-sm text-accent-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:bg-card"
-        [class.border-destructive/30]="isFieldInvalid('password')"
-        placeholder="••••••••">
-      <button
-        type="button"
-        (click)="togglePasswordVisibility()"
-        class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-primary"
-        tabindex="-1">
-        <lucide-icon [name]="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></lucide-icon>
-      </button>
-    </div>
-    <span *ngIf="isFieldInvalid('password')" class="text-xs text-destructive">Mínimo 8 caracteres requeridos.</span>
-  </div>
-
-  <!-- Botones de acción -->
-  <div class="app-modal-footer mt-2 border-t border-border pt-5 flex items-center justify-end gap-3">
+  <!-- Footer fijo -->
+  <div class="app-modal-footer">
     <button
       type="button"
       (click)="onCancel()"
       [disabled]="status === 'loading'"
-      class="cursor-pointer rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
+      class="cursor-pointer rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50">
       Cancelar
     </button>
     <button
       type="submit"
       [disabled]="status === 'loading'"
-      class="cursor-pointer inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
+      class="cursor-pointer inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">
       <ng-container *ngIf="status !== 'loading'; else loadingSpinner">
-        Guardar usuario
+        Crear usuario
       </ng-container>
       <ng-template #loadingSpinner>
         <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-foreground" fill="none" viewBox="0 0 24 24">

@@ -5,7 +5,6 @@ import { LandingHeroComponent } from '../landing-hero/landing-hero.component';
 import { LandingMobileExperienceComponent } from '../landing-mobile-experience/landing-mobile-experience.component';
 import { LandingMobileScreenshotsComponent } from '../landing-mobile-screenshots/landing-mobile-screenshots.component';
 import { LandingPricingPreviewComponent } from '../landing-pricing-preview/landing-pricing-preview.component';
-import { LandingTutorialsComponent } from '../landing-tutorials/landing-tutorials.component';
 import { LandingWebPlatformComponent } from '../landing-web-platform/landing-web-platform.component';
 
 @Component({
@@ -15,7 +14,6 @@ import { LandingWebPlatformComponent } from '../landing-web-platform/landing-web
     CommonModule,
     LandingHeroComponent,
     LandingBenefitsComponent,
-    LandingTutorialsComponent,
     LandingWebPlatformComponent,
     LandingMobileScreenshotsComponent,
     LandingMobileExperienceComponent,
@@ -26,8 +24,6 @@ import { LandingWebPlatformComponent } from '../landing-web-platform/landing-web
       <app-landing-hero />
 
       <app-landing-benefits />
-
-      <!-- <app-landing-tutorials /> -->
 
       <app-landing-web-platform />
 

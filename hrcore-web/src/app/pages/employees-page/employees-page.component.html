@@ -57,49 +57,254 @@
 </div>
 
 <!-- Registro y edición -->
-<div *ngIf="showForm()" class="fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
-  <div class="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-border bg-card shadow-2xl">
-    <div class="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-6 py-5"><div><h2 class="text-2xl font-black text-accent-foreground">{{ formMode() === 'create' ? 'Nuevo empleado' : 'Editar empleado' }}</h2><p class="text-sm text-muted-foreground">Datos básicos necesarios para registrar al trabajador.</p></div><button type="button" (click)="closeForm()" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div>
-    <form (ngSubmit)="save()" class="grid gap-5 p-6 md:grid-cols-2 lg:grid-cols-3">
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Nombre *</span><input name="firstName" [(ngModel)]="form.firstName" required maxlength="100" placeholder="Ej. Ana" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Segundo nombre</span><input name="middleName" [(ngModel)]="form.middleName" maxlength="100" placeholder="Ej. María" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Apellido paterno *</span><input name="lastName" [(ngModel)]="form.lastName" required maxlength="100" placeholder="Ej. López" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Apellido materno</span><input name="secondLastName" [(ngModel)]="form.secondLastName" maxlength="100" placeholder="Ej. Rojas" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Fecha de ingreso *</span><input name="hireDate" type="date" [(ngModel)]="form.hireDate" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-bold">Tipo de documento *</span><select name="documentType" [(ngModel)]="form.documentType" required class="h-12 w-full rounded-2xl border border-border bg-background px-4"><option value="CI">Carnet de identidad</option><option value="PASSPORT">Pasaporte</option><option value="FOREIGN_ID">Documento de extranjero</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Número de documento *</span><input name="documentNumber" [(ngModel)]="form.documentNumber" required maxlength="50" placeholder="Ej. 6543210" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Fecha de nacimiento</span><input name="birthDate" type="date" [max]="maxBirthDate()" [(ngModel)]="form.birthDate" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><small class="text-xs text-muted-foreground">Debe acreditar al menos 18 años.</small></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Género</span><select name="gender" [(ngModel)]="form.gender" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option [ngValue]="null">Selecciona una opción</option><option value="MALE">Masculino</option><option value="FEMALE">Femenino</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Nacionalidad</span><select name="nationality" [(ngModel)]="form.nationality" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option [ngValue]="null">Selecciona una nacionalidad</option><option *ngIf="form.nationality && !nationalities.includes(form.nationality)" [value]="form.nationality">{{ form.nationality }}</option><option *ngFor="let nationality of nationalities" [value]="nationality">{{ nationality }}</option></select></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Correo personal</span><input name="personalEmail" type="email" [(ngModel)]="form.personalEmail" maxlength="150" placeholder="ana.lopez@correo.com" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Correo institucional</span><input name="workEmail" type="email" [(ngModel)]="form.workEmail" maxlength="150" placeholder="ana.lopez@empresa.com" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label *ngIf="'users.list' | hasPermission" class="space-y-2 md:col-span-2 lg:col-span-3"><span class="text-sm font-semibold text-muted-foreground">Cuenta de acceso</span><select name="tenantUserId" [(ngModel)]="form.tenantUserId" class="h-12 w-full rounded-2xl border border-input bg-background px-4 py-2 text-sm font-normal text-foreground outline-none focus:border-primary"><option [ngValue]="null">Sin acceso al sistema</option><option *ngFor="let user of tenantUsers()" [ngValue]="user.id" [disabled]="!canLinkUser(user)">{{ userLabel(user) }} · {{ userAccessStatus(user) }}</option></select><small class="text-xs text-muted-foreground">Puedes vincular una cuenta activa o pendiente de verificación. La cuenta pendiente podrá iniciar sesión después de confirmar su correo.</small></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Teléfono</span><input name="phone" [(ngModel)]="form.phone" maxlength="40" placeholder="Ej. +591 2 123456" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Celular</span><input name="mobilePhone" [(ngModel)]="form.mobilePhone" maxlength="40" placeholder="Ej. +591 70000000" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-      <label class="space-y-2 md:col-span-2 lg:col-span-3"><span class="text-sm font-semibold text-muted-foreground">Dirección</span><textarea name="address" [(ngModel)]="form.address" rows="3" placeholder="Dirección de residencia" class="w-full rounded-2xl border border-input bg-background p-4 text-sm font-normal text-foreground outline-none focus:border-primary"></textarea></label>
-      <div *ngIf="formMode() === 'create'" class="rounded-2xl border border-primary/20 bg-primary/5 p-5 md:col-span-2 lg:col-span-3">
-        <div class="mb-4">
-          <h3 class="font-black text-accent-foreground">Asignación laboral inicial</h3>
-          <p class="text-sm text-muted-foreground">Es obligatoria para compartir el empleado con contratos, turnos, asistencia y ausencias.</p>
+<div *ngIf="showForm()" class="app-modal-overlay fixed inset-0 z-[100] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
+  <div class="app-modal-panel flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-2xl">
+    <!-- Header fijo -->
+    <div class="flex shrink-0 items-center justify-between border-b border-border bg-card px-6 py-4">
+      <div>
+        <div class="mb-1 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+          <lucide-icon name="user" [size]="12"></lucide-icon>
+          Expediente laboral
         </div>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Departamento *</span><select name="initialDepartmentId" [(ngModel)]="assignmentForm.departmentId" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option value="">Selecciona un departamento</option><option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option></select></label>
-          <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Cargo *</span><select name="initialPositionId" [(ngModel)]="assignmentForm.positionId" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option value="">Selecciona un cargo</option><option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option></select></label>
-          <label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Inicio de asignación *</span><input name="initialAssignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label>
-        </div>
-        <p *ngIf="!departments().length || !positions().length" class="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm font-semibold text-primary">Antes de registrar empleados debe existir al menos un departamento y un cargo activos.</p>
+        <h2 class="text-xl font-black text-accent-foreground sm:text-2xl">{{ formMode() === 'create' ? 'Nuevo empleado' : 'Editar empleado' }}</h2>
+        <p class="text-xs text-muted-foreground">Completa los datos organizados por secciones. Los campos con (*) son obligatorios.</p>
       </div>
-      <div class="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2 lg:col-span-3"><button type="button" (click)="closeForm()" class="rounded-full border border-border px-5 py-2.5 text-sm font-bold">Cancelar</button><button type="submit" [disabled]="saving()" class="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground disabled:opacity-50"><lucide-icon *ngIf="saving()" name="loader-circle" class="animate-spin" [size]="17"></lucide-icon>Guardar empleado</button></div>
+      <button type="button" (click)="closeForm()" class="cursor-pointer rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <lucide-icon name="x" [size]="20"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Cuerpo con scroll interno -->
+    <form (ngSubmit)="save()" class="flex min-h-0 flex-1 flex-col overflow-hidden" novalidate>
+      <div class="flex-1 space-y-6 overflow-y-auto p-6">
+
+        <!-- Alerta resumen de validación -->
+        <div *ngIf="hasFormValidationErrors()" class="animate-fade-in flex items-center gap-2.5 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs font-semibold text-destructive">
+          <lucide-icon name="triangle-alert" [size]="16" class="shrink-0"></lucide-icon>
+          <span>Por favor revisa los campos resaltados en rojo antes de guardar la ficha del trabajador.</span>
+        </div>
+
+        <!-- SECCIÓN 1: Identidad y datos personales -->
+        <div class="rounded-2xl border border-border/80 bg-muted/20 p-5">
+          <div class="mb-4 flex items-center gap-2 border-b border-border/60 pb-2.5">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">1</span>
+            <div>
+              <h3 class="text-sm font-black text-accent-foreground">Identidad y datos personales</h3>
+              <p class="text-xs text-muted-foreground">Nombres legales, documento de identidad y fecha de incorporación.</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Primer nombre *</span>
+              <input name="firstName" [(ngModel)]="form.firstName" required maxlength="100" placeholder="Ej. Ana"
+                [class.border-destructive]="formSubmitted() && !form.firstName.trim()"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && !form.firstName.trim()" class="block text-xs font-medium text-destructive">El primer nombre es obligatorio.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Segundo nombre</span>
+              <input name="middleName" [(ngModel)]="form.middleName" maxlength="100" placeholder="Ej. María"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Apellido paterno *</span>
+              <input name="lastName" [(ngModel)]="form.lastName" required maxlength="100" placeholder="Ej. López"
+                [class.border-destructive]="formSubmitted() && !form.lastName.trim()"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && !form.lastName.trim()" class="block text-xs font-medium text-destructive">El apellido paterno es obligatorio.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Apellido materno</span>
+              <input name="secondLastName" [(ngModel)]="form.secondLastName" maxlength="100" placeholder="Ej. Rojas"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Tipo de documento *</span>
+              <select name="documentType" [(ngModel)]="form.documentType" required
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
+                <option value="CI">Carnet de identidad (CI)</option>
+                <option value="PASSPORT">Pasaporte</option>
+                <option value="FOREIGN_ID">Documento de extranjero</option>
+              </select>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Número de documento *</span>
+              <input name="documentNumber" [(ngModel)]="form.documentNumber" required maxlength="50" placeholder="Ej. 6543210"
+                [class.border-destructive]="formSubmitted() && !form.documentNumber.trim()"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && !form.documentNumber.trim()" class="block text-xs font-medium text-destructive">Ingresa el número de documento.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Fecha de ingreso *</span>
+              <input name="hireDate" type="date" [(ngModel)]="form.hireDate" required
+                [class.border-destructive]="formSubmitted() && !form.hireDate"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && !form.hireDate" class="block text-xs font-medium text-destructive">Selecciona la fecha de ingreso.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Fecha de nacimiento</span>
+              <input name="birthDate" type="date" [max]="maxBirthDate()" [(ngModel)]="form.birthDate"
+                [class.border-destructive]="isBirthDateInvalid()"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="!isBirthDateInvalid()" class="block text-[11px] text-muted-foreground">Debe acreditar al menos 18 años.</small>
+              <small *ngIf="isBirthDateInvalid()" class="block text-xs font-medium text-destructive">El empleado debe ser mayor de 18 años.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-semibold text-muted-foreground">Género</span>
+              <select name="gender" [(ngModel)]="form.gender"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
+                <option [ngValue]="null">Selecciona una opción</option>
+                <option value="MALE">Masculino</option>
+                <option value="FEMALE">Femenino</option>
+              </select>
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-2 lg:col-span-3">
+              <span class="text-xs font-semibold text-muted-foreground">Nacionalidad</span>
+              <select name="nationality" [(ngModel)]="form.nationality"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
+                <option [ngValue]="null">Selecciona una nacionalidad</option>
+                <option *ngIf="form.nationality && !nationalities.includes(form.nationality)" [value]="form.nationality">{{ form.nationality }}</option>
+                <option *ngFor="let nationality of nationalities" [value]="nationality">{{ nationality }}</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: Contacto y acceso al sistema -->
+        <div class="rounded-2xl border border-border/80 bg-muted/20 p-5">
+          <div class="mb-4 flex items-center gap-2 border-b border-border/60 pb-2.5">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-black text-primary">2</span>
+            <div>
+              <h3 class="text-sm font-black text-accent-foreground">Contacto y acceso al sistema</h3>
+              <p class="text-xs text-muted-foreground">Medios de comunicación, dirección de domicilio y vinculación con usuario.</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
+              <span class="text-xs font-semibold text-muted-foreground">Correo personal</span>
+              <input name="personalEmail" type="email" [(ngModel)]="form.personalEmail" maxlength="150" placeholder="ana.lopez@correo.com"
+                [class.border-destructive]="formSubmitted() && isEmailInvalid(form.personalEmail)"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && isEmailInvalid(form.personalEmail)" class="block text-xs font-medium text-destructive">Ingresa un correo electrónico válido.</small>
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
+              <span class="text-xs font-semibold text-muted-foreground">Correo institucional</span>
+              <input name="workEmail" type="email" [(ngModel)]="form.workEmail" maxlength="150" placeholder="ana.lopez@empresa.com"
+                [class.border-destructive]="formSubmitted() && isEmailInvalid(form.workEmail)"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && isEmailInvalid(form.workEmail)" class="block text-xs font-medium text-destructive">Ingresa un correo institucional válido.</small>
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
+              <span class="text-xs font-semibold text-muted-foreground">Teléfono fijo</span>
+              <input name="phone" [(ngModel)]="form.phone" maxlength="40" placeholder="Ej. +591 2 123456"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
+              <span class="text-xs font-semibold text-muted-foreground">Teléfono celular</span>
+              <input name="mobilePhone" [(ngModel)]="form.mobilePhone" maxlength="40" placeholder="Ej. +591 70000000"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+            </label>
+
+            <label *ngIf="'users.list' | hasPermission" class="space-y-1.5 sm:col-span-2 lg:col-span-4">
+              <span class="text-xs font-semibold text-muted-foreground">Cuenta de acceso vinculada</span>
+              <select name="tenantUserId" [(ngModel)]="form.tenantUserId"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
+                <option [ngValue]="null">Sin acceso al sistema</option>
+                <option *ngFor="let user of tenantUsers()" [ngValue]="user.id" [disabled]="!canLinkUser(user)">{{ userLabel(user) }} · {{ userAccessStatus(user) }}</option>
+              </select>
+              <small class="block text-[11px] text-muted-foreground">Puedes vincular una cuenta activa o pendiente de verificación.</small>
+            </label>
+
+            <label class="space-y-1.5 sm:col-span-2 lg:col-span-4">
+              <span class="text-xs font-semibold text-muted-foreground">Dirección de domicilio</span>
+              <textarea name="address" [(ngModel)]="form.address" rows="2" placeholder="Zona, avenida/calle y número de residencia"
+                class="w-full resize-none rounded-xl border border-input bg-background p-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary"></textarea>
+            </label>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: Asignación laboral inicial -->
+        <div *ngIf="formMode() === 'create'" class="rounded-2xl border border-primary/25 bg-primary/5 p-5">
+          <div class="mb-4 flex items-center gap-2 border-b border-primary/15 pb-2.5">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-black text-primary-foreground">3</span>
+            <div>
+              <h3 class="text-sm font-black text-accent-foreground">Asignación laboral inicial *</h3>
+              <p class="text-xs text-muted-foreground">Obligatoria para vincular al trabajador con contratos, turnos, asistencia y ausencias.</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Departamento *</span>
+              <select name="initialDepartmentId" [(ngModel)]="assignmentForm.departmentId" required
+                [class.border-destructive]="formSubmitted() && !assignmentForm.departmentId"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
+                <option value="">Selecciona un departamento</option>
+                <option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option>
+              </select>
+              <small *ngIf="formSubmitted() && !assignmentForm.departmentId" class="block text-xs font-medium text-destructive">Selecciona un departamento.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Cargo *</span>
+              <select name="initialPositionId" [(ngModel)]="assignmentForm.positionId" required
+                [class.border-destructive]="formSubmitted() && !assignmentForm.positionId"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
+                <option value="">Selecciona un cargo</option>
+                <option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option>
+              </select>
+              <small *ngIf="formSubmitted() && !assignmentForm.positionId" class="block text-xs font-medium text-destructive">Selecciona un cargo.</small>
+            </label>
+
+            <label class="space-y-1.5">
+              <span class="text-xs font-bold text-accent-foreground">Inicio de asignación *</span>
+              <input name="initialAssignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" required
+                [class.border-destructive]="formSubmitted() && !assignmentForm.startDate"
+                class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
+              <small *ngIf="formSubmitted() && !assignmentForm.startDate" class="block text-xs font-medium text-destructive">Indica la fecha de inicio de asignación.</small>
+            </label>
+          </div>
+
+          <p *ngIf="!departments().length || !positions().length" class="mt-3 rounded-xl border border-primary/20 bg-primary/10 p-3 text-xs font-semibold text-primary">
+            Antes de registrar empleados debe existir al menos un departamento y un cargo activos.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer fijo -->
+      <div class="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-6 py-4">
+        <button type="button" (click)="closeForm()" class="cursor-pointer rounded-full border border-border px-5 py-2.5 text-sm font-bold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="saving()" class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-black text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50">
+          <lucide-icon *ngIf="saving()" name="loader-circle" class="animate-spin" [size]="17"></lucide-icon>
+          {{ saving() ? 'Guardando...' : 'Guardar empleado' }}
+        </button>
+      </div>
     </form>
   </div>
 </div>
 
 <!-- Ficha del empleado -->
-<div *ngIf="showProfile() && selected() as employee" class="fixed inset-0 z-[90] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
-  <div class="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-[28px] border border-border bg-card shadow-2xl">
-    <div class="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-card px-6 py-5"><div><p class="text-xs font-black uppercase tracking-widest text-primary">{{ employee.employeeNumber }}</p><h2 class="text-2xl font-black text-accent-foreground">{{ employee.firstName }} {{ employee.middleName }} {{ employee.lastName }} {{ employee.secondLastName }}</h2><p class="mt-1 text-sm text-muted-foreground">{{ employee.documentType }} {{ employee.documentNumber }} · Ingreso {{ employee.hireDate | date:'dd/MM/yyyy' }}</p></div><div class="flex items-center gap-2"><button *ngIf="employee.employmentStatus === 'TERMINATED' && ('employees.rehire' | hasPermission)" type="button" (click)="rehireSelected()" class="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground">Recontratar</button><button *ngIf="employee.employmentStatus !== 'TERMINATED' && ('employees.terminate' | hasPermission)" type="button" (click)="terminateSelected()" class="rounded-xl border border-destructive/30 px-3 py-2 text-sm font-bold text-destructive">Desvincular</button><button type="button" (click)="showProfile.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div></div>
-    <div *ngIf="userActivationRequired()" class="mx-6 mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="status"><p class="font-bold">Cuenta de acceso inactiva</p><p class="mt-1">El empleado fue recontratado, pero un administrador debe activar la cuenta vinculada para permitir su acceso al sistema.</p></div>
-    <div class="space-y-6 p-6">
+<div *ngIf="showProfile() && selected() as employee" class="app-modal-overlay fixed inset-0 z-[90] flex items-center justify-center bg-sidebar/60 p-3 backdrop-blur-sm">
+  <div class="app-modal-panel flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-2xl">
+    <div class="flex shrink-0 items-start justify-between border-b border-border bg-card px-6 py-5"><div><p class="text-xs font-black uppercase tracking-widest text-primary">{{ employee.employeeNumber }}</p><h2 class="text-2xl font-black text-accent-foreground">{{ employee.firstName }} {{ employee.middleName }} {{ employee.lastName }} {{ employee.secondLastName }}</h2><p class="mt-1 text-sm text-muted-foreground">{{ employee.documentType }} {{ employee.documentNumber }} · Ingreso {{ employee.hireDate | date:'dd/MM/yyyy' }}</p></div><div class="flex items-center gap-2"><button *ngIf="employee.employmentStatus === 'TERMINATED' && ('employees.rehire' | hasPermission)" type="button" (click)="rehireSelected()" class="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground">Recontratar</button><button *ngIf="employee.employmentStatus !== 'TERMINATED' && ('employees.terminate' | hasPermission)" type="button" (click)="terminateSelected()" class="rounded-xl border border-destructive/30 px-3 py-2 text-sm font-bold text-destructive">Desvincular</button><button type="button" (click)="showProfile.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div></div>
+    <div class="flex-1 space-y-6 overflow-y-auto p-6">
+      <div *ngIf="userActivationRequired()" class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="status"><p class="font-bold">Cuenta de acceso inactiva</p><p class="mt-1">El empleado fue recontratado, pero un administrador debe activar la cuenta vinculada para permitir su acceso al sistema.</p></div>
       <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Estado</p><p class="mt-1 font-black">{{ statusLabel(employee.employmentStatus) }}</p></div><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Correo</p><p class="mt-1 break-all text-sm font-black">{{ employee.workEmail || employee.personalEmail || 'Sin registro' }}</p></div><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Celular</p><p class="mt-1 font-black">{{ employee.mobilePhone || employee.phone || 'Sin registro' }}</p></div><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Nacionalidad</p><p class="mt-1 font-black">{{ employee.nationality || 'Sin registro' }}</p></div></section>
       <section class="rounded-2xl border border-border p-4"><div class="mb-3"><h3 class="text-lg font-black">Períodos laborales</h3><p class="text-sm text-muted-foreground">Historial de ingresos y desvinculaciones sin duplicar la ficha del empleado.</p></div><div class="space-y-2"><div *ngFor="let period of periods()" class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted p-3 text-sm"><span class="font-bold">Período {{ period.periodNumber }}</span><span>{{ period.startDate | date:'dd/MM/yyyy' }} — {{ period.endDate ? (period.endDate | date:'dd/MM/yyyy') : 'vigente' }}</span><span class="rounded-full bg-card px-2.5 py-1 text-xs font-bold">{{ statusLabel(period.status) }}</span></div><p *ngIf="!periods().length" class="text-sm text-muted-foreground">No hay períodos laborales disponibles.</p></div></section>
       <section><div class="mb-3 flex items-center justify-between"><div><h3 class="text-lg font-black">Asignaciones laborales</h3><p class="text-sm text-muted-foreground">Departamento, cargo y vigencia.</p></div><button *ngIf="'employees.assignments.create' | hasPermission" type="button" (click)="openNewAssignment()" class="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">Nueva asignación</button></div><div class="space-y-3"><div *ngFor="let assignment of assignments()" class="flex flex-col gap-3 rounded-2xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div><p class="font-black">{{ departmentName(assignment.departmentId) }} / {{ positionName(assignment.positionId) }}</p><p class="text-sm text-muted-foreground">{{ assignmentTypeLabel(assignment.assignmentType) }} · {{ assignment.startDate | date:'dd/MM/yyyy' }} — {{ assignment.endDate ? (assignment.endDate | date:'dd/MM/yyyy') : 'vigente' }}</p></div><button *ngIf="!assignment.endDate && ('employees.assignments.close' | hasPermission)" type="button" (click)="closeAssignment(assignment)" class="rounded-full border border-destructive/30 px-4 py-2 text-sm font-bold text-destructive">Cerrar asignación</button></div><p *ngIf="!assignments().length" class="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin asignaciones laborales.</p></div></section>
@@ -109,10 +314,101 @@
 </div>
 
 <!-- Nueva asignación -->
-<div *ngIf="showAssignmentForm()" class="fixed inset-0 z-[110] flex items-center justify-center bg-sidebar/70 p-3"><form (ngSubmit)="saveAssignment()" class="w-full max-w-2xl rounded-[28px] bg-card p-6 shadow-2xl"><div class="mb-5 flex justify-between"><div><h2 class="text-2xl font-black">Nueva asignación laboral</h2><p class="text-sm text-muted-foreground">Relaciona al empleado con un departamento y cargo.</p></div><button type="button" (click)="showAssignmentForm.set(false)"><lucide-icon name="x" [size]="20"></lucide-icon></button></div><div class="grid gap-4 sm:grid-cols-2"><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Departamento *</span><select name="departmentId" [(ngModel)]="assignmentForm.departmentId" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option value="">Selecciona una opción</option><option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option></select></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Cargo *</span><select name="positionId" [(ngModel)]="assignmentForm.positionId" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option value="">Selecciona una opción</option><option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option></select></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Fecha de inicio *</span><input name="assignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" required class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Tipo</span><select name="assignmentType" [(ngModel)]="assignmentForm.assignmentType" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"><option value="PRIMARY">Principal</option><option value="TEMPORARY">Temporal</option><option value="ADDITIONAL">Adicional</option></select></label><label class="space-y-2 sm:col-span-2"><span class="text-sm font-semibold text-muted-foreground">Motivo de la asignación</span><input name="assignmentReason" [(ngModel)]="assignmentForm.reason" placeholder="Describe el motivo o contexto" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label></div><div class="mt-6 flex justify-end gap-3"><button type="button" (click)="showAssignmentForm.set(false)" class="rounded-full border px-5 py-2.5 font-semibold text-muted-foreground">Cancelar</button><button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2.5 font-black text-primary-foreground disabled:opacity-50">Guardar asignación</button></div></form></div>
+<div *ngIf="showAssignmentForm()" class="app-modal-overlay fixed inset-0 z-[110] flex items-center justify-center bg-sidebar/70 p-3 backdrop-blur-sm">
+  <form (ngSubmit)="saveAssignment()" novalidate class="app-modal-panel w-full max-w-2xl rounded-[28px] border border-border bg-card p-6 shadow-2xl">
+    <div class="mb-5 flex items-center justify-between border-b border-border pb-4">
+      <div>
+        <h2 class="text-xl font-black text-accent-foreground">Nueva asignación laboral</h2>
+        <p class="text-xs text-muted-foreground">Relaciona al empleado con un departamento y cargo.</p>
+      </div>
+      <button type="button" (click)="showAssignmentForm.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="space-y-1.5">
+        <span class="text-xs font-bold text-accent-foreground">Departamento *</span>
+        <select name="departmentId" [(ngModel)]="assignmentForm.departmentId" required [class.border-destructive]="assignmentSubmitted() && !assignmentForm.departmentId" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary">
+          <option value="">Selecciona una opción</option>
+          <option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option>
+        </select>
+        <small *ngIf="assignmentSubmitted() && !assignmentForm.departmentId" class="block text-xs font-medium text-destructive">Selecciona un departamento.</small>
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-bold text-accent-foreground">Cargo *</span>
+        <select name="positionId" [(ngModel)]="assignmentForm.positionId" required [class.border-destructive]="assignmentSubmitted() && !assignmentForm.positionId" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary">
+          <option value="">Selecciona una opción</option>
+          <option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option>
+        </select>
+        <small *ngIf="assignmentSubmitted() && !assignmentForm.positionId" class="block text-xs font-medium text-destructive">Selecciona un cargo.</small>
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-bold text-accent-foreground">Fecha de inicio *</span>
+        <input name="assignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" required [class.border-destructive]="assignmentSubmitted() && !assignmentForm.startDate" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+        <small *ngIf="assignmentSubmitted() && !assignmentForm.startDate" class="block text-xs font-medium text-destructive">Indica la fecha de inicio.</small>
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-semibold text-muted-foreground">Tipo</span>
+        <select name="assignmentType" [(ngModel)]="assignmentForm.assignmentType" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary">
+          <option value="PRIMARY">Principal</option>
+          <option value="TEMPORARY">Temporal</option>
+          <option value="ADDITIONAL">Adicional</option>
+        </select>
+      </label>
+      <label class="space-y-1.5 sm:col-span-2">
+        <span class="text-xs font-semibold text-muted-foreground">Motivo de la asignación</span>
+        <input name="assignmentReason" [(ngModel)]="assignmentForm.reason" placeholder="Describe el motivo o contexto" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+      </label>
+    </div>
+    <div class="mt-6 flex justify-end gap-3 border-t border-border pt-4">
+      <button type="button" (click)="showAssignmentForm.set(false)" class="rounded-full border border-border px-5 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted">Cancelar</button>
+      <button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground disabled:opacity-50">Guardar asignación</button>
+    </div>
+  </form>
+</div>
 
 <!-- Nuevo contacto -->
-<div *ngIf="showContactForm()" class="fixed inset-0 z-[110] flex items-center justify-center bg-sidebar/70 p-3"><form (ngSubmit)="saveContact()" class="w-full max-w-2xl rounded-[28px] bg-card p-6 shadow-2xl"><div class="mb-5 flex justify-between"><div><h2 class="text-2xl font-black">Contacto de emergencia</h2><p class="text-sm text-muted-foreground">Registra una persona de referencia.</p></div><button type="button" (click)="showContactForm.set(false)"><lucide-icon name="x" [size]="20"></lucide-icon></button></div><div class="grid gap-4 sm:grid-cols-2"><label class="space-y-2 sm:col-span-2"><span class="text-sm font-semibold text-muted-foreground">Nombre completo *</span><input name="contactName" [(ngModel)]="contactForm.fullName" required placeholder="Ej. María López" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Parentesco</span><input name="relationship" [(ngModel)]="contactForm.relationship" placeholder="Ej. Madre, padre o cónyuge" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Teléfono *</span><input name="contactPhone" [(ngModel)]="contactForm.phone" required placeholder="Ej. +591 70000000" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Teléfono alternativo</span><input name="alternativePhone" [(ngModel)]="contactForm.alternativePhone" placeholder="Teléfono secundario" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label><label class="space-y-2"><span class="text-sm font-semibold text-muted-foreground">Dirección</span><input name="contactAddress" [(ngModel)]="contactForm.address" placeholder="Dirección del contacto" class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm font-normal text-foreground outline-none focus:border-primary"></label><label class="flex items-center gap-3 sm:col-span-2"><input name="primary" type="checkbox" [(ngModel)]="contactForm.primary" class="h-5 w-5"><span class="font-bold">Contacto principal</span></label></div><div class="mt-6 flex justify-end gap-3"><button type="button" (click)="showContactForm.set(false)" class="rounded-full border px-5 py-2.5 font-bold">Cancelar</button><button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2.5 font-black text-primary-foreground disabled:opacity-50">Guardar contacto</button></div></form></div>
+<div *ngIf="showContactForm()" class="app-modal-overlay fixed inset-0 z-[110] flex items-center justify-center bg-sidebar/70 p-3 backdrop-blur-sm">
+  <form (ngSubmit)="saveContact()" novalidate class="app-modal-panel w-full max-w-2xl rounded-[28px] border border-border bg-card p-6 shadow-2xl">
+    <div class="mb-5 flex items-center justify-between border-b border-border pb-4">
+      <div>
+        <h2 class="text-xl font-black text-accent-foreground">Contacto de emergencia</h2>
+        <p class="text-xs text-muted-foreground">Registra una persona de referencia para casos de emergencia.</p>
+      </div>
+      <button type="button" (click)="showContactForm.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <label class="space-y-1.5 sm:col-span-2">
+        <span class="text-xs font-bold text-accent-foreground">Nombre completo *</span>
+        <input name="contactName" [(ngModel)]="contactForm.fullName" required placeholder="Ej. María López" [class.border-destructive]="contactSubmitted() && !contactForm.fullName.trim()" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+        <small *ngIf="contactSubmitted() && !contactForm.fullName.trim()" class="block text-xs font-medium text-destructive">El nombre completo del contacto es obligatorio.</small>
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-semibold text-muted-foreground">Parentesco</span>
+        <input name="relationship" [(ngModel)]="contactForm.relationship" placeholder="Ej. Madre, padre o cónyuge" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-bold text-accent-foreground">Teléfono *</span>
+        <input name="contactPhone" [(ngModel)]="contactForm.phone" required placeholder="Ej. +591 70000000" [class.border-destructive]="contactSubmitted() && !contactForm.phone.trim()" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+        <small *ngIf="contactSubmitted() && !contactForm.phone.trim()" class="block text-xs font-medium text-destructive">El teléfono de emergencia es obligatorio.</small>
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-semibold text-muted-foreground">Teléfono alternativo</span>
+        <input name="alternativePhone" [(ngModel)]="contactForm.alternativePhone" placeholder="Teléfono secundario" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+      </label>
+      <label class="space-y-1.5">
+        <span class="text-xs font-semibold text-muted-foreground">Dirección</span>
+        <input name="contactAddress" [(ngModel)]="contactForm.address" placeholder="Dirección del contacto" class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none focus:border-primary" />
+      </label>
+      <label class="flex cursor-pointer items-center gap-3 sm:col-span-2">
+        <input name="primary" type="checkbox" [(ngModel)]="contactForm.primary" class="h-4 w-4 rounded border-border text-primary" />
+        <span class="text-sm font-bold text-accent-foreground">Designar como contacto principal</span>
+      </label>
+    </div>
+    <div class="mt-6 flex justify-end gap-3 border-t border-border pt-4">
+      <button type="button" (click)="showContactForm.set(false)" class="rounded-full border border-border px-5 py-2 text-sm font-bold text-muted-foreground hover:bg-muted">Cancelar</button>
+      <button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground disabled:opacity-50">Guardar contacto</button>
+    </div>
+  </form>
+</div>
 
 <div *ngIf="confirmationOpen" role="dialog" aria-modal="true" aria-labelledby="employee-confirmation-title" class="fixed inset-0 z-[130] flex items-center justify-center bg-sidebar/70 p-4 backdrop-blur-sm">
   <div class="w-full max-w-md rounded-[24px] border border-border bg-card p-6 shadow-2xl">

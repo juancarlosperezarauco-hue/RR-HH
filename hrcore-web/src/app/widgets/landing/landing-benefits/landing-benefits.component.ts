@@ -34,9 +34,9 @@ interface LandingBenefitCard {
 
         <div class="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           @for (card of cards; track card.title) {
-            <article class="rounded-[28px] border border-border bg-muted p-7 shadow-sm">
+            <article class="group rounded-[28px] border border-border bg-muted/60 p-7 shadow-xs transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/30 hover:bg-card hover:shadow-xl">
               <div
-                class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl"
+                class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-110"
                 [class.bg-accent]="card.accent === 'primary'"
                 [class.text-primary]="card.accent === 'primary'"
                 [class.bg-accent]="card.accent === 'secondary'"
@@ -44,7 +44,7 @@ interface LandingBenefitCard {
                 <lucide-icon [name]="card.icon" class="h-5 w-5"></lucide-icon>
               </div>
 
-              <h3 class="text-lg font-black text-foreground">{{ card.title }}</h3>
+              <h3 class="text-lg font-black text-foreground transition-colors group-hover:text-primary">{{ card.title }}</h3>
               <p class="mt-3 text-sm leading-7 text-muted-foreground">
                 {{ card.description }}
               </p>

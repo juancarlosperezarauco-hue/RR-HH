@@ -17,11 +17,11 @@ export class TenantDashboardUseCase {
   readonly data = computed(() => this.state().data);
   readonly error = computed(() => this.state().error);
 
-  async load(): Promise<void> {
+  async load(fromDate?: string, toDate?: string): Promise<void> {
     if (this.state().status === 'loading') return;
     this.state.set({ status: 'loading', data: this.state().data, error: null });
     try {
-      const response = await firstValueFrom(this.dashboardService.getTenantDashboard());
+      const response = await firstValueFrom(this.dashboardService.getTenantDashboard(fromDate, toDate));
       if (response.success && response.data) {
         this.state.set({ status: 'success', data: response.data, error: null });
         return;

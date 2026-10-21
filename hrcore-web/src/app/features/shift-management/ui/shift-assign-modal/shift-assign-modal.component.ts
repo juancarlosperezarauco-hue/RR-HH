@@ -23,12 +23,12 @@ export interface EmployeeSelectOption {
   template: `
     <div
       *ngIf="isOpen && shift"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
+      class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div
-        class="relative w-full max-w-lg rounded-[24px] border border-border bg-card p-6 shadow-2xl space-y-5 my-8">
+        class="app-modal-panel relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-[24px] border border-border bg-card shadow-2xl">
         
-        <!-- Header -->
-        <div class="flex items-center justify-between border-b border-border pb-4">
+        <!-- Header fijo -->
+        <div class="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h3 class="text-xl font-bold text-accent-foreground">Asignar Turno de Trabajo</h3>
             <p class="text-xs text-muted-foreground mt-0.5">
@@ -44,7 +44,8 @@ export interface EmployeeSelectOption {
         </div>
 
         <!-- Formulario -->
-        <form (ngSubmit)="submit()" class="space-y-4">
+        <form (ngSubmit)="submit()" novalidate class="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div class="flex-1 space-y-4 overflow-y-auto p-6">
           <!-- Selección de Colaboradores -->
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -54,7 +55,9 @@ export interface EmployeeSelectOption {
               <p class="font-bold text-accent-foreground">No hay colaboradores registrados</p>
               <p class="mt-0.5">No se encontraron empleados activos en la base de datos para asignar turnos.</p>
             </div>
-            <div *ngIf="availableEmployees.length > 0" class="space-y-2 max-h-40 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
+            <div *ngIf="availableEmployees.length > 0"
+              [class.border-destructive]="submitted && selectedEmployeeIds.length === 0"
+              class="space-y-2 max-h-40 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
               <label
                 *ngFor="let emp of availableEmployees"
                 class="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/40 cursor-pointer">
@@ -72,6 +75,9 @@ export interface EmployeeSelectOption {
             <p *ngIf="availableEmployees.length > 0" class="text-[11px] text-muted-foreground mt-1">
               {{ selectedEmployeeIds.length }} colaboradores seleccionados
             </p>
+            <p *ngIf="submitted && selectedEmployeeIds.length === 0" class="mt-1 text-xs font-medium text-destructive">
+              Selecciona al menos un colaborador para asignar el turno.
+            </p>
           </div>
 
           <!-- Rango de Fechas -->
@@ -85,7 +91,11 @@ export interface EmployeeSelectOption {
                 [(ngModel)]="startDate"
                 name="startDate"
                 required
+                [class.border-destructive]="submitted && !startDate"
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+              <p *ngIf="submitted && !startDate" class="mt-1 text-xs font-medium text-destructive">
+                Indica la fecha de inicio.
+              </p>
             </div>
 
             <div>
@@ -114,10 +124,15 @@ export interface EmployeeSelectOption {
           </div>
 
           <!-- Días de Aplicación de la Asignación (HU16: weekdays short array) -->
-          <app-shift-days-picker
-            [selectedDays]="weekdays"
-            (daysChange)="weekdays = $event">
-          </app-shift-days-picker>
+          <div>
+            <app-shift-days-picker
+              [selectedDays]="weekdays"
+              (daysChange)="weekdays = $event">
+            </app-shift-days-picker>
+            <p *ngIf="submitted && weekdays.length === 0" class="mt-1 text-xs font-medium text-destructive">
+              Selecciona al menos un día laboral de la semana.
+            </p>
+          </div>
 
           <!-- Alerta de Solapamiento (Escenario 5 BDD) -->
           <div
@@ -129,9 +144,10 @@ export interface EmployeeSelectOption {
               <p class="mt-0.5">{{ overlapError }}</p>
             </div>
           </div>
+          </div>
 
-          <!-- Botones de Acción -->
-          <div class="flex items-center justify-end gap-3 pt-3 border-t border-border">
+          <!-- Botones de Acción (Footer fijo) -->
+          <div class="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-6 py-4">
             <button
               type="button"
               (click)="close()"
@@ -140,7 +156,7 @@ export interface EmployeeSelectOption {
             </button>
             <button
               type="submit"
-              [disabled]="!isValid() || assignmentUseCase.assigning()"
+              [disabled]="assignmentUseCase.assigning()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed">
               <lucide-icon
                 *ngIf="assignmentUseCase.assigning()"
@@ -170,6 +186,7 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
   endDate = '';
   isRecurring = true;
   weekdays: number[] = [1, 2, 3, 4, 5];
+  submitted = false;
 
   ngOnInit(): void {
     this.loadEmployees();
@@ -197,6 +214,7 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen']?.currentValue === true) {
+      this.submitted = false;
       this.loadEmployees();
     }
     if (changes['shift'] && this.shift) {
@@ -242,6 +260,7 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
   }
 
   async submit(): Promise<void> {
+    this.submitted = true;
     if (!this.isValid()) return;
 
     const ok = await this.assignmentUseCase.assign({
@@ -260,6 +279,7 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
   }
 
   close(): void {
+    this.submitted = false;
     this.closeModal.emit();
   }
 }

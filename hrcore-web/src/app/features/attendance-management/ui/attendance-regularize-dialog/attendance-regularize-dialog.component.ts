@@ -15,11 +15,11 @@ import { AttendanceRegularizeUseCase } from '../../application/attendance-regula
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
     >
       <div
-        class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all"
+        class="flex w-full max-w-xl max-h-[88vh] flex-col overflow-hidden rounded-[26px] border border-border bg-card shadow-2xl transition-all"
         (click)="$event.stopPropagation()"
       >
-        <!-- Modal Header -->
-        <div class="flex items-start justify-between border-b border-border pb-4">
+        <!-- Modal Header (Fijo) -->
+        <div class="flex shrink-0 items-start justify-between border-b border-border bg-card px-6 py-4">
           <div>
             <h3 class="text-lg font-bold text-foreground">Regularización de Asistencia</h3>
             <p class="text-xs text-muted-foreground mt-0.5">
@@ -29,120 +29,124 @@ import { AttendanceRegularizeUseCase } from '../../application/attendance-regula
           <button
             type="button"
             (click)="close()"
-            class="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Cerrar"
+            title="Cerrar"
+            class="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            <lucide-icon name="x" class="h-5 w-5"></lucide-icon>
+            <lucide-icon name="x" class="h-4 w-4"></lucide-icon>
           </button>
         </div>
 
-        <!-- Colaborador y Registro Original -->
-        <div *ngIf="record" class="mt-4 rounded-xl bg-accent/40 border border-border/60 p-3.5 space-y-1.5">
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-bold text-foreground">{{ record.employeeFullName || 'Colaborador' }}</span>
-            <span class="font-mono text-muted-foreground">{{ record.employeeCode }}</span>
-          </div>
-          <div class="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Fecha: <strong>{{ record.workDate }}</strong></span>
-            <span>Entrada Actual: <strong>{{ formatTime(record.checkInTime) }}</strong></span>
-            <span>Salida Actual: <strong>{{ formatTime(record.checkOutTime) }}</strong></span>
-          </div>
-        </div>
-
         <!-- Formulario -->
-        <form (ngSubmit)="onSubmit()" class="mt-4 space-y-4">
-          <!-- Tipo de Regularización -->
-          <div>
-            <label class="block text-xs font-semibold text-foreground mb-1">
-              Tipo de Ajuste / Regularización <span class="text-rose-500">*</span>
-            </label>
-            <select
-              [(ngModel)]="adjustmentType"
-              name="adjustmentType"
-              class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-            >
-              <option value="TIME_CORRECTION">Corrección Horaria (Entrada / Salida)</option>
-              <option value="MISSING_PUNCH">Marcación Omitida / Olvidada</option>
-              <option value="STATUS_CORRECTION">Corrección de Estado de Jornada</option>
-              <option value="OTHER">Otro Motivo Justificado</option>
-            </select>
-          </div>
+        <form (ngSubmit)="onSubmit()" class="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <!-- Colaborador y Registro Original -->
+            <div *ngIf="record" class="rounded-xl bg-accent/40 border border-border/60 p-3.5 space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-foreground">{{ record.employeeFullName || 'Colaborador' }}</span>
+                <span class="font-mono text-muted-foreground">{{ record.employeeCode }}</span>
+              </div>
+              <div class="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Fecha: <strong>{{ record.workDate }}</strong></span>
+                <span>Entrada Actual: <strong>{{ formatTime(record.checkInTime) }}</strong></span>
+                <span>Salida Actual: <strong>{{ formatTime(record.checkOutTime) }}</strong></span>
+              </div>
+            </div>
 
-          <!-- Corrección Horaria -->
-          <div class="grid grid-cols-2 gap-4">
+            <!-- Tipo de Regularización -->
             <div>
               <label class="block text-xs font-semibold text-foreground mb-1">
-                Hora de Entrada Corregida
+                Tipo de Ajuste / Regularización <span class="text-rose-500">*</span>
               </label>
-              <input
-                type="time"
-                [(ngModel)]="correctedCheckInTime"
-                name="correctedCheckInTime"
+              <select
+                [(ngModel)]="adjustmentType"
+                name="adjustmentType"
                 class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-foreground mb-1">
-                Hora de Salida Corregida
-              </label>
-              <input
-                type="time"
-                [(ngModel)]="correctedCheckOutTime"
-                name="correctedCheckOutTime"
-                class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          <!-- Justificación Obligatoria (Min 10 caracteres) -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-xs font-semibold text-foreground">
-                Motivo / Justificación <span class="text-rose-500">*</span>
-              </label>
-              <span
-                class="text-[11px] font-mono font-medium"
-                [ngClass]="reason.trim().length >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
               >
-                {{ reason.trim().length }}/10 mín.
-              </span>
+                <option value="TIME_CORRECTION">Corrección Horaria (Entrada / Salida)</option>
+                <option value="MISSING_PUNCH">Marcación Omitida / Olvidada</option>
+                <option value="STATUS_CORRECTION">Corrección de Estado de Jornada</option>
+                <option value="OTHER">Otro Motivo Justificado</option>
+              </select>
             </div>
-            <textarea
-              [(ngModel)]="reason"
-              name="reason"
-              rows="3"
-              placeholder="Describa el motivo del ajuste (ej. Falla en lector biométrico, comisión externa verificada...)"
-              class="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-              required
-            ></textarea>
 
-            <p *ngIf="reasonTouched && reason.trim().length < 10" class="mt-1 text-xs text-rose-500 font-medium flex items-center gap-1">
-              <lucide-icon name="alert-circle" class="h-3.5 w-3.5"></lucide-icon>
-              La justificación es obligatoria y debe tener al menos 10 caracteres.
-            </p>
+            <!-- Corrección Horaria -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-foreground mb-1">
+                  Hora de Entrada Corregida
+                </label>
+                <input
+                  type="time"
+                  [(ngModel)]="correctedCheckInTime"
+                  name="correctedCheckInTime"
+                  class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-foreground mb-1">
+                  Hora de Salida Corregida
+                </label>
+                <input
+                  type="time"
+                  [(ngModel)]="correctedCheckOutTime"
+                  name="correctedCheckOutTime"
+                  class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <!-- Justificación Obligatoria (Min 10 caracteres) -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-xs font-semibold text-foreground">
+                  Motivo / Justificación <span class="text-rose-500">*</span>
+                </label>
+                <span
+                  class="text-[11px] font-mono font-medium"
+                  [ngClass]="reason.trim().length >= 10 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'"
+                >
+                  {{ reason.trim().length }}/10 mín.
+                </span>
+              </div>
+              <textarea
+                [(ngModel)]="reason"
+                name="reason"
+                rows="3"
+                placeholder="Describa el motivo del ajuste (ej. Falla en lector biométrico, comisión externa verificada...)"
+                class="w-full rounded-xl border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                required
+              ></textarea>
+
+              <p *ngIf="reasonTouched && reason.trim().length < 10" class="mt-1 text-xs text-rose-500 font-medium flex items-center gap-1">
+                <lucide-icon name="alert-circle" class="h-3.5 w-3.5"></lucide-icon>
+                La justificación es obligatoria y debe tener al menos 10 caracteres.
+              </p>
+            </div>
+
+            <!-- Advertencia de Auditoría Legal Inmutable -->
+            <div class="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2.5 text-xs text-primary">
+              <lucide-icon name="shield-check" class="h-4 w-4 shrink-0 mt-0.5"></lucide-icon>
+              <p class="leading-relaxed">
+                <strong>Aviso de Auditoría:</strong> Esta regularización quedará registrada de forma inmutable con su usuario y timestamp para efectos de fiscalización laboral (LGT Bolivia).
+              </p>
+            </div>
           </div>
 
-          <!-- Advertencia de Auditoría Legal Inmutable -->
-          <div class="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-start gap-2.5 text-xs text-primary">
-            <lucide-icon name="shield-check" class="h-4 w-4 shrink-0 mt-0.5"></lucide-icon>
-            <p class="leading-relaxed">
-              <strong>Aviso de Auditoría:</strong> Esta regularización quedará registrada de forma inmutable con su usuario y timestamp para efectos de fiscalización laboral (LGT Bolivia).
-            </p>
-          </div>
-
-          <!-- Modal Actions -->
-          <div class="flex items-center justify-end gap-3 pt-2">
+          <!-- Modal Actions (Fijo) -->
+          <div class="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-card px-6 py-4">
             <button
               type="button"
               (click)="close()"
               [disabled]="useCase.submitting()"
-              class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-50 transition-colors"
+              class="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-50 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               [disabled]="useCase.submitting() || reason.trim().length < 10"
-              class="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs"
+              class="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
             >
               <lucide-icon *ngIf="useCase.submitting()" name="loader-circle" class="h-4 w-4 animate-spin"></lucide-icon>
               <lucide-icon *ngIf="!useCase.submitting()" name="check-circle" class="h-4 w-4"></lucide-icon>
