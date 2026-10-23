@@ -29,21 +29,22 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
     }
   `],
   template: `
-    <nav role="tablist" aria-label="Área de reportes" class="no-print mb-4 flex flex-wrap gap-2 px-6 pt-6">
-      <button id="operational-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='operational'" [attr.tabindex]="area()==='operational'?0:-1" aria-controls="operational-reports" (click)="openArea('operational')" (keydown.arrowright)="focusArea($event, 'assistant')" (keydown.arrowleft)="focusArea($event, 'assistant')" class="rounded-md border px-4 py-2 text-sm" [class.bg-primary]="area()==='operational'" [class.text-primary-foreground]="area()==='operational'">Reportes operativos</button>
-      <button id="assistant-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='assistant'" [attr.tabindex]="area()==='assistant'?0:-1" aria-controls="assistant-reports" (click)="openArea('assistant')" (keydown.arrowright)="focusArea($event, 'operational')" (keydown.arrowleft)="focusArea($event, 'operational')" class="rounded-md border px-4 py-2 text-sm" [class.bg-primary]="area()==='assistant'" [class.text-primary-foreground]="area()==='assistant'">Reporte con IA</button>
+    <nav role="tablist" aria-label="Área de reportes" class="no-print mx-2 mt-4 flex gap-1 rounded-t-[30px] border-x border-t border-border/80 bg-background px-6 pt-4 sm:mx-4 lg:mx-6">
+      <button id="operational-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='operational'" [attr.tabindex]="area()==='operational'?0:-1" aria-controls="operational-reports" (click)="openArea('operational')" (keydown.arrowright)="focusArea($event, 'assistant')" (keydown.arrowleft)="focusArea($event, 'assistant')" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors" [class.border-primary]="area()==='operational'" [class.text-primary]="area()==='operational'" [class.border-transparent]="area()!=='operational'" [class.text-muted-foreground]="area()!=='operational'">Reportes operativos</button>
+      <button id="assistant-reports-tab" role="tab" type="button" [attr.aria-selected]="area()==='assistant'" [attr.tabindex]="area()==='assistant'?0:-1" aria-controls="assistant-reports" (click)="openArea('assistant')" (keydown.arrowright)="focusArea($event, 'operational')" (keydown.arrowleft)="focusArea($event, 'operational')" class="border-b-2 px-4 py-3 text-sm font-bold transition-colors" [class.border-primary]="area()==='assistant'" [class.text-primary]="area()==='assistant'" [class.border-transparent]="area()!=='assistant'" [class.text-muted-foreground]="area()!=='assistant'">Reporte con IA</button>
     </nav>
-    <section id="operational-reports" role="tabpanel" aria-labelledby="operational-reports-tab" [hidden]="area()!=='operational'" class="report-shell space-y-6 p-6">
-      <header class="flex flex-wrap items-start justify-between gap-4">
+    <section id="operational-reports" role="tabpanel" aria-labelledby="operational-reports-tab" [hidden]="area()!=='operational'" class="report-shell mx-2 mb-6 space-y-6 overflow-hidden rounded-b-[30px] border-x border-b border-t-0 border-border/80 bg-background shadow-sm sm:mx-4 lg:mx-6">
+      <div class="space-y-6 p-6 lg:p-8">
+      <header class="flex flex-wrap items-start justify-between gap-5">
         <div>
-          <p class="text-sm font-medium text-primary">Recursos Humanos · información estadística del tenant</p>
-          <h1 class="mt-1 text-3xl font-black tracking-tight text-foreground">Informe de RR. HH.</h1>
-          <p class="mt-1 max-w-3xl text-sm text-muted-foreground">Consulta reportes estadísticos predeterminados o genera resultados aplicando criterios personalizados.</p>
+          <p class="text-xs font-black uppercase tracking-[0.16em] text-primary">Centro de análisis</p>
+          <h1 class="mt-2 text-3xl font-black tracking-tight text-foreground">Reportes de RR. HH.</h1>
+          <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Explora indicadores operativos, aplica filtros y descarga información lista para compartir.</p>
         </div>
         <details class="no-print group relative" [class.pointer-events-none]="loading()" [class.opacity-50]="loading()">
-          <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90" aria-label="Mostrar formatos de descarga">
-            Descargar
-            <span aria-hidden="true" class="text-xs transition-transform group-open:rotate-180">▼</span>
+          <summary class="flex cursor-pointer list-none items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm hover:opacity-90" aria-label="Mostrar formatos de descarga">
+            Exportar informe
+            <span aria-hidden="true" class="text-xs transition-transform group-open:rotate-180">⌄</span>
           </summary>
           <div class="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-lg border bg-card p-1 shadow-lg">
             <button type="button" class="flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-muted" (click)="download('xlsx', $event)">Excel (.xlsx)</button>
@@ -53,8 +54,11 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
         </details>
       </header>
 
-      <nav class="no-print grid gap-2 rounded-xl border bg-card p-2 sm:grid-cols-2" aria-label="Tipos de reportes">
-        <button *ngFor="let item of tabs" type="button" class="rounded-lg px-3 py-3 text-sm font-semibold transition-colors hover:bg-muted" [class.bg-primary]="tab()===item.id" [class.text-primary-foreground]="tab()===item.id" (click)="changeTab(item.id)">{{ item.label }}</button>
+      <nav class="no-print grid gap-2 rounded-2xl border-2 border-primary/20 bg-card p-2 shadow-sm sm:grid-cols-2" aria-label="Tipos de reportes">
+        <button *ngFor="let item of tabs" type="button" class="rounded-xl border border-transparent px-4 py-3 text-left text-sm font-bold transition-all hover:border-primary/30 hover:bg-accent" [class.bg-primary]="tab()===item.id" [class.text-primary-foreground]="tab()===item.id" [class.border-primary]="tab()===item.id" [class.shadow-sm]="tab()===item.id" (click)="changeTab(item.id)">
+          <span class="block">{{ item.id === 'classic' ? 'Reportes rápidos' : 'Reporte personalizado' }}</span>
+          <span class="mt-0.5 block text-xs font-medium opacity-80">{{ item.id === 'classic' ? 'Indicadores listos para consultar' : 'Combina criterios y periodos' }}</span>
+        </button>
       </nav>
 
       <div *ngIf="error()" class="flex items-center justify-between gap-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
@@ -62,45 +66,51 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
       </div>
 
       <ng-container *ngIf="tab()==='classic'">
-        <section class="no-print rounded-xl border bg-card p-4">
-          <h2 class="text-sm font-bold">Reportes estadísticos estáticos</h2>
-          <p class="mt-1 text-xs text-muted-foreground">Selecciona un reporte fijo con indicadores calculados desde los módulos registrados.</p>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button *ngFor="let item of reportTypes" type="button" class="rounded-full border px-3 py-2 text-sm transition-colors hover:bg-muted" [class.bg-primary]="report()===item.id" [class.text-primary-foreground]="report()===item.id" (click)="select(item.id)">{{ item.label }}</button>
+        <section class="no-print rounded-3xl border border-border/80 bg-card p-4 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 class="text-base font-black">Elige un informe</h2><p class="mt-1 text-sm text-muted-foreground">Selecciona un módulo para consultar sus principales indicadores.</p></div>
+            <span class="rounded-full bg-accent px-2.5 py-1 text-xs font-bold text-primary">{{ reportTypes.length }} disponibles</span>
+          </div>
+          <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <button *ngFor="let item of reportTypes" type="button" class="min-h-20 rounded-2xl border border-border/80 bg-background/45 px-3.5 py-2.5 text-left shadow-2xs transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-accent/60 hover:shadow-sm" [class.border-primary]="report()===item.id" [class.bg-accent]="report()===item.id" [class.shadow-sm]="report()===item.id" (click)="select(item.id)">
+              <span class="block truncate text-sm font-black" [class.text-primary]="report()===item.id">{{ item.label }}</span>
+              <span class="mt-0.5 block line-clamp-2 text-[11px] leading-4 text-muted-foreground">{{ item.description }}</span>
+            </button>
           </div>
         </section>
         <ng-container *ngTemplateOutlet="reportResult"></ng-container>
       </ng-container>
 
       <ng-container *ngIf="tab()==='custom'">
-        <section class="no-print rounded-xl border bg-card p-5">
+        <section class="no-print rounded-2xl border border-border bg-card p-5">
           <div class="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 class="font-bold">Reportes estadísticos paramétricos</h2><p class="mt-1 text-sm text-muted-foreground">Combina módulo, periodo, organización, colaborador y estado.</p></div>
-            <button type="button" class="text-sm font-semibold text-primary hover:underline" (click)="clearFilters()">Limpiar criterios</button>
+            <div><p class="text-xs font-black uppercase tracking-wider text-primary">Configuración del informe</p><h2 class="mt-1 text-lg font-black">{{ selectedDefinition().label }}</h2><p class="mt-1 text-sm text-muted-foreground">{{ selectedDefinition().description }}. Ajusta los criterios antes de generar.</p></div>
+            <button type="button" class="rounded-lg px-3 py-2 text-sm font-bold text-primary hover:bg-accent" (click)="clearFilters()">Limpiar criterios</button>
           </div>
-          <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <label class="text-sm font-medium">Tipo de reporte
-              <select class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="reportValue" (ngModelChange)="onReportChange($event)"><option *ngFor="let item of reportTypes" [value]="item.id">{{ item.label }}</option></select>
+          <div class="mt-5 grid gap-4 border-t border-border pt-5 md:grid-cols-2 xl:grid-cols-4">
+            <label class="text-sm font-bold">Tipo de reporte
+              <select class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="reportValue" (ngModelChange)="onReportChange($event)"><option *ngFor="let item of reportTypes" [value]="item.id">{{ item.label }}</option></select>
             </label>
-            <label class="text-sm font-medium">Fecha inicial<input type="date" class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="fromDate" /></label>
-            <label class="text-sm font-medium">Fecha final<input type="date" class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="toDate" /></label>
-            <label class="text-sm font-medium">Estado
-              <select class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="status"><option value="">Todos</option><option *ngFor="let item of selectedDefinition().statuses" [value]="item.value">{{ item.label }}</option></select>
+            <label class="text-sm font-bold">Fecha inicial<input type="date" class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="fromDate" /></label>
+            <label class="text-sm font-bold">Fecha final<input type="date" class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="toDate" [class.border-destructive]="dateRangeInvalid" /></label>
+            <label class="text-sm font-bold">Estado
+              <select class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="status"><option value="">Todos los estados</option><option *ngFor="let item of selectedDefinition().statuses" [value]="item.value">{{ item.label }}</option></select>
             </label>
-            <label class="text-sm font-medium">Departamento
-              <select class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="departmentId"><option value="">Todos</option><option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option></select>
+            <label class="text-sm font-bold">Departamento
+              <select class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="departmentId"><option value="">Todos los departamentos</option><option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option></select>
             </label>
-            <label class="text-sm font-medium">Cargo
-              <select class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="positionId"><option value="">Todos</option><option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option></select>
+            <label class="text-sm font-bold">Cargo
+              <select class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="positionId"><option value="">Todos los cargos</option><option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option></select>
             </label>
-            <label class="text-sm font-medium">Empleado
-              <select class="mt-1 w-full rounded-lg border bg-background px-3 py-2" [(ngModel)]="employeeId" (ngModelChange)="onEmployeeChange()"><option value="">Todos</option><option *ngFor="let item of employees()" [value]="item.id">{{ item.firstName }} {{ item.lastName }} · {{ item.employeeNumber }}</option></select>
+            <label class="text-sm font-bold">Empleado
+              <select class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground" [(ngModel)]="employeeId" (ngModelChange)="onEmployeeChange()"><option value="">Todos los empleados</option><option *ngFor="let item of employees()" [value]="item.id">{{ item.firstName }} {{ item.lastName }} · {{ item.employeeNumber }}</option></select>
             </label>
-            <label class="text-sm font-medium">Periodo laboral
-              <select class="mt-1 w-full rounded-lg border bg-background px-3 py-2 disabled:opacity-50" [(ngModel)]="employmentPeriodId" [disabled]="!employeeId"><option value="">Todos</option><option *ngFor="let item of periods()" [value]="item.id">Periodo {{ item.periodNumber }} · {{ item.startDate }}</option></select>
+            <label class="text-sm font-bold">Periodo laboral
+              <select class="mt-1.5 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm font-normal text-foreground disabled:opacity-50" [(ngModel)]="employmentPeriodId" [disabled]="!employeeId"><option value="">Todos los periodos</option><option *ngFor="let item of periods()" [value]="item.id">Periodo {{ item.periodNumber }} · {{ item.startDate }}</option></select>
             </label>
           </div>
-          <div class="mt-5 flex justify-end"><button type="button" class="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50" [disabled]="loading()" (click)="load()">Generar reporte</button></div>
+          <p *ngIf="dateRangeInvalid" class="mt-3 text-xs font-semibold text-destructive">La fecha final debe ser igual o posterior a la fecha inicial.</p>
+          <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><span class="text-xs text-muted-foreground">{{ filterCount }} criterio(s) activo(s)</span><button type="button" class="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-50" [disabled]="loading() || dateRangeInvalid" (click)="load()">Generar reporte</button></div>
         </section>
         <ng-container *ngTemplateOutlet="reportResult"></ng-container>
       </ng-container>
@@ -108,9 +118,10 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
       <ng-template #reportResult>
         <div *ngIf="loading()" class="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">Generando reporte…</div>
         <ng-container *ngIf="!loading() && data()">
-          <div class="no-print flex justify-end">
-            <label class="text-sm font-medium">Tipo de gráfico
-              <select class="ml-2 rounded-lg border bg-card px-3 py-2" [(ngModel)]="chartType">
+          <div class="no-print flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+            <div><p class="text-sm font-black">{{ selectedDefinition().label }}</p><p class="text-xs text-muted-foreground">Resultado generado con {{ filterCount }} criterio(s) activo(s)</p></div>
+            <label class="text-sm font-bold">Visualización
+              <select class="ml-2 rounded-lg border border-input bg-background px-3 py-2 text-sm font-normal text-foreground" [(ngModel)]="chartType">
                 <option *ngFor="let option of chartTypes" [value]="option.value">{{ option.label }}</option>
               </select>
             </label>
@@ -155,6 +166,7 @@ interface ReportGroup { label: string; rows: ReportRow[]; }
           <p *ngIf="!metrics().length && !groups().length" class="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">El reporte no devolvió indicadores con los criterios seleccionados.</p>
         </ng-container>
       </ng-template>
+      </div>
     </section>
     @if (assistantOpened()) {
       <div id="assistant-reports" role="tabpanel" aria-labelledby="assistant-reports-tab" [hidden]="area()!=='assistant'">
@@ -216,6 +228,8 @@ export class HrReportsPageComponent implements OnInit {
   reportValue: HrReportId = 'employees';
   chartType: ChartType = 'horizontal';
   fromDate = ''; toDate = ''; departmentId = ''; positionId = ''; employeeId = ''; employmentPeriodId = ''; status = '';
+  get dateRangeInvalid(): boolean { return !!this.fromDate && !!this.toDate && this.toDate < this.fromDate; }
+  get filterCount(): number { return [this.fromDate, this.toDate, this.departmentId, this.positionId, this.employeeId, this.employmentPeriodId, this.status].filter(Boolean).length; }
   ngOnInit() { this.loadLookups(); this.load(); }
   changeTab(tab: ReportTab) { this.tab.set(tab); }
   select(id: HrReportId) { this.report.set(id); this.reportValue = id; this.status = ''; this.load(); }
@@ -227,6 +241,10 @@ export class HrReportsPageComponent implements OnInit {
   }
   clearFilters() { this.fromDate='';this.toDate='';this.departmentId='';this.positionId='';this.employeeId='';this.employmentPeriodId='';this.status='';this.periods.set([]);this.load(); }
   load() {
+    if (this.dateRangeInvalid) {
+      this.error.set('La fecha final debe ser igual o posterior a la fecha inicial.');
+      return;
+    }
     this.loading.set(true); this.error.set('');
     this.reports.get(this.report(), this.filters()).subscribe({
       next: response => { this.data.set(response.data); this.loading.set(false); },

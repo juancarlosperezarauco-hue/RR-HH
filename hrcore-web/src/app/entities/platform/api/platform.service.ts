@@ -48,6 +48,11 @@ export interface CreatePlanRequest {
   maxUsers: number;
   maxRoles: number;
   trialDays?: number | null;
+  monthlyAmount?: number | null;
+  yearlyAmount?: number | null;
+  currency?: string;
+  publicVisible?: boolean;
+  sortOrder?: number;
 }
 
 export interface AuditEvent {

@@ -46,7 +46,7 @@
             <td class="px-4 py-4"><div class="flex justify-end gap-1">
               <button *ngIf="'employees.detail' | hasPermission" type="button" (click)="openProfile(employee.id)" title="Ver ficha" class="rounded-xl p-2 text-primary hover:bg-accent"><lucide-icon name="contact-round" [size]="18"></lucide-icon></button>
               <button *ngIf="'employees.update' | hasPermission" type="button" (click)="openEdit(employee.id)" title="Editar" class="rounded-xl p-2 text-primary hover:bg-accent"><lucide-icon name="pencil" [size]="17"></lucide-icon></button>
-              <button *ngIf="'employees.status.update' | hasPermission" type="button" (click)="changeStatus(employee)" [title]="employee.employmentStatus === 'ACTIVE' ? 'Desactivar' : 'Activar'" class="rounded-xl p-2" [ngClass]="employee.employmentStatus === 'ACTIVE' ? 'text-destructive hover:bg-destructive/10' : 'text-primary hover:bg-primary/10'"><lucide-icon [name]="employee.employmentStatus === 'ACTIVE' ? 'user-x' : 'user-check'" [size]="18"></lucide-icon></button>
+              <button *ngIf="employee.employmentStatus !== 'TERMINATED' && ('employees.status.update' | hasPermission)" type="button" (click)="changeStatus(employee)" [title]="employee.employmentStatus === 'ACTIVE' ? 'Desactivar' : 'Activar'" class="rounded-xl p-2" [ngClass]="employee.employmentStatus === 'ACTIVE' ? 'text-destructive hover:bg-destructive/10' : 'text-primary hover:bg-primary/10'"><lucide-icon [name]="employee.employmentStatus === 'ACTIVE' ? 'user-x' : 'user-check'" [size]="18"></lucide-icon></button>
             </div></td>
           </tr>
         </tbody>
@@ -97,10 +97,10 @@
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Primer nombre *</span>
-              <input name="firstName" [(ngModel)]="form.firstName" required maxlength="100" placeholder="Ej. Ana"
-                [class.border-destructive]="formSubmitted() && !form.firstName.trim()"
+              <input name="firstName" [(ngModel)]="form.firstName" (blur)="touchField('firstName')" required maxlength="100" placeholder="Ej. Ana"
+                [class.border-destructive]="fieldHasError('firstName', !form.firstName.trim())"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && !form.firstName.trim()" class="block text-xs font-medium text-destructive">El primer nombre es obligatorio.</small>
+              <small *ngIf="fieldHasError('firstName', !form.firstName.trim())" class="block text-xs font-medium text-destructive">El primer nombre es obligatorio.</small>
             </label>
 
             <label class="space-y-1.5">
@@ -111,10 +111,10 @@
 
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Apellido paterno *</span>
-              <input name="lastName" [(ngModel)]="form.lastName" required maxlength="100" placeholder="Ej. López"
-                [class.border-destructive]="formSubmitted() && !form.lastName.trim()"
+              <input name="lastName" [(ngModel)]="form.lastName" (blur)="touchField('lastName')" required maxlength="100" placeholder="Ej. López"
+                [class.border-destructive]="fieldHasError('lastName', !form.lastName.trim())"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && !form.lastName.trim()" class="block text-xs font-medium text-destructive">El apellido paterno es obligatorio.</small>
+              <small *ngIf="fieldHasError('lastName', !form.lastName.trim())" class="block text-xs font-medium text-destructive">El apellido paterno es obligatorio.</small>
             </label>
 
             <label class="space-y-1.5">
@@ -125,28 +125,30 @@
 
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Tipo de documento *</span>
-              <select name="documentType" [(ngModel)]="form.documentType" required
+              <select name="documentType" [(ngModel)]="form.documentType" (blur)="touchField('documentType')" required
+                [class.border-destructive]="fieldHasError('documentType', !form.documentType.trim())"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
                 <option value="CI">Carnet de identidad (CI)</option>
                 <option value="PASSPORT">Pasaporte</option>
                 <option value="FOREIGN_ID">Documento de extranjero</option>
               </select>
+              <small *ngIf="fieldHasError('documentType', !form.documentType.trim())" class="block text-xs font-medium text-destructive">Selecciona el tipo de documento.</small>
             </label>
 
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Número de documento *</span>
-              <input name="documentNumber" [(ngModel)]="form.documentNumber" required maxlength="50" placeholder="Ej. 6543210"
-                [class.border-destructive]="formSubmitted() && !form.documentNumber.trim()"
+              <input name="documentNumber" [(ngModel)]="form.documentNumber" (blur)="touchField('documentNumber')" required maxlength="50" placeholder="Ej. 6543210"
+                [class.border-destructive]="fieldHasError('documentNumber', !form.documentNumber.trim())"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && !form.documentNumber.trim()" class="block text-xs font-medium text-destructive">Ingresa el número de documento.</small>
+              <small *ngIf="fieldHasError('documentNumber', !form.documentNumber.trim())" class="block text-xs font-medium text-destructive">Ingresa el número de documento.</small>
             </label>
 
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Fecha de ingreso *</span>
-              <input name="hireDate" type="date" [(ngModel)]="form.hireDate" required
-                [class.border-destructive]="formSubmitted() && !form.hireDate"
+              <input name="hireDate" type="date" [(ngModel)]="form.hireDate" (blur)="touchField('hireDate')" required
+                [class.border-destructive]="fieldHasError('hireDate', !form.hireDate)"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && !form.hireDate" class="block text-xs font-medium text-destructive">Selecciona la fecha de ingreso.</small>
+              <small *ngIf="fieldHasError('hireDate', !form.hireDate)" class="block text-xs font-medium text-destructive">Selecciona la fecha de ingreso.</small>
             </label>
 
             <label class="space-y-1.5">
@@ -193,23 +195,23 @@
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
               <span class="text-xs font-semibold text-muted-foreground">Correo personal</span>
-              <input name="personalEmail" type="email" [(ngModel)]="form.personalEmail" maxlength="150" placeholder="ana.lopez@correo.com"
-                [class.border-destructive]="formSubmitted() && isEmailInvalid(form.personalEmail)"
+              <input name="personalEmail" type="email" [(ngModel)]="form.personalEmail" (blur)="touchField('personalEmail')" maxlength="150" placeholder="ana.lopez@correo.com"
+                [class.border-destructive]="fieldHasError('personalEmail', isEmailInvalid(form.personalEmail))"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && isEmailInvalid(form.personalEmail)" class="block text-xs font-medium text-destructive">Ingresa un correo electrónico válido.</small>
+              <small *ngIf="fieldHasError('personalEmail', isEmailInvalid(form.personalEmail))" class="block text-xs font-medium text-destructive">Ingresa un correo electrónico válido.</small>
             </label>
 
             <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
               <span class="text-xs font-semibold text-muted-foreground">Correo institucional</span>
-              <input name="workEmail" type="email" [(ngModel)]="form.workEmail" maxlength="150" placeholder="ana.lopez@empresa.com"
-                [class.border-destructive]="formSubmitted() && isEmailInvalid(form.workEmail)"
+              <input name="workEmail" type="email" [(ngModel)]="form.workEmail" (blur)="touchField('workEmail')" maxlength="150" placeholder="ana.lopez@empresa.com"
+                [class.border-destructive]="fieldHasError('workEmail', isEmailInvalid(form.workEmail))"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && isEmailInvalid(form.workEmail)" class="block text-xs font-medium text-destructive">Ingresa un correo institucional válido.</small>
+              <small *ngIf="fieldHasError('workEmail', isEmailInvalid(form.workEmail))" class="block text-xs font-medium text-destructive">Ingresa un correo institucional válido.</small>
             </label>
 
             <label class="space-y-1.5 sm:col-span-1 lg:col-span-2">
-              <span class="text-xs font-semibold text-muted-foreground">Teléfono fijo</span>
-              <input name="phone" [(ngModel)]="form.phone" maxlength="40" placeholder="Ej. +591 2 123456"
+              <span class="text-xs font-semibold text-muted-foreground">Dirección de domicilio</span>
+              <input name="address" [(ngModel)]="form.address" maxlength="255" placeholder="Zona, avenida/calle y número de residencia"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
             </label>
 
@@ -219,21 +221,23 @@
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
             </label>
 
-            <label *ngIf="'users.list' | hasPermission" class="space-y-1.5 sm:col-span-2 lg:col-span-4">
-              <span class="text-xs font-semibold text-muted-foreground">Cuenta de acceso vinculada</span>
+            <label *ngIf="'users.list' | hasPermission" class="space-y-1.5 rounded-2xl border border-primary/35 bg-primary/5 p-4 sm:col-span-2 lg:col-span-4">
+              <span class="flex items-center gap-2 text-sm font-black text-primary"><lucide-icon name="user-check" [size]="16"></lucide-icon>Cuenta de acceso al sistema</span>
+              <small class="block text-xs text-muted-foreground">Vincula una cuenta para que el empleado pueda iniciar sesión.</small>
+              <input name="tenantUserSearch" [(ngModel)]="tenantUserSearch" (keydown.enter)="onTenantUserSearchEnter($event)" placeholder="Buscar cuenta por nombre o correo · Enter para buscar"
+                class="mb-2 h-10 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
               <select name="tenantUserId" [(ngModel)]="form.tenantUserId"
+                [class.border-amber-400]="!form.tenantUserId"
+                [class.border-primary]="!!form.tenantUserId"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
                 <option [ngValue]="null">Sin acceso al sistema</option>
                 <option *ngFor="let user of tenantUsers()" [ngValue]="user.id" [disabled]="!canLinkUser(user)">{{ userLabel(user) }} · {{ userAccessStatus(user) }}</option>
               </select>
-              <small class="block text-[11px] text-muted-foreground">Puedes vincular una cuenta activa o pendiente de verificación.</small>
+              <div class="mt-2 flex items-center justify-between text-[11px] text-muted-foreground"><span>{{ tenantUserTotalElements() }} cuentas encontradas</span><div class="flex items-center gap-1"><button type="button" (click)="changeTenantUserPage(-1)" [disabled]="tenantUserPage() === 0" class="rounded-md border border-border px-2 py-1 disabled:opacity-40">Anterior</button><span>{{ tenantUserPage() + 1 }} / {{ tenantUserTotalPages() }}</span><button type="button" (click)="changeTenantUserPage(1)" [disabled]="tenantUserPage() + 1 >= tenantUserTotalPages()" class="rounded-md border border-border px-2 py-1 disabled:opacity-40">Siguiente</button></div></div>
+              <small *ngIf="!form.tenantUserId" class="block text-xs font-bold text-amber-700">Este empleado quedará sin acceso al sistema hasta vincular una cuenta.</small>
+              <small *ngIf="form.tenantUserId" class="block text-xs font-semibold text-primary">Cuenta de acceso vinculada.</small>
             </label>
 
-            <label class="space-y-1.5 sm:col-span-2 lg:col-span-4">
-              <span class="text-xs font-semibold text-muted-foreground">Dirección de domicilio</span>
-              <textarea name="address" [(ngModel)]="form.address" rows="2" placeholder="Zona, avenida/calle y número de residencia"
-                class="w-full resize-none rounded-xl border border-input bg-background p-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary"></textarea>
-            </label>
           </div>
         </div>
 
@@ -250,32 +254,32 @@
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Departamento *</span>
-              <select name="initialDepartmentId" [(ngModel)]="assignmentForm.departmentId" required
-                [class.border-destructive]="formSubmitted() && !assignmentForm.departmentId"
+              <select name="initialDepartmentId" [(ngModel)]="assignmentForm.departmentId" (blur)="touchField('initialDepartmentId')" required
+                [class.border-destructive]="fieldHasError('initialDepartmentId', !assignmentForm.departmentId)"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
                 <option value="">Selecciona un departamento</option>
                 <option *ngFor="let item of departments()" [value]="item.id">{{ item.name }}</option>
               </select>
-              <small *ngIf="formSubmitted() && !assignmentForm.departmentId" class="block text-xs font-medium text-destructive">Selecciona un departamento.</small>
+              <small *ngIf="fieldHasError('initialDepartmentId', !assignmentForm.departmentId)" class="block text-xs font-medium text-destructive">Selecciona un departamento.</small>
             </label>
 
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Cargo *</span>
-              <select name="initialPositionId" [(ngModel)]="assignmentForm.positionId" required
-                [class.border-destructive]="formSubmitted() && !assignmentForm.positionId"
+              <select name="initialPositionId" [(ngModel)]="assignmentForm.positionId" (blur)="touchField('initialPositionId')" required
+                [class.border-destructive]="fieldHasError('initialPositionId', !assignmentForm.positionId)"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary">
                 <option value="">Selecciona un cargo</option>
                 <option *ngFor="let item of positions()" [value]="item.id">{{ item.name }}</option>
               </select>
-              <small *ngIf="formSubmitted() && !assignmentForm.positionId" class="block text-xs font-medium text-destructive">Selecciona un cargo.</small>
+              <small *ngIf="fieldHasError('initialPositionId', !assignmentForm.positionId)" class="block text-xs font-medium text-destructive">Selecciona un cargo.</small>
             </label>
 
             <label class="space-y-1.5">
               <span class="text-xs font-bold text-accent-foreground">Inicio de asignación *</span>
-              <input name="initialAssignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" required
-                [class.border-destructive]="formSubmitted() && !assignmentForm.startDate"
+              <input name="initialAssignmentStart" type="date" [(ngModel)]="assignmentForm.startDate" (blur)="touchField('initialAssignmentStart')" required
+                [class.border-destructive]="fieldHasError('initialAssignmentStart', !assignmentForm.startDate)"
                 class="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm font-normal text-foreground outline-none transition-all focus:border-primary" />
-              <small *ngIf="formSubmitted() && !assignmentForm.startDate" class="block text-xs font-medium text-destructive">Indica la fecha de inicio de asignación.</small>
+              <small *ngIf="fieldHasError('initialAssignmentStart', !assignmentForm.startDate)" class="block text-xs font-medium text-destructive">Indica la fecha de inicio de asignación.</small>
             </label>
           </div>
 
@@ -305,10 +309,12 @@
     <div class="flex shrink-0 items-start justify-between border-b border-border bg-card px-6 py-5"><div><p class="text-xs font-black uppercase tracking-widest text-primary">{{ employee.employeeNumber }}</p><h2 class="text-2xl font-black text-accent-foreground">{{ employee.firstName }} {{ employee.middleName }} {{ employee.lastName }} {{ employee.secondLastName }}</h2><p class="mt-1 text-sm text-muted-foreground">{{ employee.documentType }} {{ employee.documentNumber }} · Ingreso {{ employee.hireDate | date:'dd/MM/yyyy' }}</p></div><div class="flex items-center gap-2"><button *ngIf="employee.employmentStatus === 'TERMINATED' && ('employees.rehire' | hasPermission)" type="button" (click)="rehireSelected()" class="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground">Recontratar</button><button *ngIf="employee.employmentStatus !== 'TERMINATED' && ('employees.terminate' | hasPermission)" type="button" (click)="terminateSelected()" class="rounded-xl border border-destructive/30 px-3 py-2 text-sm font-bold text-destructive">Desvincular</button><button type="button" (click)="showProfile.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button></div></div>
     <div class="flex-1 space-y-6 overflow-y-auto p-6">
       <div *ngIf="userActivationRequired()" class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="status"><p class="font-bold">Cuenta de acceso inactiva</p><p class="mt-1">El empleado fue recontratado, pero un administrador debe activar la cuenta vinculada para permitir su acceso al sistema.</p></div>
+      <div *ngIf="relationsLoading()" class="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">Cargando relaciones laborales y contactos...</div>
+      <div *ngIf="!relationsLoading() && relationErrors().length" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">No se pudieron consultar: {{ relationErrors().join(', ') }}. Los datos disponibles se muestran parcialmente.</div>
       <section class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Estado</p><p class="mt-1 font-black">{{ statusLabel(employee.employmentStatus) }}</p></div><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Correo</p><p class="mt-1 break-all text-sm font-black">{{ employee.workEmail || employee.personalEmail || 'Sin registro' }}</p></div><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Celular</p><p class="mt-1 font-black">{{ employee.mobilePhone || employee.phone || 'Sin registro' }}</p></div><div class="rounded-2xl bg-muted p-4"><p class="text-xs font-bold text-muted-foreground">Nacionalidad</p><p class="mt-1 font-black">{{ employee.nationality || 'Sin registro' }}</p></div></section>
       <section class="rounded-2xl border border-border p-4"><div class="mb-3"><h3 class="text-lg font-black">Períodos laborales</h3><p class="text-sm text-muted-foreground">Historial de ingresos y desvinculaciones sin duplicar la ficha del empleado.</p></div><div class="space-y-2"><div *ngFor="let period of periods()" class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted p-3 text-sm"><span class="font-bold">Período {{ period.periodNumber }}</span><span>{{ period.startDate | date:'dd/MM/yyyy' }} — {{ period.endDate ? (period.endDate | date:'dd/MM/yyyy') : 'vigente' }}</span><span class="rounded-full bg-card px-2.5 py-1 text-xs font-bold">{{ statusLabel(period.status) }}</span></div><p *ngIf="!periods().length" class="text-sm text-muted-foreground">No hay períodos laborales disponibles.</p></div></section>
-      <section><div class="mb-3 flex items-center justify-between"><div><h3 class="text-lg font-black">Asignaciones laborales</h3><p class="text-sm text-muted-foreground">Departamento, cargo y vigencia.</p></div><button *ngIf="'employees.assignments.create' | hasPermission" type="button" (click)="openNewAssignment()" class="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">Nueva asignación</button></div><div class="space-y-3"><div *ngFor="let assignment of assignments()" class="flex flex-col gap-3 rounded-2xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div><p class="font-black">{{ departmentName(assignment.departmentId) }} / {{ positionName(assignment.positionId) }}</p><p class="text-sm text-muted-foreground">{{ assignmentTypeLabel(assignment.assignmentType) }} · {{ assignment.startDate | date:'dd/MM/yyyy' }} — {{ assignment.endDate ? (assignment.endDate | date:'dd/MM/yyyy') : 'vigente' }}</p></div><button *ngIf="!assignment.endDate && ('employees.assignments.close' | hasPermission)" type="button" (click)="closeAssignment(assignment)" class="rounded-full border border-destructive/30 px-4 py-2 text-sm font-bold text-destructive">Cerrar asignación</button></div><p *ngIf="!assignments().length" class="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin asignaciones laborales.</p></div></section>
-      <section><div class="mb-3 flex items-center justify-between"><div><h3 class="text-lg font-black">Contactos de emergencia</h3><p class="text-sm text-muted-foreground">Personas de referencia del trabajador.</p></div><button *ngIf="'employees.contacts.create' | hasPermission" type="button" (click)="openNewContact()" class="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">Nuevo contacto</button></div><div class="grid gap-3 md:grid-cols-2"><div *ngFor="let contact of contacts()" class="flex items-start justify-between rounded-2xl border border-border p-4"><div><p class="font-black">{{ contact.fullName }} <span *ngIf="contact.primary" class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Principal</span></p><p class="text-sm text-muted-foreground">{{ contact.relationship || 'Sin parentesco' }} · {{ contact.phone }}</p></div><button *ngIf="'employees.contacts.delete' | hasPermission" type="button" (click)="deleteContact(contact)" title="Eliminar" class="rounded-xl p-2 text-destructive hover:bg-destructive/10"><lucide-icon name="trash-2" [size]="17"></lucide-icon></button></div><p *ngIf="!contacts().length" class="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground md:col-span-2">Sin contactos de emergencia.</p></div></section>
+      <section><div class="mb-3 flex items-center justify-between"><div><h3 class="text-lg font-black">Asignaciones laborales</h3><p class="text-sm text-muted-foreground">Departamento, cargo y vigencia.</p></div><button *ngIf="'employees.assignments.create' | hasPermission" type="button" (click)="openNewAssignment()" class="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">Nueva asignación</button></div><div class="space-y-3"><div *ngFor="let assignment of assignments()" class="flex flex-col gap-3 rounded-2xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div><p class="font-black">{{ departmentName(assignment.departmentId) }} / {{ positionName(assignment.positionId) }}</p><p class="text-sm text-muted-foreground">{{ assignmentTypeLabel(assignment.assignmentType) }} · {{ assignment.startDate | date:'dd/MM/yyyy' }} — {{ assignment.endDate ? (assignment.endDate | date:'dd/MM/yyyy') : 'vigente' }}</p></div><div class="flex flex-wrap gap-2"><button *ngIf="assignment.status === 'ACTIVE' && isFutureAssignment(assignment) && ('employees.assignments.update' | hasPermission)" type="button" (click)="openEditAssignment(assignment)" class="rounded-full border border-border px-4 py-2 text-sm font-bold text-primary">Editar</button><button *ngIf="assignment.status === 'ACTIVE' && isFutureAssignment(assignment) && ('employees.assignments.cancel' | hasPermission)" type="button" (click)="cancelAssignment(assignment)" class="rounded-full border border-destructive/30 px-4 py-2 text-sm font-bold text-destructive">Cancelar</button><button *ngIf="assignment.status === 'ACTIVE' && !isFutureAssignment(assignment) && !assignment.endDate && ('employees.assignments.close' | hasPermission)" type="button" (click)="closeAssignment(assignment)" class="rounded-full border border-destructive/30 px-4 py-2 text-sm font-bold text-destructive">Cerrar asignación</button></div></div><p *ngIf="!assignments().length" class="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin asignaciones laborales.</p></div></section>
+      <section><div class="mb-3 flex items-center justify-between"><div><h3 class="text-lg font-black">Contactos de emergencia</h3><p class="text-sm text-muted-foreground">Personas de referencia del trabajador.</p></div><button *ngIf="'employees.contacts.create' | hasPermission" type="button" (click)="openNewContact()" class="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">Nuevo contacto</button></div><div class="grid gap-3 md:grid-cols-2"><div *ngFor="let contact of contacts()" class="flex items-start justify-between rounded-2xl border border-border p-4"><div><p class="font-black">{{ contact.fullName }} <span *ngIf="contact.primary" class="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">Principal</span></p><p class="text-sm text-muted-foreground">{{ contact.relationship || 'Sin parentesco' }} · {{ contact.phone }}</p></div><div class="flex gap-1"><button *ngIf="'employees.contacts.update' | hasPermission" type="button" (click)="openEditContact(contact)" title="Editar" class="rounded-xl p-2 text-primary hover:bg-accent"><lucide-icon name="pencil" [size]="17"></lucide-icon></button><button *ngIf="'employees.contacts.delete' | hasPermission" type="button" (click)="deleteContact(contact)" title="Eliminar" class="rounded-xl p-2 text-destructive hover:bg-destructive/10"><lucide-icon name="trash-2" [size]="17"></lucide-icon></button></div></div><p *ngIf="!contacts().length" class="rounded-2xl border border-dashed p-5 text-center text-sm text-muted-foreground md:col-span-2">Sin contactos de emergencia.</p></div></section>
     </div>
   </div>
 </div>
@@ -318,7 +324,7 @@
   <form (ngSubmit)="saveAssignment()" novalidate class="app-modal-panel w-full max-w-2xl rounded-[28px] border border-border bg-card p-6 shadow-2xl">
     <div class="mb-5 flex items-center justify-between border-b border-border pb-4">
       <div>
-        <h2 class="text-xl font-black text-accent-foreground">Nueva asignación laboral</h2>
+        <h2 class="text-xl font-black text-accent-foreground">{{ editingAssignment() ? 'Editar asignación laboral' : 'Nueva asignación laboral' }}</h2>
         <p class="text-xs text-muted-foreground">Relaciona al empleado con un departamento y cargo.</p>
       </div>
       <button type="button" (click)="showAssignmentForm.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button>
@@ -360,7 +366,7 @@
     </div>
     <div class="mt-6 flex justify-end gap-3 border-t border-border pt-4">
       <button type="button" (click)="showAssignmentForm.set(false)" class="rounded-full border border-border px-5 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted">Cancelar</button>
-      <button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground disabled:opacity-50">Guardar asignación</button>
+      <button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground disabled:opacity-50">{{ editingAssignment() ? 'Actualizar asignación' : 'Guardar asignación' }}</button>
     </div>
   </form>
 </div>
@@ -370,7 +376,7 @@
   <form (ngSubmit)="saveContact()" novalidate class="app-modal-panel w-full max-w-2xl rounded-[28px] border border-border bg-card p-6 shadow-2xl">
     <div class="mb-5 flex items-center justify-between border-b border-border pb-4">
       <div>
-        <h2 class="text-xl font-black text-accent-foreground">Contacto de emergencia</h2>
+        <h2 class="text-xl font-black text-accent-foreground">{{ editingContact() ? 'Editar contacto de emergencia' : 'Contacto de emergencia' }}</h2>
         <p class="text-xs text-muted-foreground">Registra una persona de referencia para casos de emergencia.</p>
       </div>
       <button type="button" (click)="showContactForm.set(false)" class="rounded-full p-2 hover:bg-muted"><lucide-icon name="x" [size]="20"></lucide-icon></button>
@@ -405,7 +411,7 @@
     </div>
     <div class="mt-6 flex justify-end gap-3 border-t border-border pt-4">
       <button type="button" (click)="showContactForm.set(false)" class="rounded-full border border-border px-5 py-2 text-sm font-bold text-muted-foreground hover:bg-muted">Cancelar</button>
-      <button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground disabled:opacity-50">Guardar contacto</button>
+      <button type="submit" [disabled]="saving()" class="rounded-full bg-primary px-6 py-2 text-sm font-black text-primary-foreground disabled:opacity-50">{{ editingContact() ? 'Actualizar contacto' : 'Guardar contacto' }}</button>
     </div>
   </form>
 </div>

@@ -3,6 +3,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service
 import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
+import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUserStatus;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
@@ -28,21 +29,30 @@ public class EmployeePolicy {
     private final TenantPlanEnforcementService plans;
     private final SecurityContextFacade security;
     private final TenantTimezoneService timezone;
+    private final TenantAuthorizationStateRepository authorizationState;
 
     @Autowired
     public EmployeePolicy(EmployeeRepository employees, EmployeeAssignmentRepository assignments,
                           EmploymentPeriodRepository periods, TenantUserRepository users,
                           TenantPlanEnforcementService plans, SecurityContextFacade security,
-                          TenantTimezoneService timezone) {
+                          TenantTimezoneService timezone, TenantAuthorizationStateRepository authorizationState) {
         this.employees = employees; this.assignments = assignments; this.users = users;
         this.periods = periods; this.plans = plans; this.security = security; this.timezone = timezone;
+        this.authorizationState = authorizationState;
+    }
+
+    public EmployeePolicy(EmployeeRepository employees, EmployeeAssignmentRepository assignments,
+                          EmploymentPeriodRepository periods, TenantUserRepository users,
+                          TenantPlanEnforcementService plans, SecurityContextFacade security,
+                          TenantTimezoneService timezone) {
+        this(employees, assignments, periods, users, plans, security, timezone, null);
     }
 
     /** Compatibility constructor for isolated unit tests that do not use employment periods. */
     public EmployeePolicy(EmployeeRepository employees, EmployeeAssignmentRepository assignments,
                           TenantUserRepository users, TenantPlanEnforcementService plans,
                           SecurityContextFacade security, TenantTimezoneService timezone) {
-        this(employees, assignments, null, users, plans, security, timezone);
+        this(employees, assignments, null, users, plans, security, timezone, null);
     }
 
     public void assertOperational() { plans.assertCanOperate(); }
@@ -71,6 +81,11 @@ public class EmployeePolicy {
         if (employees.existsDocumentOtherThan(documentType, documentNumber, id))
             throw new BusinessException("Employee document already exists");
         if (r.tenantUserId() != null) {
+            UUID ownerUserId = authorizationState == null ? null : authorizationState.ownerUserId();
+            if (r.tenantUserId().equals(ownerUserId)) {
+                throw new com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException(
+                        "La cuenta propietaria no puede vincularse a un empleado");
+            }
             var user = users.findById(r.tenantUserId()).orElseThrow(() -> new BusinessException("Tenant user does not exist"));
             // A pending account has already been created and is waiting for
             // email verification. It can be linked to the employee now, but

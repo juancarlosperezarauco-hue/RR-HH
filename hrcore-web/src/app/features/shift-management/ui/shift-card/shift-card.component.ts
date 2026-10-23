@@ -4,6 +4,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { ShiftResponse } from '../../../../entities/shift';
 import { ShiftStatusBadgeComponent } from '../shift-status-badge/shift-status-badge.component';
 import { ShiftFormUseCase } from '../../application/shift-form.usecase';
+import { PermissionService } from '../../../../shared/lib/auth/permission.service';
 
 @Component({
   selector: 'app-shift-card',
@@ -39,39 +40,36 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
         </div>
       </div>
 
-      <!-- Horario y Horas Efectivas Computadas -->
-      <div class="my-4 space-y-2 border-t border-b border-border/60 py-3 text-xs">
+      <!-- Horario y métricas operativas -->
+      <div class="my-4 space-y-3 border-t border-b border-border/60 py-3 text-xs">
         <div class="flex items-center justify-between">
-          <span class="text-muted-foreground font-medium">Horario:</span>
+          <span class="text-muted-foreground font-medium">Horario</span>
           <span class="font-bold text-foreground flex items-center gap-1.5">
             <lucide-icon name="clock" [size]="13" class="text-primary"></lucide-icon>
             {{ formatTime(shift.startTime) }} - {{ formatTime(shift.endTime) }}
           </span>
         </div>
 
-        <div class="flex items-center justify-between">
-          <span class="text-muted-foreground font-medium">Jornada Efectiva:</span>
-          <span class="font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-            {{ effectiveHours }}h / día (LGT)
-          </span>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl bg-emerald-500/10 px-3 py-2">
+            <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Jornada</p>
+            <p class="mt-0.5 font-bold text-emerald-600">{{ effectiveHours }}h <span class="font-medium">/ día</span></p>
+          </div>
+          <div class="rounded-xl bg-muted/60 px-3 py-2">
+            <p class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Descanso</p>
+            <p class="mt-0.5 font-bold text-foreground">{{ breakMinutes }} min</p>
+          </div>
         </div>
 
-        <div class="flex items-center justify-between">
-          <span class="text-muted-foreground font-medium">Descanso / Tolerancia:</span>
-          <span class="font-medium text-foreground">
-            {{ shift.breakMinutes }}m desc. • {{ shift.lateToleranceMinutes || shift.gracePeriodMinutes }}m tol. ent.
-            <ng-container *ngIf="shift.earlyDepartureToleranceMinutes">
-              • {{ shift.earlyDepartureToleranceMinutes }}m tol. sal.
-            </ng-container>
-          </span>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <span><strong class="text-foreground">Entrada:</strong> {{ entryToleranceMinutes }} min</span>
+          <span><strong class="text-foreground">Salida:</strong> {{ exitToleranceMinutes }} min</span>
         </div>
-
-        <p class="pt-1 text-[11px] text-muted-foreground">Los días laborales se definen en cada asignación de empleado.</p>
       </div>
 
       <!-- Acciones Inferiores -->
       <div class="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
-        <button
+        <button *ngIf="permissions.hasPermission('shifts.assignments.create')"
           type="button"
           (click)="assign.emit(shift)"
           class="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-primary/10 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground">
@@ -79,7 +77,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
           Asignar
         </button>
 
-        <button
+        <button *ngIf="permissions.hasPermission('shifts.update')"
           type="button"
           (click)="edit.emit(shift)"
           class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -87,7 +85,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
           <lucide-icon name="pencil" [size]="14"></lucide-icon>
         </button>
 
-        <button
+        <button *ngIf="permissions.hasAnyPermission('shifts.breaks.list', 'shifts.breaks.create', 'shifts.breaks.update', 'shifts.breaks.delete')"
           type="button"
           (click)="manageBreaks.emit(shift)"
           class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -95,7 +93,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
           <lucide-icon name="coffee" [size]="14"></lucide-icon>
         </button>
 
-        <button
+        <button *ngIf="(shift.status === 'ACTIVE' && permissions.hasPermission('shifts.deactivate')) || (shift.status !== 'ACTIVE' && permissions.hasPermission('shifts.activate'))"
           type="button"
           (click)="toggleStatus.emit(shift)"
           [title]="shift.status === 'ACTIVE' ? 'Desactivar turno' : 'Activar turno'"
@@ -114,6 +112,7 @@ export class ShiftCardComponent {
   @Output() manageBreaks = new EventEmitter<ShiftResponse>();
 
   private readonly formUseCase = inject(ShiftFormUseCase);
+  readonly permissions = inject(PermissionService);
 
   get effectiveHours(): number {
     return this.formUseCase.calculateEffectiveHours(
@@ -121,6 +120,18 @@ export class ShiftCardComponent {
       this.shift.endTime,
       this.shift.breakMinutes
     ).hours;
+  }
+
+  get breakMinutes(): number {
+    return this.shift.breakMinutes ?? 0;
+  }
+
+  get entryToleranceMinutes(): number {
+    return this.shift.lateToleranceMinutes ?? this.shift.gracePeriodMinutes ?? 0;
+  }
+
+  get exitToleranceMinutes(): number {
+    return this.shift.earlyDepartureToleranceMinutes ?? 0;
   }
 
   formatTime(timeStr: string): string {

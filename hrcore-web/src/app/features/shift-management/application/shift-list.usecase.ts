@@ -10,38 +10,24 @@ export class ShiftListUseCase {
 
   readonly shifts = signal<ShiftResponse[]>([]);
   readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
   readonly statusFilter = signal<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   readonly searchQuery = signal('');
   readonly currentPage = signal(0);
   readonly pageSize = signal(10);
   readonly totalElements = signal(0);
   readonly totalPages = signal(1);
+  readonly kpiShifts = signal<ShiftResponse[]>([]);
 
-  // Filtrado reactivo en cliente (soporta búsqueda instantánea y filtro de estado)
+  // El estado y la búsqueda se resuelven en el backend para que la paginación
+  // y los resultados sean consistentes con el total real del catálogo.
   readonly filteredShifts = computed(() => {
-    const query = this.searchQuery().toLowerCase().trim();
-    const status = this.statusFilter();
-    let list = this.shifts();
-
-    if (status !== 'ALL') {
-      list = list.filter((s) => s.status === status);
-    }
-
-    if (query) {
-      list = list.filter(
-        (s) =>
-          s.name.toLowerCase().includes(query) ||
-          s.code.toLowerCase().includes(query) ||
-          s.shiftType.toLowerCase().includes(query)
-      );
-    }
-
-    return list;
+    return this.shifts();
   });
 
   // Métricas reactivas (KPIs del módulo)
   readonly kpis = computed(() => {
-    const all = this.shifts();
+    const all = this.kpiShifts();
     const total = all.length;
     const active = all.filter((s) => s.status === 'ACTIVE').length;
     const night = all.filter((s) => s.shiftType === 'NIGHT' || s.isOvernight).length;
@@ -51,27 +37,29 @@ export class ShiftListUseCase {
 
   async loadShifts(): Promise<void> {
     this.loading.set(true);
+    this.error.set(null);
     try {
       const res = await firstValueFrom(
-        this.shiftService.listShifts(this.statusFilter(), this.currentPage(), this.pageSize())
+        this.shiftService.listShifts(
+          this.statusFilter(),
+          this.currentPage(),
+          this.pageSize(),
+          undefined,
+          this.searchQuery().trim() || undefined
+        )
       );
-      const shifts = await Promise.all(res.data.content.map(async (shift) => {
-        try {
-          const breaks = await firstValueFrom(this.shiftService.listBreaks(shift.id, 0, 100));
-          const unpaidMinutes = breaks.data.content
-            .filter((item) => !item.paid)
-            .reduce((total, item) => total + item.durationMinutes, 0);
-          return { ...shift, breakMinutes: unpaidMinutes };
-        } catch {
-          return shift;
-        }
+      const shifts = res.data.content.map((shift) => ({
+        ...shift,
+        breakMinutes: shift.breakMinutes ?? 0
       }));
       this.shifts.set(shifts);
       this.totalElements.set(res.data.totalElements);
       this.totalPages.set(res.data.totalPages);
     } catch (err: unknown) {
       const errorResponse = err as { error?: { message?: string } };
-      this.toastService.error(errorResponse?.error?.message || 'Error al cargar el catálogo de turnos');
+      const message = errorResponse?.error?.message || 'Error al cargar el catálogo de turnos';
+      this.error.set(message);
+      this.toastService.error(message);
     } finally {
       this.loading.set(false);
     }
@@ -85,6 +73,8 @@ export class ShiftListUseCase {
 
   setSearchQuery(query: string): void {
     this.searchQuery.set(query);
+    this.currentPage.set(0);
+    void this.loadShifts();
   }
 
   setPage(page: number): void {
@@ -100,9 +90,29 @@ export class ShiftListUseCase {
       this.shifts.update((list) =>
         list.map((s) => (s.id === shift.id ? { ...s, status: nextStatus } : s))
       );
+      void this.loadKpis();
     } catch (err: unknown) {
       const errorResponse = err as { error?: { message?: string } };
       this.toastService.error(errorResponse?.error?.message || 'No se pudo cambiar el estado del turno');
     }
+  }
+
+  async loadKpis(): Promise<void> {
+    try {
+      const first = await firstValueFrom(this.shiftService.listShifts('ALL', 0, 100));
+      const all = [...first.data.content.map((shift) => this.toEnrichedShift(shift))];
+      const remainingPages = Array.from({ length: Math.max(0, first.data.totalPages - 1) }, (_, index) => index + 1);
+      const rest = await Promise.all(remainingPages.map((page) =>
+        firstValueFrom(this.shiftService.listShifts('ALL', page, 100))
+      ));
+      rest.forEach((response) => all.push(...response.data.content.map((shift) => this.toEnrichedShift(shift))));
+      this.kpiShifts.set(all);
+    } catch {
+      // Los KPIs no deben borrar el catálogo si una consulta secundaria falla.
+    }
+  }
+
+  private toEnrichedShift(shift: ShiftResponse): ShiftResponse {
+    return { ...shift, breakMinutes: shift.breakMinutes ?? 0 };
   }
 }

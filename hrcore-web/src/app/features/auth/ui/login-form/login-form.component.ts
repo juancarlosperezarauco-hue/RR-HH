@@ -11,19 +11,19 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, LucideAngularModule],
   template: `
-    <div class="animate-scale-in mx-auto w-full max-w-xl max-h-[calc(100vh-1.5rem)] overflow-y-auto overscroll-contain rounded-[28px] border border-border bg-card p-6 shadow-2xl sm:p-7">
-      <!-- Encabezado compacto y simétrico -->
-      <div class="mb-5 flex items-center gap-4 border-b border-border/70 pb-4">
-        <a
+    <div class="animate-scale-in mx-auto w-full max-w-lg max-h-[calc(100vh-3rem)] overflow-y-auto overscroll-contain"
+      [ngClass]="embedded ? '' : 'rounded-[28px] border border-border bg-card p-6 shadow-2xl sm:p-7'">
+      <!-- Encabezado de acceso -->
+      <div class="mb-7 text-center">
+        <a *ngIf="!embedded"
           routerLink="/"
-          class="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-border bg-background shadow-xs transition-transform duration-200 hover:scale-105"
+          class="mx-auto mb-4 flex h-12 w-12 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-border bg-background shadow-xs transition-transform duration-200 hover:scale-105"
           title="Volver al inicio">
           <img src="/logo.png" alt="HR Core" class="h-9 w-9 object-contain">
         </a>
-        <div class="min-w-0 flex-1">
-          <h2 class="text-xl font-black tracking-tight text-accent-foreground sm:text-2xl">Iniciar sesión</h2>
-          <p class="mt-0.5 text-xs text-muted-foreground sm:text-sm">Accede a tu organización con contraseña o reconocimiento facial.</p>
-        </div>
+        <p class="text-xs font-black uppercase tracking-[0.2em] text-primary">Acceso a tu organización</p>
+        <h2 class="mt-2 text-3xl font-black tracking-tight text-accent-foreground">Iniciar sesión</h2>
+        <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">Ingresa de forma segura con tu contraseña o reconocimiento facial.</p>
       </div>
 
       @if (status === 'error' && error) {
@@ -33,11 +33,12 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
         </div>
       }
 
-      <!-- Selector de método con cursor-pointer e indicadores claros -->
-      <div class="mb-5 grid grid-cols-2 gap-1.5 rounded-2xl border border-border/80 bg-accent/70 p-1.5" role="tablist">
+      <!-- Selector de método -->
+      <div class="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-border/80 bg-muted/60 p-1" role="tablist" aria-label="Método de acceso">
         <button
           type="button"
           role="tab"
+          title="Ingresar con contraseña"
           [attr.aria-selected]="activeTab === 'password'"
           (click)="setActiveTab('password')"
           [class.bg-card]="activeTab === 'password'"
@@ -46,13 +47,14 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
           [class.ring-1]="activeTab === 'password'"
           [class.ring-border]="activeTab === 'password'"
           [class.text-muted-foreground]="activeTab !== 'password'"
-          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 hover:text-primary">
-          <lucide-icon name="lock" class="h-4 w-4"></lucide-icon>
+          class="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-bold transition-all duration-200 hover:text-primary sm:px-3">
+          <lucide-icon name="lock" class="h-3.5 w-3.5"></lucide-icon>
           <span>Contraseña</span>
         </button>
         <button
           type="button"
           role="tab"
+          title="Ingresar con reconocimiento facial"
           [attr.aria-selected]="activeTab === 'face'"
           (click)="setActiveTab('face')"
           [class.bg-card]="activeTab === 'face'"
@@ -61,15 +63,15 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
           [class.ring-1]="activeTab === 'face'"
           [class.ring-border]="activeTab === 'face'"
           [class.text-muted-foreground]="activeTab !== 'face'"
-          class="flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200 hover:text-primary">
-          <lucide-icon name="camera" class="h-4 w-4"></lucide-icon>
-          <span>Reconocimiento facial</span>
+          class="flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-bold transition-all duration-200 hover:text-primary sm:px-3">
+          <lucide-icon name="camera" class="h-3.5 w-3.5"></lucide-icon>
+          <span>Rostro</span>
         </button>
       </div>
 
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-4" novalidate>
-        <!-- Campos compartidos en grilla de 2 columnas para simetría y ahorro vertical -->
-        <div class="grid gap-4 sm:grid-cols-2">
+        <!-- Datos de acceso apilados para una lectura clara -->
+        <div class="grid gap-4">
           <div>
             <label for="tenantSlug" class="mb-1.5 block cursor-pointer text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Organización (Tenant) *
@@ -303,6 +305,7 @@ import { FaceLoginRequest } from '../../../../entities/auth/model/face-login-req
 export class LoginFormComponent implements OnDestroy {
   @Input() status: 'idle' | 'loading' | 'success' | 'error' = 'idle';
   @Input() error: string | null = null;
+  @Input() embedded = false;
 
   @Output() loginSubmit = new EventEmitter<LoginRequest>();
   @Output() faceLoginSubmit = new EventEmitter<FaceLoginRequest>();

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,5 +14,6 @@ public interface ShiftBreakRepository {
     Optional<ShiftBreak> findByIdAndShiftId(UUID id, UUID shiftId);
     List<ShiftBreak> findAllByShiftId(UUID shiftId);
     Page<ShiftBreak> findAllByShiftId(UUID shiftId, Pageable pageable);
+    Map<UUID, Integer> sumUnpaidMinutesByShiftIds(List<UUID> shiftIds);
     void delete(ShiftBreak shiftBreak);
 }

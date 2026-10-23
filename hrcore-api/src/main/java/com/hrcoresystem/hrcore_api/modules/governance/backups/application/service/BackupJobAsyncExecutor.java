@@ -13,6 +13,9 @@ import com.hrcoresystem.hrcore_api.modules.governance.backups.infrastructure.eng
 import com.hrcoresystem.hrcore_api.modules.governance.backups.infrastructure.storage.BackupStorage;
 import com.hrcoresystem.hrcore_api.modules.governance.backups.infrastructure.storage.ChecksumService;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.service.OwnerPermissionSynchronizer;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.*;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -41,6 +44,7 @@ public class BackupJobAsyncExecutor {
     private final OwnerPermissionSynchronizer ownerPermissions;
     private final TenantSchemaReadinessService readiness;
     private final JdbcTemplate jdbcTemplate;
+    private final NotificationPublisherPort notifications;
 
     public BackupJobAsyncExecutor(
             BackupJobRepository repo,
@@ -52,7 +56,8 @@ public class BackupJobAsyncExecutor {
             TenantSchemaMigrationService migrations,
             OwnerPermissionSynchronizer ownerPermissions,
             TenantSchemaReadinessService readiness,
-            @Qualifier("targetDataSource") DataSource targetDataSource
+            @Qualifier("targetDataSource") DataSource targetDataSource,
+            NotificationPublisherPort notifications
     ) {
         this.repo = repo;
         this.engine = engine;
@@ -64,6 +69,7 @@ public class BackupJobAsyncExecutor {
         this.ownerPermissions = ownerPermissions;
         this.readiness = readiness;
         this.jdbcTemplate = new JdbcTemplate(targetDataSource);
+        this.notifications = notifications;
     }
 
     @Async("backupTaskExecutor")
@@ -76,11 +82,13 @@ public class BackupJobAsyncExecutor {
             BackupJob done = new BackupJob(running.id(), running.operationType(), running.scope(), BackupStatus.COMPLETED, running.tenantId(), running.tenantSlug(), running.schemaName(), running.sourceBackupId(), running.preRestoreBackupId(), running.fileName(), storage.toStoragePath(a.path()), running.format(), a.sizeBytes(), a.checksumSha256(), running.requestedBy(), running.reason(), null, running.startedAt(), Instant.now(), running.createdAt(), running.updatedAt());
             repo.save(done);
             record(done, BackupAuditEventTypes.BACKUP_COMPLETED, null);
+            notifyTenant(done, NotificationType.SYSTEM_NOTICE, "Respaldo completado", "El respaldo de tu tenant se completó correctamente.", NotificationPriority.NORMAL);
         } catch (Exception e) {
             log.error("Backup job failed: {}", id, e);
             repo.findById(id).ifPresent(job -> {
                 BackupJob failed = status(job, BackupStatus.FAILED, e.getMessage(), null, Instant.now());
                 record(failed, BackupAuditEventTypes.BACKUP_FAILED, e.getMessage());
+                notifyTenant(failed, NotificationType.SYSTEM_NOTICE, "Error en respaldo", "No se pudo completar el respaldo solicitado.", NotificationPriority.HIGH);
             });
         }
     }
@@ -111,6 +119,7 @@ public class BackupJobAsyncExecutor {
             }
             BackupJob done = status(get(id), BackupStatus.RESTORED, null, null, Instant.now());
             record(done, BackupAuditEventTypes.RESTORE_COMPLETED, null);
+            notifyTenant(done, NotificationType.SYSTEM_NOTICE, "Restauración completada", "La restauración del respaldo se completó correctamente.", NotificationPriority.HIGH);
             log.info("[RESTORE_UPLOAD] restore completed jobId={}, scope={}, fileName={}", done.id(), done.scope(), done.fileName());
         } catch (Exception e) {
             log.error("Restore job failed: {}", id, e);
@@ -118,6 +127,7 @@ public class BackupJobAsyncExecutor {
                 String failureReason = safeMessage(e);
                 BackupJob failed = status(job, BackupStatus.RESTORE_FAILED, failureReason, null, Instant.now());
                 record(failed, BackupAuditEventTypes.RESTORE_FAILED, failureReason);
+                notifyTenant(failed, NotificationType.SYSTEM_NOTICE, "Error en restauración", "No se pudo completar la restauración del respaldo.", NotificationPriority.CRITICAL);
             });
         }
     }
@@ -176,6 +186,22 @@ public class BackupJobAsyncExecutor {
             } else {
                 TenantContextHolder.set(previous);
             }
+        }
+    }
+
+    private void notifyTenant(BackupJob job, NotificationType type, String title, String body, NotificationPriority priority) {
+        if (job == null || job.scope() == BackupScope.FULL_DATABASE || job.tenantSlug() == null || job.schemaName() == null) return;
+        UUID userId;
+        try { userId = UUID.fromString(job.requestedBy()); } catch (Exception ex) { return; }
+        TenantContext previous = TenantContextHolder.get();
+        try {
+            TenantContextHolder.set(new TenantContext(job.tenantSlug(), job.schemaName(), false));
+            notifications.publish(new NotificationPublishRequest(userId, type, NotificationCategory.SYSTEM, priority,
+                    title, body, null, null, "/dashboard/backups?id=" + job.id(), null));
+        } catch (Exception ex) {
+            log.warn("Unable to publish backup notification. jobId={}", job.id(), ex);
+        } finally {
+            if (previous == null) TenantContextHolder.clear(); else TenantContextHolder.set(previous);
         }
     }
 

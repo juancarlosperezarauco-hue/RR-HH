@@ -112,11 +112,11 @@ public class ForgotPasswordUseCase {
                 NotificationType.PASSWORD_RESET_REQUESTED,
                 NotificationCategory.SECURITY,
                 NotificationPriority.HIGH,
-                "Password reset requested",
-                "A password reset request was created for your account.",
+                "Solicitud de restablecimiento",
+                "Se creó una solicitud para restablecer la contraseña de tu cuenta.",
                 data,
                 null,
-                "/security/password-reset",
+                "/security/password-reset?requestedAt=" + expiresAt,
                 expiresAt
         ));
 

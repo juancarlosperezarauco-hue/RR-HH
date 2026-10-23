@@ -46,7 +46,9 @@ class PositionPolicyTest {
 
     @Test
     void createsActivePositionWithSchemaDefaultLevel() {
-        Position p = policy.normalizedPosition(null, "P1", request(" P1 ", " Analyst ", BigDecimal.ZERO, null, "BOB"),
+        Position p = policy.normalizedPosition(null, "P1", new PositionRequest(
+                        " P1 ", " Analyst ", null, null, OrganizationalLevel.OPERATIONAL,
+                        BigDecimal.ZERO, null, "BOB"),
                 null, UUID.randomUUID());
         assertEquals("P1", p.code());
         assertEquals("Analyst", p.name());

@@ -14,21 +14,23 @@ export interface PlatformLoginRequest {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, LucideAngularModule],
   template: `
-    <div class="hrcore-brand-theme min-h-screen bg-card flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div class="sm:mx-auto sm:w-full sm:max-w-md">
-        <div class="text-center">
-          <img
+    <div [ngClass]="embedded ? 'w-full' : 'hrcore-brand-theme flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top_right,var(--accent),transparent_38%),linear-gradient(135deg,var(--background),var(--muted))] p-3 sm:p-6'">
+      <div class="w-full max-w-lg">
+        <div class="mb-7 text-center lg:mb-8">
+          <img *ngIf="!embedded"
             src="/logo.png"
-            alt="Prospera"
-            class="mx-auto h-12 w-12 rounded-xl object-contain"
+            alt="HR Core"
+            class="mx-auto h-16 w-16 rounded-2xl bg-white p-2 object-contain shadow-lg"
           >
-          <h2 class="mt-6 text-3xl font-extrabold text-accent-foreground">Plataforma</h2>
-          <p class="mt-2 text-sm text-muted-foreground">Acceso exclusivo para administradores globales</p>
+          <p class="mt-4 text-xs font-black uppercase tracking-[0.2em] text-primary">Consola de plataforma</p>
+          <h2 class="mt-2 text-3xl font-black tracking-tight text-foreground sm:text-4xl">Bienvenido de vuelta</h2>
+          <p class="mt-2 text-sm leading-6 text-muted-foreground">Acceso exclusivo para administradores globales</p>
         </div>
 
-        <div class="mt-8 bg-card py-8 px-4 shadow-xl rounded-lg border border-border sm:px-10">
+        <div [ngClass]="embedded ? 'rounded-[28px] p-0' : 'rounded-[28px] border border-border/80 bg-card p-6 shadow-2xl sm:p-9'">
           <!-- Mensaje de Error -->
-          <div *ngIf="status === 'error'" class="mb-6 p-4 bg-destructive/5 text-destructive border border-destructive/20 rounded-md">
+          <div *ngIf="status === 'error'" class="mb-6 flex items-start gap-2.5 rounded-2xl border border-destructive/25 bg-destructive/10 p-3.5 text-sm font-medium text-destructive" role="alert">
+            <lucide-icon name="circle-alert" class="mt-0.5 h-4 w-4 shrink-0"></lucide-icon>
             {{ error }}
           </div>
 
@@ -36,12 +38,12 @@ export interface PlatformLoginRequest {
             
             <div>
               <div class="flex justify-between items-center mb-1">
-                <label for="email" class="block text-sm font-medium text-primary">Correo Electrónico</label>
+                <label for="email" class="block text-xs font-black uppercase tracking-wider text-muted-foreground">Correo electrónico</label>
                 <!-- ✅ Botón para auto-llenar credenciales -->
                 <button 
                   type="button"
                   (click)="autoFillCredentials()"
-                  class="text-xs text-secondary hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                  class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-bold text-primary transition-colors hover:bg-accent"
                   title="Auto-llenar credenciales de superadmin">
                   <lucide-icon name="wand-2" class="h-3 w-3"></lucide-icon>
                   Auto-llenar
@@ -51,26 +53,28 @@ export interface PlatformLoginRequest {
                 id="email" 
                 type="email" 
                 formControlName="email"
-                class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
-                [class.border-destructive/30]="isFieldInvalid('email')"
+                autocomplete="username"
+                class="h-12 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                [class.border-destructive]="isFieldInvalid('email')"
                 placeholder="superadmin@hrcore.local">
               <span *ngIf="isFieldInvalid('email')" class="text-xs text-destructive mt-1">Ingresa un correo válido.</span>
             </div>
 
             <div>
-              <label for="password" class="block text-sm font-medium text-primary mb-1">Contraseña</label>
+              <label for="password" class="mb-1.5 block text-xs font-black uppercase tracking-wider text-muted-foreground">Contraseña</label>
               <div class="relative">
                 <input 
                   id="password" 
                   [type]="showPassword ? 'text' : 'password'" 
                   formControlName="password"
-                  class="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors pr-10"
-                  [class.border-destructive/30]="isFieldInvalid('password')"
+                  autocomplete="current-password"
+                  class="h-12 w-full rounded-xl border border-input bg-background px-3.5 pr-11 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  [class.border-destructive]="isFieldInvalid('password')"
                   placeholder="••••••••">
                 <button 
                   type="button" 
                   (click)="togglePasswordVisibility()" 
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-primary transition-colors"
+                  class="absolute inset-y-0 right-0 flex items-center px-3.5 text-muted-foreground transition-colors hover:text-primary"
                   tabindex="-1"
                 >
                   <lucide-icon [name]="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></lucide-icon>
@@ -83,10 +87,11 @@ export interface PlatformLoginRequest {
               <button 
                 type="submit" 
                 [disabled]="status === 'loading'"
-                class="w-full bg-accent-foreground hover:bg-primary text-primary-foreground font-medium py-2.5 px-4 rounded-md transition-colors disabled:opacity-50 flex justify-center items-center">
+                class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50">
                 
                 <ng-container *ngIf="status !== 'loading'; else loadingSpinner">
-                  Acceder como SuperAdmin
+                  Acceder a la consola
+                  <lucide-icon name="arrow-right" class="h-4 w-4"></lucide-icon>
                 </ng-container>
                 
                 <ng-template #loadingSpinner>
@@ -101,8 +106,8 @@ export interface PlatformLoginRequest {
             </div>
             
             <!-- Link to return to landing -->
-            <div class="mt-6 text-center text-sm text-muted-foreground border-t border-border pt-4">
-              <a routerLink="/" class="font-medium text-secondary hover:text-primary transition-colors">
+            <div class="mt-6 border-t border-border pt-5 text-center text-sm text-muted-foreground">
+              <a routerLink="/" class="font-bold text-primary transition-colors hover:underline">
                 ← Volver al inicio
               </a>
             </div>
@@ -115,6 +120,7 @@ export interface PlatformLoginRequest {
 export class PlatformLoginFormComponent {
   @Input() status: 'idle' | 'loading' | 'success' | 'error' = 'idle';
   @Input() error: string | null = null;
+  @Input() embedded = false;
   @Output() loginSubmit = new EventEmitter<PlatformLoginRequest>();
 
   showPassword = false;

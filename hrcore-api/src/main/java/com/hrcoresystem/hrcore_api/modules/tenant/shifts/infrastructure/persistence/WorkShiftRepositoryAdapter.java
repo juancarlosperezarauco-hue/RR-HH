@@ -67,7 +67,9 @@ public class WorkShiftRepositoryAdapter implements WorkShiftRepository {
         if (filter.name() != null && !filter.name().isBlank()) {
             String pattern = "%" + escapeLike(filter.name().trim().toLowerCase()) + "%";
             specification = specification.and((root, query, criteria) ->
-                    criteria.like(criteria.lower(root.get("name")), pattern, '\\'));
+                    criteria.or(
+                            criteria.like(criteria.lower(root.get("name")), pattern, '\\'),
+                            criteria.like(criteria.lower(root.get("code")), pattern, '\\')));
         }
         return jpa.findAll(specification, pageable).map(this::toDomain);
     }

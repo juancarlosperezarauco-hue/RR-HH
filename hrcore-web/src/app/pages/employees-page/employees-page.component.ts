@@ -3,12 +3,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
-import { forkJoin, Observable } from 'rxjs';
+import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { HasPermissionPipe } from '../../shared/api';
 import { ToastService } from '../../shared/ui/toast/toast.service';
 import { ContractsService, DepartmentOption, PositionOption } from '../../entities/contracts';
 import { UserService, TenantUserResponse } from '../../entities/user';
 import { PermissionService } from '../../shared/lib/auth/permission.service';
+import { AuthFacade } from '../../shared/lib/auth/auth.facade';
 import {
   EmergencyContact, EmergencyContactRequest, Employee, EmployeeAssignment,
   EmployeeAssignmentRequest, EmployeeRequest, EmployeeSummary, EmployeesService,
@@ -33,6 +34,7 @@ export class EmployeesPageComponent implements OnInit {
   private readonly related = inject(ContractsService);
   private readonly usersService = inject(UserService);
   private readonly permissions = inject(PermissionService);
+  private readonly auth = inject(AuthFacade);
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(false);
@@ -48,6 +50,7 @@ export class EmployeesPageComponent implements OnInit {
   readonly formSubmitted = signal(false);
   readonly assignmentSubmitted = signal(false);
   readonly contactSubmitted = signal(false);
+  readonly touchedFields = signal<Set<string>>(new Set());
   readonly formMode = signal<FormMode>('create');
   readonly selected = signal<Employee | null>(null);
   readonly assignments = signal<EmployeeAssignment[]>([]);
@@ -55,9 +58,14 @@ export class EmployeesPageComponent implements OnInit {
   readonly periods = signal<EmploymentPeriod[]>([]);
   readonly terminations = signal<EmployeeTermination[]>([]);
   readonly userActivationRequired = signal(false);
+  readonly relationsLoading = signal(false);
+  readonly relationErrors = signal<string[]>([]);
   readonly departments = signal<DepartmentOption[]>([]);
   readonly positions = signal<PositionOption[]>([]);
   readonly tenantUsers = signal<TenantUserResponse[]>([]);
+  readonly tenantUserPage = signal(0);
+  readonly tenantUserTotalPages = signal(1);
+  readonly tenantUserTotalElements = signal(0);
   readonly nationalities = ['Boliviana', 'Argentina', 'Brasileña', 'Chilena', 'Colombiana', 'Ecuatoriana', 'Mexicana', 'Paraguaya', 'Peruana', 'Uruguaya', 'Estadounidense', 'Española'];
   confirmationOpen = false;
   confirmationTitle = '';
@@ -72,6 +80,10 @@ export class EmployeesPageComponent implements OnInit {
   nameFilter = '';
   numberFilter = '';
   statusFilter = '';
+  tenantUserSearch = '';
+  readonly tenantUserPageSize = 25;
+  readonly editingAssignment = signal<EmployeeAssignment | null>(null);
+  readonly editingContact = signal<EmergencyContact | null>(null);
   form: EmployeeRequest = this.emptyEmployee();
   assignmentForm: EmployeeAssignmentRequest = this.emptyAssignment();
   contactForm: EmergencyContactRequest = this.emptyContact();
@@ -88,11 +100,37 @@ export class EmployeesPageComponent implements OnInit {
     this.load();
   }
 
-  private loadTenantUsers(): void {
+  private loadTenantUsers(page = 0): void {
     if (!this.permissions.hasPermission('users.list')) return;
-    this.usersService.getUsers(0, 200).subscribe({
-      next: response => this.tenantUsers.set(response.data?.content ?? []),
+    this.usersService.getUsers(page, this.tenantUserPageSize, { search: this.tenantUserSearch }).subscribe({
+      next: response => {
+        this.tenantUsers.set((response.data?.content ?? []).filter(user => !this.isOwnerUser(user)));
+        this.tenantUserPage.set(response.data?.number ?? page);
+        this.tenantUserTotalPages.set(Math.max(1, response.data?.totalPages ?? 1));
+        this.tenantUserTotalElements.set(response.data?.totalElements ?? response.data?.content?.length ?? 0);
+      },
       error: () => this.tenantUsers.set([])
+    });
+  }
+
+  searchTenantUsers(): void { this.loadTenantUsers(0); }
+  onTenantUserSearchEnter(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.searchTenantUsers();
+  }
+  changeTenantUserPage(delta: number): void {
+    const next = this.tenantUserPage() + delta;
+    if (next < 0 || next >= this.tenantUserTotalPages()) return;
+    this.loadTenantUsers(next);
+  }
+  private ensureTenantUser(id: string | null): void {
+    if (!id || this.tenantUsers().some(user => user.id === id) || !this.permissions.hasPermission('users.detail')) return;
+    this.usersService.getUserById(id).subscribe({
+      next: response => {
+        if (this.isOwnerUser(response.data)) return;
+        this.tenantUsers.update(users => users.some(user => user.id === id) ? users : [response.data, ...users]);
+      }
     });
   }
 
@@ -102,8 +140,15 @@ export class EmployeesPageComponent implements OnInit {
   }
 
   canLinkUser(user: TenantUserResponse): boolean {
+    if (this.isOwnerUser(user)) return false;
     const status = String(user.status ?? '').toUpperCase();
     return status === 'ACTIVE' || status === 'PENDING' || (user.active && !status);
+  }
+
+  private isOwnerUser(user: TenantUserResponse): boolean {
+    const hasOwnerRole = user.roles?.some(role => role.code?.toUpperCase() === 'OWNER_ADMIN') ?? false;
+    const currentOwner = this.permissions.isCurrentOwner() && this.auth.currentUser()?.id === user.id;
+    return user.owner === true || hasOwnerRole || currentOwner;
   }
 
   userAccessStatus(user: TenantUserResponse): string {
@@ -132,15 +177,21 @@ export class EmployeesPageComponent implements OnInit {
 
   openCreate(): void {
     this.formMode.set('create'); this.selected.set(null); this.form = this.emptyEmployee();
-    this.assignmentForm = this.emptyAssignment(); this.formSubmitted.set(false); this.showForm.set(true);
+    this.assignmentForm = this.emptyAssignment(); this.formSubmitted.set(false); this.touchedFields.set(new Set()); this.showForm.set(true);
   }
   openEdit(id: string): void {
     this.service.get(id).subscribe({
-      next: response => { this.selected.set(response.data); this.form = this.toRequest(response.data); this.formMode.set('edit'); this.formSubmitted.set(false); this.showForm.set(true); },
+      next: response => { this.selected.set(response.data); this.form = this.toRequest(response.data); this.ensureTenantUser(response.data.tenantUserId); this.formMode.set('edit'); this.formSubmitted.set(false); this.touchedFields.set(new Set()); this.showForm.set(true); },
       error: error => this.handleError(error, 'No se pudo consultar el empleado')
     });
   }
-  closeForm(): void { if (!this.saving()) { this.formSubmitted.set(false); this.showForm.set(false); } }
+  closeForm(): void { if (!this.saving()) { this.formSubmitted.set(false); this.touchedFields.set(new Set()); this.showForm.set(false); } }
+  touchField(field: string): void {
+    this.touchedFields.update(fields => new Set(fields).add(field));
+  }
+  fieldHasError(field: string, invalid: boolean): boolean {
+    return invalid && (this.formSubmitted() || this.touchedFields().has(field));
+  }
   isBirthDateInvalid(): boolean {
     return Boolean(this.form.birthDate && !this.isAdult(this.form.birthDate));
   }
@@ -149,10 +200,11 @@ export class EmployeesPageComponent implements OnInit {
     return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
   }
   hasFormValidationErrors(): boolean {
+    if (!this.formSubmitted() && this.touchedFields().size === 0) return false;
     if (!this.form.firstName.trim() || !this.form.lastName.trim() || !this.form.documentType.trim() || !this.form.documentNumber.trim() || !this.form.hireDate) {
       return true;
     }
-    if (this.isBirthDateInvalid() || this.isEmailInvalid(this.form.personalEmail) || this.isEmailInvalid(this.form.workEmail)) {
+    if (this.isBirthDateInvalid() || this.fieldHasError('personalEmail', this.isEmailInvalid(this.form.personalEmail)) || this.fieldHasError('workEmail', this.isEmailInvalid(this.form.workEmail))) {
       return true;
     }
     if (this.formMode() === 'create' && (!this.assignmentForm.departmentId || !this.assignmentForm.positionId || !this.assignmentForm.startDate)) {
@@ -193,6 +245,7 @@ export class EmployeesPageComponent implements OnInit {
   }
 
   changeStatus(employee: EmployeeSummary): void {
+    if (employee.employmentStatus === 'TERMINATED') return;
     const target: EmploymentStatus = employee.employmentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     this.openConfirmation(
       `${target === 'ACTIVE' ? 'Activar' : 'Desactivar'} empleado`,
@@ -213,10 +266,26 @@ export class EmployeesPageComponent implements OnInit {
     });
   }
   loadRelations(employeeId: string): void {
-    this.service.assignments(employeeId).subscribe({ next: r => this.assignments.set(r.data.content), error: () => this.assignments.set([]) });
-    this.service.contacts(employeeId).subscribe({ next: r => this.contacts.set(r.data.content), error: () => this.contacts.set([]) });
-    this.service.periods(employeeId).subscribe({ next: r => this.periods.set(r.data), error: () => this.periods.set([]) });
-    this.service.terminations(employeeId).subscribe({ next: r => this.terminations.set(r.data), error: () => this.terminations.set([]) });
+    this.relationsLoading.set(true);
+    this.relationErrors.set([]);
+    this.assignments.set([]);
+    this.contacts.set([]);
+    this.periods.set([]);
+    this.terminations.set([]);
+    forkJoin({
+      assignments: this.service.assignments(employeeId).pipe(catchError(() => of(null))),
+      contacts: this.service.contacts(employeeId).pipe(catchError(() => of(null))),
+      periods: this.service.periods(employeeId).pipe(catchError(() => of(null))),
+      terminations: this.service.terminations(employeeId).pipe(catchError(() => of(null)))
+    }).subscribe(result => {
+      const errors: string[] = [];
+      if (result.assignments) this.assignments.set(result.assignments.data.content); else errors.push('asignaciones');
+      if (result.contacts) this.contacts.set(result.contacts.data.content); else errors.push('contactos');
+      if (result.periods) this.periods.set(result.periods.data); else errors.push('períodos');
+      if (result.terminations) this.terminations.set(result.terminations.data); else errors.push('desvinculaciones');
+      this.relationErrors.set(errors);
+      this.relationsLoading.set(false);
+    });
   }
 
   rehireSelected(): void {
@@ -245,7 +314,14 @@ export class EmployeesPageComponent implements OnInit {
     });
   }
 
-  openNewAssignment(): void { this.assignmentForm = this.emptyAssignment(); this.assignmentSubmitted.set(false); this.showAssignmentForm.set(true); }
+  openNewAssignment(): void { this.editingAssignment.set(null); this.assignmentForm = this.emptyAssignment(); this.assignmentSubmitted.set(false); this.showAssignmentForm.set(true); }
+  openEditAssignment(assignment: EmployeeAssignment): void {
+    if (!this.isFutureAssignment(assignment)) return;
+    this.editingAssignment.set(assignment);
+    this.assignmentForm = { departmentId: assignment.departmentId, positionId: assignment.positionId, supervisorEmployeeId: assignment.supervisorEmployeeId, startDate: assignment.startDate, endDate: assignment.endDate, assignmentType: assignment.assignmentType, reason: assignment.reason };
+    this.assignmentSubmitted.set(false);
+    this.showAssignmentForm.set(true);
+  }
   saveAssignment(): void {
     this.assignmentSubmitted.set(true);
     const employee = this.selected();
@@ -253,8 +329,11 @@ export class EmployeesPageComponent implements OnInit {
       this.toast.warning('Seleccione departamento, cargo y fecha de inicio.'); return;
     }
     this.saving.set(true);
-    this.service.createAssignment(employee.id, { ...this.assignmentForm, supervisorEmployeeId: this.nullable(this.assignmentForm.supervisorEmployeeId), endDate: this.nullable(this.assignmentForm.endDate), reason: this.nullable(this.assignmentForm.reason) }).subscribe({
-      next: () => { this.saving.set(false); this.assignmentSubmitted.set(false); this.showAssignmentForm.set(false); this.toast.success('Asignación laboral registrada.'); this.loadRelations(employee.id); },
+    const payload = { ...this.assignmentForm, supervisorEmployeeId: this.nullable(this.assignmentForm.supervisorEmployeeId), endDate: this.nullable(this.assignmentForm.endDate), reason: this.nullable(this.assignmentForm.reason) };
+    const editing = this.editingAssignment();
+    const operation = editing ? this.service.updateAssignment(employee.id, editing.id, payload) : this.service.createAssignment(employee.id, payload);
+    operation.subscribe({
+      next: () => { this.saving.set(false); this.assignmentSubmitted.set(false); this.showAssignmentForm.set(false); this.editingAssignment.set(null); this.toast.success(editing ? 'Asignación laboral actualizada.' : 'Asignación laboral registrada.'); this.loadRelations(employee.id); },
       error: error => { this.saving.set(false); this.handleError(error, 'No se pudo registrar la asignación'); }
     });
   }
@@ -278,6 +357,7 @@ export class EmployeesPageComponent implements OnInit {
       });
     });
   }
+  isFutureAssignment(assignment: EmployeeAssignment): boolean { return assignment.startDate > this.today(); }
   terminateSelected(): void {
     const employee = this.selected();
     if (!employee || employee.employmentStatus === 'TERMINATED') return;
@@ -290,14 +370,23 @@ export class EmployeesPageComponent implements OnInit {
     });
   }
 
-  openNewContact(): void { this.contactForm = this.emptyContact(); this.contactSubmitted.set(false); this.showContactForm.set(true); }
+  openNewContact(): void { this.editingContact.set(null); this.contactForm = this.emptyContact(); this.contactSubmitted.set(false); this.showContactForm.set(true); }
+  openEditContact(contact: EmergencyContact): void {
+    this.editingContact.set(contact);
+    this.contactForm = { fullName: contact.fullName, relationship: contact.relationship, phone: contact.phone, alternativePhone: contact.alternativePhone, address: contact.address, primary: contact.primary };
+    this.contactSubmitted.set(false);
+    this.showContactForm.set(true);
+  }
   saveContact(): void {
     this.contactSubmitted.set(true);
     const employee = this.selected();
     if (!employee || !this.contactForm.fullName.trim() || !this.contactForm.phone.trim()) { this.toast.warning('Complete nombre y teléfono.'); return; }
     this.saving.set(true);
-    this.service.createContact(employee.id, { ...this.contactForm, relationship: this.nullable(this.contactForm.relationship), alternativePhone: this.nullable(this.contactForm.alternativePhone), address: this.nullable(this.contactForm.address) }).subscribe({
-      next: () => { this.saving.set(false); this.contactSubmitted.set(false); this.showContactForm.set(false); this.toast.success('Contacto de emergencia registrado.'); this.loadRelations(employee.id); },
+    const payload = { ...this.contactForm, relationship: this.nullable(this.contactForm.relationship), alternativePhone: this.nullable(this.contactForm.alternativePhone), address: this.nullable(this.contactForm.address) };
+    const editing = this.editingContact();
+    const operation = editing ? this.service.updateContact(employee.id, editing.id, payload) : this.service.createContact(employee.id, payload);
+    operation.subscribe({
+      next: () => { this.saving.set(false); this.contactSubmitted.set(false); this.showContactForm.set(false); this.editingContact.set(null); this.toast.success(editing ? 'Contacto actualizado.' : 'Contacto de emergencia registrado.'); this.loadRelations(employee.id); },
       error: error => { this.saving.set(false); this.handleError(error, 'No se pudo registrar el contacto'); }
     });
   }
@@ -324,11 +413,11 @@ export class EmployeesPageComponent implements OnInit {
   private cleanEmployee(e: EmployeeRequest): EmployeeRequest { return { ...e, tenantUserId: this.nullable(e.tenantUserId), middleName: this.nullable(e.middleName), secondLastName: this.nullable(e.secondLastName), birthDate: this.nullable(e.birthDate), gender: this.nullable(e.gender), nationality: this.nullable(e.nationality), personalEmail: this.nullable(e.personalEmail), workEmail: this.nullable(e.workEmail), phone: this.nullable(e.phone), mobilePhone: this.nullable(e.mobilePhone), address: this.nullable(e.address) }; }
   private cleanAssignment(a: EmployeeAssignmentRequest): EmployeeAssignmentRequest { return { ...a, supervisorEmployeeId: this.nullable(a.supervisorEmployeeId), endDate: this.nullable(a.endDate), reason: this.nullable(a.reason) }; }
   private nullable(value: string | null): string | null { return value?.trim() || null; }
-  private today(): string { return new Date().toISOString().slice(0, 10); }
+  private today(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   maxBirthDate(): string {
     const today = new Date();
     today.setFullYear(today.getFullYear() - 18);
-    return today.toISOString().slice(0, 10);
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   }
   private isAdult(birthDate: string): boolean {
     return birthDate <= this.maxBirthDate();
@@ -364,7 +453,7 @@ export class EmployeesPageComponent implements OnInit {
   private addDays(value: string, days: number): string {
     const date = new Date(`${value}T00:00:00`);
     date.setDate(date.getDate() + days);
-    return date.toISOString().slice(0, 10);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
   private handleError(error: unknown, fallback: string): void {
     const body = error instanceof HttpErrorResponse ? error.error : null;

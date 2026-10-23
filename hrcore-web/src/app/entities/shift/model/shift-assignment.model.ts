@@ -37,7 +37,10 @@ export interface EmployeeShiftAssignmentResponse {
   employeeFullName?: string;
   employeeCode?: string;
   shiftName?: string;
-  isRecurring?: boolean;
+  /** Datos del turno usados únicamente para la prevalidación visual de solapamientos. */
+  shiftStartTime?: string;
+  shiftEndTime?: string;
+  shiftCrossesMidnight?: boolean;
 }
 
 /**
@@ -71,6 +74,9 @@ export interface AssignShiftRequest {
   shiftId: string;
   startDate: string;
   endDate?: string | null;
-  isRecurring?: boolean;
   weekdays?: number[];
+  /** Metadatos locales; no se envían al endpoint de asignaciones. */
+  shiftStartTime?: string;
+  shiftEndTime?: string;
+  shiftCrossesMidnight?: boolean;
 }

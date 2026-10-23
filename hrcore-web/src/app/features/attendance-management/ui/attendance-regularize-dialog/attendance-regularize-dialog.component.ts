@@ -70,6 +70,15 @@ import { AttendanceRegularizeUseCase } from '../../application/attendance-regula
               </select>
             </div>
 
+            <div *ngIf="adjustmentType === 'STATUS_CORRECTION'" class="space-y-1">
+              <label class="block text-xs font-semibold text-foreground">Estado solicitado</label>
+              <select [(ngModel)]="correctedStatus" name="correctedStatus" class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground">
+                <option value="JUSTIFIED">Justificada</option>
+                <option value="PRESENT">Presente</option>
+                <option value="LATE">Con retraso</option>
+              </select>
+            </div>
+
             <!-- Corrección Horaria -->
             <div class="grid grid-cols-2 gap-4">
               <div>
@@ -167,8 +176,9 @@ export class AttendanceRegularizeDialogComponent {
   @Output() regularized = new EventEmitter<void>();
 
   adjustmentType: AdjustmentType = 'TIME_CORRECTION';
-  correctedCheckInTime = '08:30';
-  correctedCheckOutTime = '16:30';
+  correctedCheckInTime = '';
+  correctedCheckOutTime = '';
+  correctedStatus = 'JUSTIFIED';
   reason = '';
   reasonTouched = false;
 
@@ -189,7 +199,9 @@ export class AttendanceRegularizeDialogComponent {
       this.record.workDate,
       this.correctedCheckInTime || undefined,
       this.correctedCheckOutTime || undefined,
-      this.reason
+      this.reason,
+      this.adjustmentType,
+      this.correctedStatus
     );
 
     if (adjusted) {

@@ -3,6 +3,11 @@ package com.hrcoresystem.hrcore_api.modules.identity.users.application.usecase;
 import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationCategory;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationPriority;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationType;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.users.application.dto.TenantUserResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.users.application.mapper.TenantUserMapper;
@@ -27,6 +32,7 @@ public class DeactivateTenantUserUseCase {
     private final TenantAuthorizationStateRepository authorizationStateRepository;
     private final TenantAuthSessionRepository sessions;
     private final SecurityContextFacade securityContextFacade;
+    private final NotificationPublisherPort notificationPublisher;
 
     @Autowired
     public DeactivateTenantUserUseCase(
@@ -35,7 +41,8 @@ public class DeactivateTenantUserUseCase {
             AuditTrailService auditTrailService,
             TenantAuthorizationStateRepository authorizationStateRepository,
             TenantAuthSessionRepository sessions,
-            @Autowired(required = false) SecurityContextFacade securityContextFacade
+            @Autowired(required = false) SecurityContextFacade securityContextFacade,
+            @Autowired(required = false) NotificationPublisherPort notificationPublisher
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserMapper = tenantUserMapper;
@@ -43,6 +50,7 @@ public class DeactivateTenantUserUseCase {
         this.authorizationStateRepository = authorizationStateRepository;
         this.sessions = sessions;
         this.securityContextFacade = securityContextFacade;
+        this.notificationPublisher = notificationPublisher;
     }
 
     public DeactivateTenantUserUseCase(
@@ -52,7 +60,13 @@ public class DeactivateTenantUserUseCase {
             TenantAuthorizationStateRepository authorizationStateRepository,
             TenantAuthSessionRepository sessions
     ) {
-        this(tenantUserRepository, tenantUserMapper, auditTrailService, authorizationStateRepository, sessions, null);
+        this(tenantUserRepository, tenantUserMapper, auditTrailService, authorizationStateRepository, sessions, null, null);
+    }
+
+    public DeactivateTenantUserUseCase(TenantUserRepository tenantUserRepository, TenantUserMapper tenantUserMapper,
+            AuditTrailService auditTrailService, TenantAuthorizationStateRepository authorizationStateRepository,
+            TenantAuthSessionRepository sessions, SecurityContextFacade securityContextFacade) {
+        this(tenantUserRepository, tenantUserMapper, auditTrailService, authorizationStateRepository, sessions, securityContextFacade, null);
     }
 
     @Transactional
@@ -110,6 +124,21 @@ public class DeactivateTenantUserUseCase {
                 )
         );
 
+        publishAccessNotification(savedUser.id());
+
         return tenantUserMapper.toResponse(savedUser);
+    }
+
+    private void publishAccessNotification(UUID userId) {
+        if (notificationPublisher == null) return;
+        try {
+            notificationPublisher.publish(new NotificationPublishRequest(
+                    userId, NotificationType.ACCOUNT_BLOCKED, NotificationCategory.SECURITY,
+                    NotificationPriority.HIGH, "Acceso bloqueado",
+                    "Tu acceso al sistema fue bloqueado por un administrador.",
+                    null, null, null, null));
+        } catch (Exception ignored) {
+            // La notificación nunca debe impedir el bloqueo de la cuenta.
+        }
     }
 }

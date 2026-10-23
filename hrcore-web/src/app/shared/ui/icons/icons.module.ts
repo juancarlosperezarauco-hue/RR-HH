@@ -4,11 +4,11 @@ import {
   LucideAngularModule,
   LayoutDashboard, Settings, Shield, Users, Key, Briefcase,
   CreditCard, ArrowRightLeft, DollarSign, RefreshCcw, Percent,
-  Lock, ShieldAlert, BookOpen, Calendar, FileText, LogOut,
+  Lock, ShieldAlert, BookOpen, Calendar, FileText, LogOut, Bell, BellPlus, BellRing, RefreshCw,
   Building, Receipt, Plus, X, Eye, PlayCircle, PauseCircle,
   EyeOff, Wand2, Clock,
   ClipboardList, ArrowLeft, ArrowRight, Search, Archive, Database, DatabaseSearch,
-  Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen
+  Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen, Moon, Sun
 } from 'lucide-angular';
 
 @NgModule({
@@ -16,10 +16,10 @@ import {
     LucideAngularModule.pick({
       LayoutDashboard, Settings, Shield, Users, Key, Briefcase,
       CreditCard, ArrowRightLeft, DollarSign, RefreshCcw, Percent,
-      Lock, ShieldAlert, BookOpen, Calendar, FileText, LogOut,
+      Lock, ShieldAlert, BookOpen, Calendar, FileText, LogOut, Bell, BellPlus, BellRing, RefreshCw,
       Building, Receipt, Plus, X, Eye, PlayCircle, PauseCircle, ClipboardList,
       EyeOff, Wand2, ArrowLeft, ArrowRight, Clock, Search, Archive, Database, DatabaseSearch,
-      Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen
+      Camera, UserCircle2, Save, RotateCcw, Trash2, ShieldCheck, Folder, FolderOpen, Moon, Sun
     })
   ],
   exports: [LucideAngularModule]

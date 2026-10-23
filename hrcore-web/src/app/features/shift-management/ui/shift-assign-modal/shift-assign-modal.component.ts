@@ -1,13 +1,12 @@
 import { Component, EventEmitter, inject, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { ShiftResponse } from '../../../../entities/shift';
+import { EmployeesService } from '../../../../entities/employees';
 import { ShiftAssignmentUseCase } from '../../application/shift-assignment.usecase';
 import { ShiftDaysPickerComponent } from '../shift-days-picker/shift-days-picker.component';
-import { environment } from '../../../../../environments/environment';
 
 export interface EmployeeSelectOption {
   id: string;
@@ -51,13 +50,26 @@ export interface EmployeeSelectOption {
             <label class="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
               Colaboradores a Asignar *
             </label>
-            <div *ngIf="availableEmployees.length === 0" class="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground bg-muted/20">
+            <div class="relative mb-2">
+              <lucide-icon name="search" [size]="14" class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"></lucide-icon>
+              <input
+                type="search"
+                [(ngModel)]="employeeSearch"
+                (keydown.enter)="onEmployeeSearchEnter($event)"
+                name="employeeSearch"
+                placeholder="Buscar por nombre..."
+                class="w-full rounded-xl border border-border bg-muted/40 py-2 pl-11 pr-3 text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
+            </div>
+            <div *ngIf="employeesLoading" class="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground bg-muted/20">
+              Cargando colaboradores activos...
+            </div>
+            <div *ngIf="!employeesLoading && availableEmployees.length === 0" class="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground bg-muted/20">
               <p class="font-bold text-accent-foreground">No hay colaboradores registrados</p>
               <p class="mt-0.5">No se encontraron empleados activos en la base de datos para asignar turnos.</p>
             </div>
-            <div *ngIf="availableEmployees.length > 0"
+            <div *ngIf="!employeesLoading && availableEmployees.length > 0"
               [class.border-destructive]="submitted && selectedEmployeeIds.length === 0"
-              class="space-y-2 max-h-40 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
+              class="space-y-2 max-h-36 overflow-y-auto rounded-xl border border-border bg-muted/20 p-2.5">
               <label
                 *ngFor="let emp of availableEmployees"
                 class="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/40 cursor-pointer">
@@ -71,6 +83,14 @@ export interface EmployeeSelectOption {
                   <p class="text-[11px] text-muted-foreground">{{ emp.code }} • {{ emp.position }}</p>
                 </div>
               </label>
+            </div>
+            <div *ngIf="!employeesLoading && availableEmployees.length > 0" class="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>{{ employeeTotalElements }} colaboradores encontrados</span>
+              <div class="flex items-center gap-1">
+                <button type="button" (click)="changeEmployeePage(-1)" [disabled]="employeePage === 0" class="rounded-md border border-border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Anterior</button>
+                <span class="px-1">{{ employeePage + 1 }} / {{ employeeTotalPages }}</span>
+                <button type="button" (click)="changeEmployeePage(1)" [disabled]="employeePage + 1 >= employeeTotalPages" class="rounded-md border border-border px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Siguiente</button>
+              </div>
             </div>
             <p *ngIf="availableEmployees.length > 0" class="text-[11px] text-muted-foreground mt-1">
               {{ selectedEmployeeIds.length }} colaboradores seleccionados
@@ -93,8 +113,8 @@ export interface EmployeeSelectOption {
                 required
                 [class.border-destructive]="submitted && !startDate"
                 class="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary" />
-              <p *ngIf="submitted && !startDate" class="mt-1 text-xs font-medium text-destructive">
-                Indica la fecha de inicio.
+              <p *ngIf="submitted && dateError" class="mt-1 text-xs font-medium text-destructive">
+                {{ dateError }}
               </p>
             </div>
 
@@ -110,17 +130,12 @@ export interface EmployeeSelectOption {
             </div>
           </div>
 
-          <!-- Switch Recurrente Semanal -->
-          <div class="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3">
-            <div class="space-y-0.5 pr-2">
-              <p class="text-xs font-bold text-accent-foreground">Asignación Recurrente</p>
-              <p class="text-[11px] text-muted-foreground">Repite automáticamente cada semana según los días laborales configurados.</p>
-            </div>
-            <input
-              type="checkbox"
-              [(ngModel)]="isRecurring"
-              name="isRecurring"
-              class="rounded border-border text-primary focus:ring-primary h-4 w-4 cursor-pointer" />
+          <!-- Días de aplicación semanal -->
+          <div class="rounded-xl border border-border bg-muted/20 p-3">
+            <p class="text-xs font-bold text-accent-foreground">Días de aplicación semanal</p>
+            <p class="mt-0.5 text-[11px] text-muted-foreground">
+              La asignación se aplicará en los días seleccionados durante el rango indicado.
+            </p>
           </div>
 
           <!-- Días de Aplicación de la Asignación (HU16: weekdays short array) -->
@@ -177,44 +192,76 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
   @Output() closeModal = new EventEmitter<void>();
   @Output() assigned = new EventEmitter<void>();
 
-  private readonly http = inject(HttpClient);
+  private readonly employeesService = inject(EmployeesService);
   readonly assignmentUseCase = inject(ShiftAssignmentUseCase);
 
   availableEmployees: EmployeeSelectOption[] = [];
   selectedEmployeeIds: string[] = [];
-  startDate = new Date().toISOString().substring(0, 10);
+  employeeSearch = '';
+  employeePage = 0;
+  employeeTotalPages = 1;
+  employeeTotalElements = 0;
+  private readonly employeePageSize = 25;
+  startDate = this.todayLocal();
   endDate = '';
-  isRecurring = true;
   weekdays: number[] = [1, 2, 3, 4, 5];
   submitted = false;
+  employeesLoading = false;
 
   ngOnInit(): void {
-    this.loadEmployees();
+    // La carga se realiza al abrir el modal para evitar solicitudes duplicadas
+    // durante la inicialización de la página.
   }
 
-  async loadEmployees(): Promise<void> {
+  async loadEmployees(page = this.employeePage): Promise<void> {
+    if (this.employeesLoading) return;
+    this.employeesLoading = true;
     try {
-      const res = await firstValueFrom(
-        this.http.get<any>(`${environment.apiUrl}/api/employees?size=50`)
-      );
-      const list = Array.isArray(res?.data) ? res.data : (res?.data?.content || []);
+      const res = await firstValueFrom(this.employeesService.list(page, this.employeePageSize, {
+        status: 'ACTIVE',
+        name: this.employeeSearch
+      }));
+      const pageData = res?.data as any;
+      const list = Array.isArray(pageData) ? pageData : (pageData?.content || []);
       this.availableEmployees = list.map((e: any) => ({
         id: e.id,
         name: `${e.firstName} ${e.lastName}`,
         code: e.employeeNumber,
         position: 'Colaborador'
       }));
-      if (this.availableEmployees.length > 0 && this.selectedEmployeeIds.length === 0) {
-        this.selectedEmployeeIds = [this.availableEmployees[0].id];
-      }
+      this.employeePage = Array.isArray(pageData) ? 0 : (pageData?.page ?? page);
+      this.employeeTotalPages = Math.max(1, Array.isArray(pageData) ? 1 : (pageData?.totalPages ?? 1));
+      this.employeeTotalElements = Array.isArray(pageData) ? list.length : (pageData?.totalElements ?? list.length);
     } catch {
       this.availableEmployees = [];
+      this.employeeTotalElements = 0;
+      this.employeeTotalPages = 1;
+    } finally {
+      this.employeesLoading = false;
     }
+  }
+
+  searchEmployees(): void {
+    this.employeePage = 0;
+    void this.loadEmployees(0);
+  }
+
+  onEmployeeSearchEnter(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.searchEmployees();
+  }
+
+  changeEmployeePage(delta: number): void {
+    const nextPage = this.employeePage + delta;
+    if (nextPage < 0 || nextPage >= this.employeeTotalPages) return;
+    this.employeePage = nextPage;
+    void this.loadEmployees(nextPage);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['isOpen']?.currentValue === true) {
-      this.submitted = false;
+      this.resetForm();
       this.loadEmployees();
     }
     if (changes['shift'] && this.shift) {
@@ -238,10 +285,22 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
     }
   }
 
+  get dateError(): string | null {
+    if (!this.startDate) return 'Indica la fecha de inicio.';
+    if (this.startDate < this.todayLocal()) return 'La fecha de inicio no puede estar en el pasado.';
+    if (this.endDate && this.endDate < this.startDate) return 'La fecha fin no puede ser anterior a la fecha de inicio.';
+    return null;
+  }
+
   get overlapError(): string | null {
     if (!this.startDate) return null;
     for (const empId of this.selectedEmployeeIds) {
-      const check = this.assignmentUseCase.validateOverlap(empId, this.startDate, this.endDate);
+      const check = this.assignmentUseCase.validateOverlap(empId, this.startDate, this.endDate, {
+        weekdays: this.weekdays,
+        shiftStartTime: this.shift?.startTime,
+        shiftEndTime: this.shift?.endTime,
+        shiftCrossesMidnight: this.shift?.crossesMidnight
+      });
       if (check.hasOverlap) {
         return check.message || 'Solapamiento de turno detectado';
       }
@@ -255,6 +314,7 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
       this.selectedEmployeeIds.length > 0 &&
       !!this.startDate &&
       this.weekdays.length > 0 &&
+      !this.dateError &&
       !this.overlapError
     );
   }
@@ -268,8 +328,10 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
       employeeIds: this.selectedEmployeeIds,
       startDate: this.startDate,
       endDate: this.endDate || null,
-      isRecurring: this.isRecurring,
-      weekdays: this.weekdays
+      weekdays: this.weekdays,
+      shiftStartTime: this.shift!.startTime,
+      shiftEndTime: this.shift!.endTime,
+      shiftCrossesMidnight: this.shift!.crossesMidnight
     });
 
     if (ok) {
@@ -281,5 +343,25 @@ export class ShiftAssignModalComponent implements OnInit, OnChanges {
   close(): void {
     this.submitted = false;
     this.closeModal.emit();
+  }
+
+  private resetForm(): void {
+    this.submitted = false;
+    this.selectedEmployeeIds = [];
+    this.employeeSearch = '';
+    this.employeePage = 0;
+    this.employeeTotalPages = 1;
+    this.employeeTotalElements = 0;
+    this.startDate = this.todayLocal();
+    this.endDate = '';
+    this.weekdays = [1, 2, 3, 4, 5];
+  }
+
+  private todayLocal(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

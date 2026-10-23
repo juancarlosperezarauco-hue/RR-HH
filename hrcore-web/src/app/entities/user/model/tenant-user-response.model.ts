@@ -12,6 +12,7 @@ export interface TenantUserResponse {
   employeeId?: string | null;
   employeeNumber?: string | null;
   employeeFullName?: string | null;
+  owner?: boolean;
 }
 
 export interface AssignedRoleResponse {

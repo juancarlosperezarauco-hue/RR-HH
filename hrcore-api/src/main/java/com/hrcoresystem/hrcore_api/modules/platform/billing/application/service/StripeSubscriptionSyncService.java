@@ -15,6 +15,8 @@ import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.domain.model.P
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.domain.repository.PlatformSubscriptionRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenant;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.repository.PlatformTenantRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.service.TenantNotificationDispatcher;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.*;
 import com.stripe.model.Event;
 import com.stripe.model.Invoice;
 import com.stripe.model.InvoicePayment;
@@ -37,6 +39,7 @@ public class StripeSubscriptionSyncService {
     private final PlatformTenantRepository tenantRepository;
     private final PlatformPlanRepository planRepository;
     private final AuditTrailService auditTrailService;
+    private final TenantNotificationDispatcher notifications;
 
     public StripeSubscriptionSyncService(
             SubscriptionCheckoutSessionRepository checkoutSessionRepository,
@@ -44,7 +47,7 @@ public class StripeSubscriptionSyncService {
             PlatformSubscriptionRepository subscriptionRepository,
             PlatformTenantRepository tenantRepository,
             PlatformPlanRepository planRepository,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, TenantNotificationDispatcher notifications
     ) {
         this.checkoutSessionRepository = checkoutSessionRepository;
         this.paymentRepository = paymentRepository;
@@ -52,6 +55,7 @@ public class StripeSubscriptionSyncService {
         this.tenantRepository = tenantRepository;
         this.planRepository = planRepository;
         this.auditTrailService = auditTrailService;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -210,6 +214,11 @@ public class StripeSubscriptionSyncService {
                 current.id().toString(),
                 "Stripe subscription synchronized"
         );
+        if (previous != null && !previous.planId().equals(current.planId())) {
+            notifications.toOwner(tenant, NotificationType.SYSTEM_NOTICE, "Plan actualizado",
+                    "El plan de tu tenant fue actualizado correctamente.", NotificationCategory.SYSTEM,
+                    NotificationPriority.HIGH, "/dashboard/settings/billing?subscriptionId=" + current.id());
+        }
     }
 
     private void savePayment(Invoice invoice, String status, String failureReason) {
@@ -247,6 +256,11 @@ public class StripeSubscriptionSyncService {
                         null
                 )
         );
+        notifications.toOwner(context.tenant(), "PAID".equals(status) ? NotificationType.PAYMENT_SUCCESS : NotificationType.PAYMENT_FAILED,
+                "PAID".equals(status) ? "Pago confirmado" : "Pago rechazado",
+                "PAID".equals(status) ? "El pago de la suscripción fue confirmado correctamente." : "No se pudo procesar el pago de la suscripción.",
+                NotificationCategory.SYSTEM, "PAID".equals(status) ? NotificationPriority.NORMAL : NotificationPriority.HIGH,
+                "/dashboard/settings/billing?invoiceId=" + invoice.getId());
     }
 
     private UUID resolveTenantId(Subscription subscription, UUID tenantIdHint) {

@@ -18,6 +18,23 @@ public record NotificationPublishRequest(
         JsonNode data,
         String imageUrl,
         String actionUrl,
-        Instant expiresAt
+        Instant expiresAt,
+        String pushTitle,
+        String pushBody
 ) {
+    public NotificationPublishRequest(
+            UUID userId,
+            NotificationType type,
+            NotificationCategory category,
+            NotificationPriority priority,
+            String title,
+            String body,
+            JsonNode data,
+            String imageUrl,
+            String actionUrl,
+            Instant expiresAt
+    ) {
+        this(userId, type, category, priority, title, body, data, imageUrl, actionUrl,
+                expiresAt, null, null);
+    }
 }

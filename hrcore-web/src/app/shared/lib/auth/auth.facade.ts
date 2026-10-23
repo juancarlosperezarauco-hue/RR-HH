@@ -6,6 +6,7 @@ import { AuthService } from '../../../entities/auth/api/auth.service';
 import { SessionCoordinatorService } from './session-coordinator.service';
 import { AuthenticatedTenantUserResponse } from '../../../entities/auth/model/authenticated-tenant-user-response.model';
 import { TenantProfileResponse } from '../../../entities/auth/model/tenant-profile-response.model';
+import { PushNotificationsService } from '../../../entities/notifications';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,7 @@ export class AuthFacade {
   private readonly authStorage = inject(AuthStorageService);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly pushNotifications = inject(PushNotificationsService);
   private readonly sessions = inject(SessionCoordinatorService);
   readonly currentUser = signal<AuthenticatedTenantUserResponse | null>(null);
   readonly status = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -27,9 +29,6 @@ export class AuthFacade {
           this.status.set('idle');
         }
       });
-    }
-    if (this.authStorage.hasValidTenantSession()) {
-      void this.loadCurrentUser();
     }
   }
 
@@ -80,14 +79,19 @@ export class AuthFacade {
     this.status.set('loading');
 
     try {
-      const [meResult, profileResult] = await Promise.allSettled([
-        this.sessions.loadIdentity('TENANT'),
-        firstValueFrom(this.authService.getProfile())
-      ]);
-
-      if (meResult.status === 'fulfilled' && meResult.value) {
-        const currentUser = meResult.value;
-        const profile = profileResult.status === 'fulfilled' && profileResult.value.success ? profileResult.value.data : null;
+      // La identidad es la única fuente de verdad para autorizar la sesión.
+      // El perfil se carga después, de forma opcional, para no competir con
+      // /me durante la restauración de una sesión al recargar la página.
+      const currentUser = await this.sessions.loadIdentity('TENANT');
+      if (currentUser) {
+        let profile: TenantProfileResponse | null = null;
+        try {
+          const profileResult = await firstValueFrom(this.authService.getProfile());
+          profile = profileResult.success ? profileResult.data : null;
+        } catch {
+          // La identidad ya fue validada; un fallo del perfil no debe cerrar
+          // sesión ni cancelar la navegación inicial.
+        }
 
         this.currentUser.set({
           ...currentUser,
@@ -96,6 +100,7 @@ export class AuthFacade {
           updatedAt: profile?.updatedAt ?? currentUser.updatedAt ?? null
         });
         this.status.set('ready');
+        void this.pushNotifications.initialize().catch(() => undefined);
         return currentUser;
       }
 
@@ -112,6 +117,10 @@ export class AuthFacade {
 
   getTenantLandingRoute(): string {
     return '/dashboard/home';
+  }
+
+  hasStoredTenantSession(): boolean {
+    return this.authStorage.hasValidTenantSession();
   }
 
   /** Cierra la sesión del usuario actual limpiando el almacenamiento y redirigiendo a la vista de login. */

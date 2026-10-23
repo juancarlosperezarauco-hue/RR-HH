@@ -29,6 +29,9 @@ public class TenantAuditEventRepositoryAdapter implements TenantAuditEventReposi
 
     @Override
     public TenantAuditEvent save(TenantAuditEvent event) {
+        if (event.id() != null) {
+            throw new IllegalArgumentException("Los eventos de auditoría son inmutables y solo pueden insertarse");
+        }
         TenantAuditEventEntity entity = toEntity(event);
         TenantAuditEventEntity saved = jpaRepository.save(entity);
         return toDomain(saved);

@@ -42,3 +42,29 @@ export interface NotificationResponse {
 export interface UnreadNotificationCountResponse {
   unreadCount: number;
 }
+
+export interface NotificationDeviceResponse {
+  id: string;
+  userId: string;
+  deviceId: string;
+  platform: string;
+  deviceName: string | null;
+  appVersion: string | null;
+  osVersion: string | null;
+  status: string;
+  lastSeenAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreferenceResponse {
+  id: string;
+  userId: string;
+  category: string;
+  pushEnabled: boolean;
+  inAppEnabled: boolean;
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

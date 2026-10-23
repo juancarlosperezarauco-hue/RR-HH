@@ -2,6 +2,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.employees.application;
 
 import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.common.security.context.SecurityContextFacade;
+import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.dto.EmployeeRequest;
@@ -56,9 +57,26 @@ class EmployeePolicyTest {
                 () -> policy.changedStatus(e, EmploymentStatus.INACTIVE, UUID.randomUUID()));
     }
 
+    @Test void rejectsLinkingTenantOwnerToEmployee() {
+        UUID ownerId = UUID.randomUUID();
+        TenantAuthorizationStateRepository authorization = mock(TenantAuthorizationStateRepository.class);
+        when(authorization.ownerUserId()).thenReturn(ownerId);
+        EmployeePolicy protectedPolicy = new EmployeePolicy(repository, assignments, null,
+                mock(TenantUserRepository.class), mock(TenantPlanEnforcementService.class),
+                mock(SecurityContextFacade.class), timezone, authorization);
+
+        assertThrows(com.hrcoresystem.hrcore_api.common.exception.BusinessConflictException.class,
+                () -> protectedPolicy.normalized(null, "E-1", request(ownerId, LocalDate.of(1990, 1, 1)),
+                        null, UUID.randomUUID()));
+    }
+
     private EmployeeRequest request(String number, LocalDate hireDate) {
         return new EmployeeRequest(null, number, "Ana", null, "Rojas", null, "CI", "123",
                 LocalDate.of(1990, 1, 1), null, null, null, null, null, null, null, hireDate);
+    }
+    private EmployeeRequest request(UUID tenantUserId, LocalDate birthDate) {
+        return new EmployeeRequest(tenantUserId, null, "Ana", null, "Rojas", null, "CI", "123",
+                birthDate, null, null, null, null, null, null, null, LocalDate.of(2024, 1, 1));
     }
     private Employee employee(EmploymentStatus status) {
         return new Employee(UUID.randomUUID(), null, "E-1", "Ana", null, "Rojas", null, "CI", "123",

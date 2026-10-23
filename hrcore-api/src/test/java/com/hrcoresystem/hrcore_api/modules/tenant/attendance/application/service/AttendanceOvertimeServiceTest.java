@@ -38,7 +38,9 @@ class AttendanceOvertimeServiceTest {
     void setUp() {
         service = new AttendanceOvertimeService(store, employees, actor, new AttendanceMapper(), plans, audit);
         var record = new AttendanceRecord(recordId, employeeId, null, LocalDate.of(2026, 1, 12),
-                null, null, null, null, 0, 0, 0, AttendanceStatus.PENDING,
+                Instant.parse("2026-01-12T08:00:00Z"), Instant.parse("2026-01-12T16:00:00Z"),
+                Instant.parse("2026-01-12T08:00:00Z"), Instant.parse("2026-01-12T17:00:00Z"),
+                540, 0, 0, AttendanceStatus.PRESENT,
                 null, null, Instant.now(), Instant.now());
         var request = new AttendanceOvertime(overtimeId, recordId, 60, null, "Overtime",
                 ReviewStatus.PENDING, null, null, Instant.now(), Instant.now());

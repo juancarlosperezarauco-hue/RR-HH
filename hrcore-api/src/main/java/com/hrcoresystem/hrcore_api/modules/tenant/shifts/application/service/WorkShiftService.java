@@ -12,6 +12,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.ShiftStatu
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.WorkShift;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.model.WorkShiftFilter;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.ShiftAssignmentRepository;
+import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.ShiftBreakRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.domain.repository.WorkShiftRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,7 @@ public class WorkShiftService {
 
     private final WorkShiftRepository shifts;
     private final ShiftAssignmentRepository assignments;
+    private final ShiftBreakRepository breaks;
     private final TenantPlanEnforcementService plans;
     private final TenantShiftClock clock;
     private final SecurityContextFacade security;
@@ -38,11 +40,13 @@ public class WorkShiftService {
 
     @Autowired
     public WorkShiftService(WorkShiftRepository shifts, ShiftAssignmentRepository assignments,
+                            ShiftBreakRepository breaks,
                             TenantPlanEnforcementService plans, TenantShiftClock clock,
                             SecurityContextFacade security, AuditTrailService audit,
                             BusinessSequenceService sequences) {
         this.shifts = shifts;
         this.assignments = assignments;
+        this.breaks = breaks;
         this.plans = plans;
         this.clock = clock;
         this.security = security;
@@ -54,7 +58,7 @@ public class WorkShiftService {
     public WorkShiftService(WorkShiftRepository shifts, ShiftAssignmentRepository assignments,
                             TenantPlanEnforcementService plans, TenantShiftClock clock,
                             SecurityContextFacade security, AuditTrailService audit) {
-        this(shifts, assignments, plans, clock, security, audit, null);
+        this(shifts, assignments, null, plans, clock, security, audit, null);
     }
 
     @Transactional
@@ -71,9 +75,11 @@ public class WorkShiftService {
     public Page<WorkShiftResponse> list(String code, String name, ShiftStatus status,
                                         int page, int size, String sort, String direction) {
         plans.assertCanOperate();
-        return shifts.findAll(new WorkShiftFilter(code, name, status),
-                ShiftPage.of(page, size, sort, direction, "createdAt", SORT_FIELDS))
-                .map(this::response);
+        Page<WorkShift> result = shifts.findAll(new WorkShiftFilter(code, name, status),
+                ShiftPage.of(page, size, sort, direction, "createdAt", SORT_FIELDS));
+        if (breaks == null || result.isEmpty()) return result.map(this::response);
+        var unpaidMinutes = breaks.sumUnpaidMinutesByShiftIds(result.getContent().stream().map(WorkShift::id).toList());
+        return result.map(shift -> response(shift, unpaidMinutes.getOrDefault(shift.id(), 0)));
     }
 
     @Transactional(readOnly = true)
@@ -200,10 +206,14 @@ public class WorkShiftService {
     }
 
     private WorkShiftResponse response(WorkShift shift) {
+        return response(shift, 0);
+    }
+
+    private WorkShiftResponse response(WorkShift shift, int unpaidBreakMinutes) {
         return new WorkShiftResponse(shift.id(), shift.code(), shift.name(), shift.description(),
                 shift.startTime(), shift.endTime(), shift.crossesMidnight(),
                 shift.lateToleranceMinutes(), shift.earlyDepartureToleranceMinutes(),
-                shift.status(), shift.createdAt(), shift.updatedAt());
+                shift.status(), unpaidBreakMinutes, shift.createdAt(), shift.updatedAt());
     }
 
     private void record(String action, WorkShift before, WorkShift after) {

@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { PlatformTenant } from '../../../../entities/platform/api/platform.service';
 import { PlatformTenantListUseCase } from '../../application/platform-tenant-list.usecase';
+import { PlatformSubscription } from '../../../../entities/platform/api/platform.service';
 
 @Component({
   selector: 'app-platform-subscription-assign-form',
@@ -12,7 +13,7 @@ import { PlatformTenantListUseCase } from '../../application/platform-tenant-lis
   imports: [CommonModule, ReactiveFormsModule, LucideAngularModule],
   template: `
     <div class="bg-card rounded-xl border border-border p-6">
-      <h2 class="text-xl font-bold text-primary mb-4">Asignar/Modificar Suscripción</h2>
+      <h2 class="text-xl font-bold text-primary mb-4">{{ editing ? 'Cambiar plan' : 'Asignar suscripción' }}</h2>
       
       <div *ngIf="error" class="mb-4 p-3 bg-destructive/5 text-destructive rounded-lg text-sm">
         {{ error }}
@@ -22,6 +23,7 @@ import { PlatformTenantListUseCase } from '../../application/platform-tenant-lis
         <div>
           <label class="block text-sm font-medium text-primary mb-1">Tenant</label>
           <select formControlName="tenantId"
+                  [attr.disabled]="editing ? true : null"
                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">Selecciona un tenant...</option>
             @for (tenant of tenants; track tenant.id) {
@@ -47,7 +49,7 @@ import { PlatformTenantListUseCase } from '../../application/platform-tenant-lis
           <input type="number" formControlName="overrideTrialDays" 
                  placeholder="Dejar vacío para usar valor por defecto"
                  class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-          <p class="text-xs text-muted-foreground mt-1">Solo aplica para planes DEMO</p>
+          <p class="text-xs text-muted-foreground mt-1">Solo aplica para planes DEMO. El cambio reemplaza la suscripción actual.</p>
         </div>
         
         <div class="flex justify-end gap-3 pt-4">
@@ -57,7 +59,7 @@ import { PlatformTenantListUseCase } from '../../application/platform-tenant-lis
           </button>
           <button type="submit" [disabled]="isLoading || assignForm.invalid" 
                   class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-secondary transition-colors disabled:opacity-50">
-            {{ isLoading ? 'Asignando...' : 'Asignar suscripción' }}
+            {{ isLoading ? (editing ? 'Cambiando...' : 'Asignando...') : (editing ? 'Cambiar plan' : 'Asignar suscripción') }}
           </button>
         </div>
       </form>
@@ -67,6 +69,7 @@ import { PlatformTenantListUseCase } from '../../application/platform-tenant-lis
 export class PlatformSubscriptionAssignFormComponent implements OnInit {
   @Input() isLoading = false;
   @Input() error: string | null = null;
+  @Input() currentSubscription: PlatformSubscription | null = null;
   @Output() submitForm = new EventEmitter<{ tenantId: string; planCode: string; overrideTrialDays?: number }>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -82,7 +85,18 @@ export class PlatformSubscriptionAssignFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    if (this.currentSubscription) {
+      this.assignForm.patchValue({
+        tenantId: this.currentSubscription.tenantId,
+        planCode: this.currentSubscription.planCode,
+        overrideTrialDays: null
+      });
+    }
     this.loadTenants();
+  }
+
+  get editing(): boolean {
+    return !!this.currentSubscription;
   }
 
   async loadTenants(): Promise<void> {
@@ -91,8 +105,8 @@ export class PlatformSubscriptionAssignFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.assignForm.valid) {
-      const value = this.assignForm.value;
+    if (!this.isLoading && this.assignForm.valid) {
+      const value = this.assignForm.getRawValue();
       this.submitForm.emit({
         tenantId: value.tenantId!,
         planCode: value.planCode!,

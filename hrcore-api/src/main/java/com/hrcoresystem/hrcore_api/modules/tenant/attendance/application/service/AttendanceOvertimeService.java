@@ -4,6 +4,11 @@ import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationCategory;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationPriority;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationType;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.AttendanceRequests;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.AttendanceResponses;
@@ -18,9 +23,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AttendanceOvertimeService {
@@ -31,11 +39,18 @@ public class AttendanceOvertimeService {
     private final AttendanceMapper mapper;
     private final TenantPlanEnforcementService plans;
     private final AuditTrailService audit;
+    private final NotificationPublisherPort notificationPublisher;
 
+    @Autowired
+    public AttendanceOvertimeService(AttendanceStore store, EmployeeRepository employees, AttendanceActor actor,
+            AttendanceMapper mapper, TenantPlanEnforcementService plans, AuditTrailService audit,
+            NotificationPublisherPort notificationPublisher) {
+        this.store = store; this.employees = employees; this.actor = actor;
+        this.mapper = mapper; this.plans = plans; this.audit = audit; this.notificationPublisher = notificationPublisher;
+    }
     public AttendanceOvertimeService(AttendanceStore store, EmployeeRepository employees, AttendanceActor actor,
             AttendanceMapper mapper, TenantPlanEnforcementService plans, AuditTrailService audit) {
-        this.store = store; this.employees = employees; this.actor = actor;
-        this.mapper = mapper; this.plans = plans; this.audit = audit;
+        this(store, employees, actor, mapper, plans, audit, null);
     }
 
     @Transactional
@@ -87,7 +102,11 @@ public class AttendanceOvertimeService {
         AttendanceOvertime pending = store.lockOvertime(id);
         if (pending.status() != ReviewStatus.PENDING) throw new BusinessException("Overtime request is already processed");
         UUID requester = pending.requestedBy();
-        if (requester == null) throw new BusinessException("La solicitud no tiene un solicitante persistido");
+        if (requester == null) {
+            List<UUID> actors = store.overtimeRequestActors(id);
+            if (actors.size() != 1) throw new BusinessException("La solicitud no tiene un solicitante persistido");
+            requester = actors.getFirst();
+        }
         if (decision == ReviewStatus.CANCELLED) {
             if (!requester.equals(user)) throw new AccessDeniedException("Only the requester may cancel overtime");
         } else if (requester.equals(user)) {
@@ -114,7 +133,37 @@ public class AttendanceOvertimeService {
                 Map.of("recordId", pending.attendanceRecordId().toString(),
                         "requesterId", requester.toString(), "comment", comment == null ? "" : comment),
                 mapper.toResponse(pending), mapper.toResponse(saved));
+        if (decision == ReviewStatus.APPROVED || decision == ReviewStatus.REJECTED) {
+            publishDecision(requester, decision, id);
+        }
         return mapper.toResponse(saved);
+    }
+
+    private void publishDecision(UUID userId, ReviewStatus decision, UUID id) {
+        if (notificationPublisher == null || userId == null) return;
+        NotificationType type = NotificationType.OVERTIME_REVIEW_REQUIRED;
+        String title = decision == ReviewStatus.APPROVED ? "Horas extra aprobadas" : "Horas extra rechazadas";
+        String body = decision == ReviewStatus.APPROVED
+                ? "Tu solicitud de horas extra fue aprobada." : "Tu solicitud de horas extra fue rechazada.";
+        try {
+            notifyAfterCommit(new NotificationPublishRequest(userId, type, NotificationCategory.SYSTEM,
+                    NotificationPriority.NORMAL, title, body, null, null,
+                    "/dashboard/attendance/overtime?id=" + id, null));
+        } catch (Exception ignored) { }
+    }
+
+    private void notifyAfterCommit(NotificationPublishRequest payload) {
+        if (notificationPublisher == null) return;
+        Runnable publish = () -> {
+            try { notificationPublisher.publish(payload); } catch (Exception ignored) { }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publish.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { publish.run(); }
+        });
     }
 
     @Transactional(readOnly = true)

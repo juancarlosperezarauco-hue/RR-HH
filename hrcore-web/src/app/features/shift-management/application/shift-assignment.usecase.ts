@@ -51,12 +51,16 @@ export class ShiftAssignmentUseCase {
           employeeFullName: employee ? `${employee.firstName} ${employee.lastName}`.trim() : undefined,
           employeeCode: employee?.employeeNumber,
           shiftName: shift?.name,
-          isRecurring: (assignment.weekdays?.length || 0) > 0
+          shiftStartTime: shift?.startTime,
+          shiftEndTime: shift?.endTime,
+          shiftCrossesMidnight: shift?.crossesMidnight
         };
       }));
       return;
-    } catch {
+    } catch (err: unknown) {
       this.assignments.set([]);
+      const errorResponse = err as { error?: { message?: string; errors?: string[] } };
+      this.error.set(errorResponse?.error?.errors?.[0] || errorResponse?.error?.message || 'No se pudieron cargar las asignaciones de turnos');
     } finally {
       this.loading.set(false);
     }
@@ -68,26 +72,55 @@ export class ShiftAssignmentUseCase {
   validateOverlap(
     employeeId: string,
     startDate: string,
-    endDate?: string | null
+    endDate?: string | null,
+    requestedShift?: Pick<AssignShiftRequest, 'weekdays' | 'shiftStartTime' | 'shiftEndTime' | 'shiftCrossesMidnight'>
   ): { hasOverlap: boolean; message?: string } {
     if (!startDate) return { hasOverlap: false };
 
-    const newStart = new Date(startDate).getTime();
-    const newEnd = endDate ? new Date(endDate).getTime() : Infinity;
+    const newStart = this.epochDay(startDate);
+    const newEnd = endDate ? this.epochDay(endDate) : Infinity;
 
     const existingList = this.assignments().filter(
       (a) => a.employeeId === employeeId && a.status === 'ACTIVE'
     );
 
     for (const ex of existingList) {
-      const exStart = new Date(ex.startDate).getTime();
-      const exEnd = ex.endDate ? new Date(ex.endDate).getTime() : Infinity;
+      const exStart = this.epochDay(ex.startDate);
+      const exEnd = ex.endDate ? this.epochDay(ex.endDate) : Infinity;
 
-      // Condición estándar de solapamiento de intervalos de fecha
-      if (newStart <= exEnd && newEnd >= exStart) {
+      if (!(newStart <= exEnd && newEnd >= exStart)) continue;
+
+      // Si no se conocen los horarios (por ejemplo, datos antiguos de la tabla),
+      // conservamos una prevalidación conservadora. El backend sigue siendo la
+      // autoridad final y valida el conflicto dentro de la misma transacción.
+      if (!requestedShift?.weekdays?.length || !requestedShift.shiftStartTime || !requestedShift.shiftEndTime) {
         return {
           hasOverlap: true,
           message: `El colaborador ya tiene el turno "${ex.shiftName || 'Turno Vigente'}" asignado en ese rango de fechas (${ex.startDate} a ${ex.endDate || 'Indefinido'}).`
+        };
+      }
+
+      // Si la asignación existente no pudo enriquecerse con su turno, no
+      // bloqueamos a ciegas: la política transaccional del backend decidirá.
+      if (!ex.weekdays?.length || !ex.shiftStartTime || !ex.shiftEndTime) continue;
+
+      if (this.hasScheduleConflict(
+        requestedShift.weekdays,
+        requestedShift.shiftStartTime,
+        requestedShift.shiftEndTime,
+        requestedShift.shiftCrossesMidnight ?? false,
+        newStart,
+        newEnd,
+        ex.weekdays,
+        ex.shiftStartTime,
+        ex.shiftEndTime,
+        ex.shiftCrossesMidnight ?? false,
+        exStart,
+        exEnd
+      )) {
+        return {
+          hasOverlap: true,
+          message: `El colaborador ya tiene el turno "${ex.shiftName || 'Turno Vigente'}" asignado en un horario que se solapa (${ex.startDate} a ${ex.endDate || 'Indefinido'}).`
         };
       }
     }
@@ -98,7 +131,7 @@ export class ShiftAssignmentUseCase {
   async assign(request: AssignShiftRequest): Promise<boolean> {
     // Validar solapamiento para cada colaborador seleccionado
     for (const empId of request.employeeIds) {
-      const overlapCheck = this.validateOverlap(empId, request.startDate, request.endDate);
+      const overlapCheck = this.validateOverlap(empId, request.startDate, request.endDate, request);
       if (overlapCheck.hasOverlap) {
         this.error.set(overlapCheck.message!);
         this.toastService.error(overlapCheck.message!);
@@ -109,10 +142,17 @@ export class ShiftAssignmentUseCase {
     this.assigning.set(true);
     this.error.set(null);
 
-    const weekdays = request.weekdays && request.weekdays.length > 0 ? request.weekdays : [1, 2, 3, 4, 5];
+    const weekdays = [...new Set(request.weekdays ?? [])].filter((day) => day >= 1 && day <= 7).sort((a, b) => a - b);
+    if (weekdays.length === 0) {
+      const message = 'Selecciona al menos un día de aplicación para la asignación.';
+      this.error.set(message);
+      this.toastService.error(message);
+      return false;
+    }
 
     try {
-      const res = await firstValueFrom(this.shiftService.assignShifts({ ...request, weekdays }));
+      const { shiftStartTime, shiftEndTime, shiftCrossesMidnight, ...apiRequest } = request;
+      const res = await firstValueFrom(this.shiftService.assignShifts({ ...apiRequest, weekdays }));
       this.toastService.success(`Turno asignado a ${res.data.length} colaborador(es) exitosamente`);
       this.assignments.update((prev) => [...res.data, ...prev]);
       return true;
@@ -125,6 +165,69 @@ export class ShiftAssignmentUseCase {
     } finally {
       this.assigning.set(false);
     }
+  }
+
+  private epochDay(value: string): number {
+    const [year, month, day] = value.split('-').map(Number);
+    return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
+  }
+
+  private hasScheduleConflict(
+    requestedWeekdays: number[], requestedStart: string, requestedEnd: string,
+    requestedCrossesMidnight: boolean, requestedStartDate: number, requestedEndDate: number,
+    existingWeekdays: number[], existingStart: string, existingEnd: string,
+    existingCrossesMidnight: boolean, existingStartDate: number, existingEndDate: number
+  ): boolean {
+    const monday = this.epochDay('2026-01-05');
+    const requestedInterval = this.interval(requestedStart, requestedEnd, requestedCrossesMidnight);
+    const existingInterval = this.interval(existingStart, existingEnd, existingCrossesMidnight);
+
+    for (const requestedDay of requestedWeekdays) {
+      for (let dayDifference = -1; dayDifference <= 1; dayDifference++) {
+        const existingDay = ((requestedDay - 1 + dayDifference + 7) % 7) + 1;
+        if (!existingWeekdays.includes(existingDay)) continue;
+        if (!this.commonOccurrenceDate(
+          requestedStartDate, requestedEndDate, existingStartDate, existingEndDate,
+          requestedDay, dayDifference, monday
+        )) continue;
+
+        const shiftedExisting = {
+          start: existingInterval.start + dayDifference * 1440,
+          end: existingInterval.end + dayDifference * 1440
+        };
+        const requestedAbsolute = {
+          start: requestedInterval.start,
+          end: requestedInterval.end
+        };
+        // Igual que el backend: tocar exactamente a la misma hora no es conflicto.
+        if (Math.max(requestedAbsolute.start, shiftedExisting.start)
+          < Math.min(requestedAbsolute.end, shiftedExisting.end)) return true;
+      }
+    }
+    return false;
+  }
+
+  private interval(start: string, end: string, crossesMidnight: boolean): { start: number; end: number } {
+    const minutes = (value: string): number => {
+      const [hour, minute] = value.substring(0, 5).split(':').map(Number);
+      return hour * 60 + minute;
+    };
+    const startMinutes = minutes(start);
+    let endMinutes = minutes(end);
+    if (crossesMidnight) endMinutes += 1440;
+    return { start: startMinutes, end: endMinutes };
+  }
+
+  private commonOccurrenceDate(
+    requestedStart: number, requestedEnd: number, existingStart: number, existingEnd: number,
+    requestedDay: number, dayDifference: number, monday: number
+  ): boolean {
+    const earliest = Math.max(requestedStart, existingStart - dayDifference);
+    const latest = Math.min(requestedEnd, existingEnd === Infinity ? Infinity : existingEnd - dayDifference);
+    if (earliest > latest) return false;
+    const weekday = ((earliest - monday) % 7 + 7) % 7 + 1;
+    const nextOccurrence = earliest + ((requestedDay - weekday + 7) % 7);
+    return nextOccurrence <= latest;
   }
 
   /**

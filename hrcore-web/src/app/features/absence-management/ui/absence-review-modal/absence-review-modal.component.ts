@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { AbsenceService, LeaveAttachmentResponse, LeaveRequestResponse } from '../../../../entities/absence';
 import { AbsenceReviewUseCase } from '../../application/absence-review.usecase';
 import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-status-badge.component';
+import { ToastService } from '../../../../shared/ui/toast/toast.service';
 
 @Component({
   selector: 'app-absence-review-modal',
@@ -182,6 +183,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
 export class AbsenceReviewModalComponent implements OnChanges {
   readonly useCase = inject(AbsenceReviewUseCase);
   private readonly absenceService = inject(AbsenceService);
+  private readonly toast = inject(ToastService);
 
   @Input() isOpen = false;
   @Input() request: LeaveRequestResponse | null = null;
@@ -209,6 +211,7 @@ export class AbsenceReviewModalComponent implements OnChanges {
       this.attachments = response.data.content ?? [];
     } catch {
       this.attachments = [];
+      this.toast.error('No se pudieron cargar los documentos adjuntos.');
     } finally {
       this.attachmentsLoading = false;
     }
@@ -216,15 +219,19 @@ export class AbsenceReviewModalComponent implements OnChanges {
 
   async downloadAttachment(attachment: LeaveAttachmentResponse): Promise<void> {
     if (!this.request) return;
-    const blob = await firstValueFrom(
-      this.absenceService.downloadAttachment(this.request.id, attachment.id)
-    );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = attachment.filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const blob = await firstValueFrom(
+        this.absenceService.downloadAttachment(this.request.id, attachment.id)
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      this.toast.error('No se pudo descargar el documento adjunto.');
+    }
   }
 
   close(): void {

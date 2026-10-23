@@ -17,6 +17,7 @@ public record WorkShiftResponse(
         int lateToleranceMinutes,
         int earlyDepartureToleranceMinutes,
         ShiftStatus status,
+        int unpaidBreakMinutes,
         Instant createdAt,
         Instant updatedAt
 ) { }

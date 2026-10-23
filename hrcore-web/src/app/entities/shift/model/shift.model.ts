@@ -18,6 +18,7 @@ export interface WorkShiftResponse {
   lateToleranceMinutes: number;             // Tolerancia llegada tarde (minutos)
   earlyDepartureToleranceMinutes: number;   // Tolerancia salida temprana (minutos)
   status: ShiftStatus;                      // ACTIVE | INACTIVE
+  unpaidBreakMinutes: number;               // Descansos no remunerados agregados por el backend
   createdAt: string;                        // ISO Instant
   updatedAt: string;                        // ISO Instant
 }

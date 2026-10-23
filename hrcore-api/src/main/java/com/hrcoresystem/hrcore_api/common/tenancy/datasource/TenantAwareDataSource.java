@@ -76,6 +76,18 @@ public class TenantAwareDataSource extends AbstractDataSource {
   }
 
   private String resolveSchemaName() {
+    TenantContext tenantContext = TenantContextHolder.get();
+    // An explicit tenant context may be set by platform lifecycle services while
+    // handling a public/platform request (for example, when delivering a tenant
+    // notification). It must take precedence for that scoped operation.
+    if (tenantContext != null
+        && !tenantContext.publicRequest()
+        && tenantContext.schemaName() != null
+        && !tenantContext.schemaName().isBlank()
+        && !tenancyProperties.getPublicSchema().equalsIgnoreCase(tenantContext.schemaName())) {
+      return tenantContext.schemaName();
+    }
+
     HttpServletRequest request = currentRequest();
     if (request == null) {
       return TenantContextHolder.getCurrentSchemaOrDefault(tenancyProperties.getPublicSchema());
@@ -86,7 +98,6 @@ public class TenantAwareDataSource extends AbstractDataSource {
       return tenancyProperties.getPublicSchema();
     }
 
-    TenantContext tenantContext = TenantContextHolder.get();
     if (tenantContext == null
         || tenantContext.publicRequest()
         || tenantContext.schemaName() == null

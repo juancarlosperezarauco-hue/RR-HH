@@ -143,7 +143,7 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
                   <lucide-icon name="file-text" class="h-3.5 w-3.5"></lucide-icon>
                   <span>Adjunto</span>
                 </a>
-                <span *ngIf="!req.attachmentUrl" class="text-xs text-muted-foreground">--</span>
+                <span *ngIf="!req.attachmentUrl" class="text-xs text-muted-foreground">Consultar en detalles</span>
               </td>
 
               <!-- Estado -->
@@ -169,8 +169,13 @@ import { AbsenceStatusBadgeComponent } from '../absence-status-badge/absence-sta
       </div>
 
       <!-- Table Footer -->
-      <div class="p-4 border-t border-border/60 bg-muted/20 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Mostrando {{ requests.length }} solicitudes de ausencia</span>
+      <div class="p-4 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>Mostrando {{ requests.length }} de {{ totalElements }} solicitudes</span>
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="previousPage.emit()" [disabled]="page <= 0 || loading" class="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Anterior</button>
+          <span *ngIf="totalPages > 0">{{ page + 1 }} / {{ totalPages }}</span>
+          <button type="button" (click)="nextPage.emit()" [disabled]="page + 1 >= totalPages || loading" class="rounded-lg border border-border px-2 py-1 disabled:opacity-40">Siguiente</button>
+        </div>
         <span>Cómputo en días hábiles (LGT Bolivia)</span>
       </div>
     </div>
@@ -181,11 +186,16 @@ export class AbsenceTableComponent {
   @Input() loading = false;
   @Input() searchTerm = '';
   @Input() statusFilter: LeaveStatus | 'ALL' = 'ALL';
+  @Input() page = 0;
+  @Input() totalPages = 0;
+  @Input() totalElements = 0;
 
   @Output() searchChanged = new EventEmitter<string>();
   @Output() statusChanged = new EventEmitter<LeaveStatus | 'ALL'>();
   @Output() refresh = new EventEmitter<void>();
   @Output() review = new EventEmitter<LeaveRequestResponse>();
+  @Output() previousPage = new EventEmitter<void>();
+  @Output() nextPage = new EventEmitter<void>();
 
   getInitials(name?: string): string {
     if (!name) return 'CO';

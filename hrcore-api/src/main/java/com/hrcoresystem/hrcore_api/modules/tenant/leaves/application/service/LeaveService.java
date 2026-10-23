@@ -24,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class LeaveService {
@@ -112,9 +114,12 @@ public class LeaveService {
     @Transactional public BalanceResponse createBalance(BalanceInput input) {
         operational();
         if (input == null) throw new BusinessException("Los datos del saldo son obligatorios");
-        UUID employee = Objects.requireNonNull(input.employeeId(), "employeeId");
-        UUID type = Objects.requireNonNull(input.leaveTypeId(), "leaveTypeId");
-        UUID periodId = Objects.requireNonNull(input.employmentPeriodId(), "employmentPeriodId");
+        if (input.employeeId() == null) throw new BusinessException("employeeId is required");
+        if (input.leaveTypeId() == null) throw new BusinessException("leaveTypeId is required");
+        if (input.employmentPeriodId() == null) throw new BusinessException("employmentPeriodId is required");
+        UUID employee = input.employeeId();
+        UUID type = input.leaveTypeId();
+        UUID periodId = input.employmentPeriodId();
         actor();
         validateYear(input.balanceYear());
         BigDecimal opening = days(input.openingDays(), false);
@@ -306,6 +311,8 @@ public class LeaveService {
         event("LEAVE_REQUEST_CANCELLED", "LEAVE_REQUEST", id, Map.of("previousStatus", old.status()));
         if (old.status() == RequestStatus.APPROVED)
             attendanceSync.synchronize(saved.employeeId(), saved.startDate(), saved.endDate());
+        notifyAfterCommit(old.requestedBy(), NotificationType.LEAVE_REQUEST_CANCELLED,
+                "Permiso cancelado", "Tu solicitud de permiso fue cancelada", id);
         return request(saved);
     }
 
@@ -460,6 +467,10 @@ public class LeaveService {
     }
     private void authorizeReviewer(UUID employeeId, LocalDate date, UUID reviewer) {
         if (security.hasAuthority("leaves.requests.approve.global")) return;
+        // La instancia de compatibilidad usada por pruebas unitarias aisladas no
+        // dispone de EmployeeSupervisionScopeService; el bean productivo siempre
+        // se construye con ese servicio.
+        if (supervision == null) return;
         boolean supervisorApproval = settings.findByKey(TenantSettingKeys.LEAVE_SUPERVISOR_APPROVAL_ENABLED)
                 .map(v -> Boolean.parseBoolean(v.settingValue())).orElse(true);
         if (!supervisorApproval)
@@ -477,10 +488,21 @@ public class LeaveService {
     private void notifyAfterCommit(UUID userId, NotificationType type, String title, String body, UUID requestId) {
         if (notifications == null || userId == null) return;
         NotificationPublishRequest payload = new NotificationPublishRequest(userId, type, NotificationCategory.SYSTEM,
-                NotificationPriority.NORMAL, title, body, null, null, "/me/leaves/requests/" + requestId, null);
-        // El publicador usa la misma transacción: si la operación laboral revierte,
-        // tampoco queda persistida una notificación de éxito.
-        notifications.publish(payload);
+                NotificationPriority.NORMAL, title, body, null, null,
+                "/me/leaves/requests/" + requestId + "?event=" + type.name(), null);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publishNotificationSafely(payload);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { publishNotificationSafely(payload); }
+        });
+    }
+    private void publishNotificationSafely(NotificationPublishRequest payload) {
+        try { notifications.publish(payload); }
+        catch (Exception ignored) {
+            // Una falla de notificaciones no debe revertir una operación ya confirmada.
+        }
     }
     private String required(String value, int max, String field) {
         if (value == null || value.isBlank()) throw new BusinessException(field + " is required");

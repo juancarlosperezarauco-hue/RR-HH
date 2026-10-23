@@ -67,6 +67,18 @@ export class OnboardingPageComponent implements OnInit {
       return;
     }
 
+    // El registro DEMO usa un endpoint público dedicado que ya fija el plan
+    // en el backend. No debe quedar bloqueado por una consulta secundaria de
+    // catálogo, especialmente cuando la página de precios muestra el DEMO
+    // localmente como respaldo.
+    if (planCode === 'DEMO') {
+      this.selectedPlanCode.set('DEMO');
+      this.selectedBillingInterval.set('MONTHLY');
+      this.ready.set(true);
+      this.loadingPlan.set(false);
+      return;
+    }
+
     try {
       const response = await firstValueFrom(this.billing.listPublicPlans().pipe(timeout(15000)));
       const plans: PublicBillingPlan[] = response.success && Array.isArray(response.data) ? response.data : [];

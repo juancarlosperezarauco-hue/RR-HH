@@ -50,7 +50,11 @@ import { PlatformSubscription } from '../../../../entities/platform/api/platform
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  @if (sub.trial) {
+                  @if (!sub.currentSubscription) {
+                    <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-muted text-muted-foreground">
+                      No vigente
+                    </span>
+                  } @else if (sub.trial) {
                     <span class="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-accent text-primary">
                       <lucide-icon name="clock" class="h-3 w-3"></lucide-icon>
                       Prueba
@@ -71,11 +75,18 @@ import { PlatformSubscription } from '../../../../entities/platform/api/platform
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button (click)="viewDetails.emit(sub.id)" 
-                          class="cursor-pointer text-secondary hover:text-primary transition-colors"
-                          title="Ver detalles">
-                    <lucide-icon name="eye" class="h-5 w-5"></lucide-icon>
-                  </button>
+                  <div class="flex items-center justify-end gap-3">
+                    <button (click)="edit.emit(sub)"
+                            class="cursor-pointer rounded-lg p-1.5 text-primary transition-colors hover:bg-accent hover:text-secondary"
+                            title="Cambiar plan">
+                      <lucide-icon name="pencil" class="h-5 w-5"></lucide-icon>
+                    </button>
+                    <button (click)="viewDetails.emit(sub.id)"
+                            class="cursor-pointer rounded-lg p-1.5 text-secondary transition-colors hover:bg-accent hover:text-primary"
+                            title="Ver detalles">
+                      <lucide-icon name="eye" class="h-5 w-5"></lucide-icon>
+                    </button>
+                  </div>
                 </td>
               </tr>
             } @empty {
@@ -95,4 +106,5 @@ export class PlatformSubscriptionTableComponent {
   @Input() subscriptions: PlatformSubscription[] = [];
   @Input() isLoading = false;
   @Output() viewDetails = new EventEmitter<string>();
+  @Output() edit = new EventEmitter<PlatformSubscription>();
 }

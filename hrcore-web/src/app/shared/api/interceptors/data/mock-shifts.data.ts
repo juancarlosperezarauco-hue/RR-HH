@@ -102,7 +102,6 @@ export const MOCK_SHIFTS: {
       startDate: '2026-02-01',
       endDate: null,
       weekdays: [1, 2, 3, 4, 5],
-      isRecurring: true,
       status: 'ACTIVE' as const,
       createdAt: '2026-02-01T08:00:00Z'
     },
@@ -117,7 +116,6 @@ export const MOCK_SHIFTS: {
       startDate: '2026-02-01',
       endDate: '2026-06-30',
       weekdays: [1, 2, 3, 4, 5, 6],
-      isRecurring: true,
       status: 'ACTIVE' as const,
       createdAt: '2026-02-01T08:00:00Z'
     }

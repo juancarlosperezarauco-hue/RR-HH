@@ -3,6 +3,7 @@ package com.hrcoresystem.hrcore_api.modules.identity.users.application.mapper;
 import com.hrcoresystem.hrcore_api.modules.identity.access.application.dto.AssignedRoleResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.users.application.dto.TenantUserResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUser;
+import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.infrastructure.persistence.EmployeeEntity;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.infrastructure.persistence.EmployeeJpaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,13 +17,20 @@ import java.util.UUID;
 public class TenantUserMapper {
 
     private final EmployeeJpaRepository employeeJpaRepository;
+    private final TenantAuthorizationStateRepository authorizationStateRepository;
 
-    public TenantUserMapper(@Autowired(required = false) EmployeeJpaRepository employeeJpaRepository) {
+    public TenantUserMapper(@Autowired(required = false) EmployeeJpaRepository employeeJpaRepository,
+                            @Autowired(required = false) TenantAuthorizationStateRepository authorizationStateRepository) {
         this.employeeJpaRepository = employeeJpaRepository;
+        this.authorizationStateRepository = authorizationStateRepository;
+    }
+
+    public TenantUserMapper(EmployeeJpaRepository employeeJpaRepository) {
+        this(employeeJpaRepository, null);
     }
 
     public TenantUserMapper() {
-        this(null);
+        this(null, null);
     }
 
     public TenantUserResponse toResponse(TenantUser tenantUser) {
@@ -39,6 +47,9 @@ public class TenantUserMapper {
         UUID employeeId = null;
         String employeeNumber = null;
         String employeeFullName = null;
+        boolean owner = authorizationStateRepository != null
+                && tenantUser.id() != null
+                && tenantUser.id().equals(authorizationStateRepository.ownerUserId());
 
         if (employeeJpaRepository != null) {
             Optional<EmployeeEntity> empOpt = employeeJpaRepository.findByTenantUserId(tenantUser.id());
@@ -65,7 +76,8 @@ public class TenantUserMapper {
                 roles,
                 employeeId,
                 employeeNumber,
-                employeeFullName
+                employeeFullName,
+                owner
         );
     }
 }

@@ -95,6 +95,13 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         </label>
       </div>
 
+      <div *ngIf="listUseCase.error()" class="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300" role="alert">
+        {{ listUseCase.error() }}
+      </div>
+      <div *ngIf="balanceUseCase.error()" class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300" role="alert">
+        {{ balanceUseCase.error() }}
+      </div>
+
       <!-- Vacation Balance Widget (LGT Bolivia) -->
       <app-vacation-balance-card
         [balance]="balanceUseCase.balance()"
@@ -107,7 +114,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         <!-- Pendientes -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-amber-500/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Por Revisar</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Por Revisar · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <lucide-icon name="clock" class="h-5 w-5"></lucide-icon>
             </div>
@@ -122,7 +129,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         <!-- Aprobadas -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-emerald-500/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Aprobadas</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Aprobadas · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <lucide-icon name="check-circle" class="h-5 w-5"></lucide-icon>
             </div>
@@ -137,7 +144,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         <!-- Rechazadas -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-rose-500/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rechazadas</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Rechazadas · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <lucide-icon name="ban" class="h-5 w-5"></lucide-icon>
             </div>
@@ -152,7 +159,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         <!-- Días Totales Aprobados -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-primary/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Días Justificados</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Días aprobados · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <lucide-icon name="calendar" class="h-5 w-5"></lucide-icon>
             </div>
@@ -171,10 +178,15 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
         [loading]="listUseCase.loading()"
         [searchTerm]="listUseCase.searchTerm()"
         [statusFilter]="listUseCase.statusFilter()"
+        [page]="listUseCase.page()"
+        [totalPages]="listUseCase.totalPages()"
+        [totalElements]="listUseCase.totalElements()"
         (searchChanged)="listUseCase.setSearch($event)"
         (statusChanged)="onStatusFilterChanged($event)"
         (refresh)="reloadData()"
         (review)="openReviewModal($event)"
+        (previousPage)="listUseCase.previousPage(currentEmployeeId)"
+        (nextPage)="listUseCase.nextPage(currentEmployeeId)"
       ></app-absence-table>
 
       <!-- New Request Modal -->
@@ -226,14 +238,14 @@ export class AbsencesPageComponent implements OnInit {
     }
 
     this.reloadData();
-    this.listUseCase.loadLeaveTypes();
+    void this.listUseCase.loadLeaveTypes().then(() => this.reloadData());
     this.listUseCase.loadHolidays();
   }
 
   reloadData(): void {
     if (this.currentEmployeeId) {
-      this.balanceUseCase.loadBalance(this.currentEmployeeId, this.selectedEmploymentPeriodId || undefined);
-      this.listUseCase.loadRequests(this.currentEmployeeId);
+      this.balanceUseCase.loadBalance(this.currentEmployeeId, this.selectedEmploymentPeriodId || undefined, this.vacationTypeId());
+      this.listUseCase.loadRequests(this.currentEmployeeId, 0);
     }
   }
 
@@ -303,14 +315,19 @@ export class AbsencesPageComponent implements OnInit {
         employmentPeriodId: this.selectedEmploymentPeriodId
       }));
       this.toast.success('Saldo de vacaciones registrado correctamente.');
-      this.balanceUseCase.loadBalance(this.currentEmployeeId);
+      this.balanceUseCase.loadBalance(this.currentEmployeeId, this.selectedEmploymentPeriodId || undefined, this.vacationTypeId());
     } catch (error: any) {
       this.toast.error(error?.error?.errors?.[0] || error?.error?.message || 'No se pudo registrar el saldo de vacaciones.');
     }
   }
 
+  private vacationTypeId(): string | undefined {
+    return this.listUseCase.leaveTypes().find(type => type.code === 'LEAVE_VACATION')?.id;
+  }
+
   onStatusFilterChanged(status: LeaveStatus | 'ALL'): void {
     this.listUseCase.setStatusFilter(status);
+    if (this.currentEmployeeId) void this.listUseCase.loadRequests(this.currentEmployeeId, 0);
   }
 
   openReviewModal(request: LeaveRequestResponse): void {

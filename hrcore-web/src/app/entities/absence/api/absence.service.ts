@@ -71,11 +71,12 @@ export class AbsenceService {
    * Consulta saldo canónico desde Spring Boot:
    * GET /api/leaves/balances?employeeId={id}&year={year}
    */
-  getEmployeeBalance(employeeId: string, year = new Date().getFullYear(), employmentPeriodId?: string): Observable<ApiResponse<LeaveBalanceResponse>> {
+  getEmployeeBalance(employeeId: string, year = new Date().getFullYear(), employmentPeriodId?: string, leaveTypeId?: string): Observable<ApiResponse<LeaveBalanceResponse>> {
     let params = new HttpParams().set('year', year.toString()).set('size', '100');
     if (employeeId) {
       params = params.set('employeeId', employeeId);
     }
+    if (leaveTypeId) params = params.set('leaveTypeId', leaveTypeId);
 
     return this.http.get<ApiResponse<PageResponse<any>>>(`${this.baseUrl}/balances`, { params }).pipe(
       map((res) => {
