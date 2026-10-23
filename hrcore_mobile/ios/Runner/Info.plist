@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>HRCore usa Face ID para proteger el acceso a tu sesión.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>HRCore usa tu ubicación para validar las marcaciones de asistencia cuando tu organización lo requiere.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

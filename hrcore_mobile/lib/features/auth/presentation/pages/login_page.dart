@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../../core/auth/biometric_auth_service.dart';
+import '../../../../core/storage/secure_storage_service.dart';
 import '../../data/auth_repository.dart';
+import '../../../notifications/data/push_notification_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,7 +24,24 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isSubmitting = false;
+  bool _biometricLoginAvailable = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricLogin();
+  }
+
+  Future<void> _loadBiometricLogin() async {
+    final biometric = GetIt.I<BiometricAuthService>();
+    final storage = GetIt.I<SecureStorageService>();
+    final available = biometric.isEnabled &&
+        await biometric.isAvailable() &&
+        await storage.readRefreshToken() != null &&
+        await storage.isSessionLocked();
+    if (mounted) setState(() => _biometricLoginAvailable = available);
+  }
 
   @override
   void dispose() {
@@ -44,6 +64,37 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text,
         password: _passwordController.text,
       );
+      await GetIt.I<PushNotificationService>().initialize();
+      if (!mounted) return;
+      final biometric = GetIt.I<BiometricAuthService>();
+      final biometricAvailable = await biometric.isAvailable();
+      if (!mounted) return;
+      if (!biometric.isEnabled && biometricAvailable) {
+        final enable = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Activar acceso biométrico'),
+            content: const Text('En los próximos accesos podrás abrir HRCore con tu huella o Face ID.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Ahora no')),
+              FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Activar')),
+            ],
+          ),
+        );
+        if (enable == true) {
+          final verified = await biometric.authenticate();
+          if (verified) {
+            await biometric.setEnabled(true);
+          } else if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(
+                'No se pudo validar la biometría${biometric.lastError == null ? '.' : ': ${biometric.lastError}'}',
+              )),
+            );
+          }
+        }
+      }
       if (mounted) context.go(RouteNames.homePath);
     } catch (error) {
       if (!mounted) return;
@@ -52,6 +103,30 @@ class _LoginPageState extends State<LoginPage> {
             ? error.message
             : 'No se pudo iniciar sesión.';
       });
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _biometricLogin() async {
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+    try {
+      final verified = await GetIt.I<BiometricAuthService>().authenticate();
+      if (!verified) {
+        final detail = GetIt.I<BiometricAuthService>().lastError;
+        throw AppException(message: detail == null
+            ? 'No se pudo validar la biometría. Verifica que tengas una huella registrada en Ajustes.'
+            : 'No se pudo validar la biometría: $detail');
+      }
+      final restored = await GetIt.I<AuthRepository>().restoreSession();
+      if (!restored) throw const AppException(message: 'La sesión biométrica ya no es válida. Inicia sesión con tu contraseña.');
+      await GetIt.I<PushNotificationService>().initialize();
+      if (mounted) context.go(RouteNames.homePath);
+    } catch (error) {
+      if (mounted) setState(() => _errorMessage = error is AppException ? error.message : 'No se pudo iniciar sesión con biometría.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -237,6 +312,14 @@ class _LoginPageState extends State<LoginPage> {
                               : const Text('Ingresar'),
                         ),
                       ),
+                      if (_biometricLoginAvailable) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _isSubmitting ? null : _biometricLogin,
+                          icon: const Icon(Icons.fingerprint),
+                          label: const Text('Ingresar con huella o Face ID'),
+                        ),
+                      ],
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
