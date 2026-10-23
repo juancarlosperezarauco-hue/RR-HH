@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_names.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import '../../../attendance/presentation/pages/attendance_page.dart';
+import '../../../notifications/data/notification_repository.dart';
+import '../../../requests/presentation/pages/requests_page.dart';
+import '../../../files/presentation/pages/files_page.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../../profile/data/profile_repository.dart';
 import 'home_page.dart';
 
 class AppShellPage extends StatefulWidget {
@@ -13,6 +21,8 @@ class AppShellPage extends StatefulWidget {
 
 class _AppShellPageState extends State<AppShellPage> {
   int _selectedIndex = 0;
+  int _unreadNotifications = 0;
+  ProfileData? _profile;
 
   static const _sections = [
     _AppSection('Inicio', Icons.home_outlined),
@@ -21,6 +31,31 @@ class _AppShellPageState extends State<AppShellPage> {
     _AppSection('Archivos', Icons.folder_open_outlined),
     _AppSection('Perfil', Icons.person_outline),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadNotifications();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await GetIt.I<ProfileRepository>().load();
+      if (mounted) setState(() => _profile = profile);
+    } catch (_) {
+      // The account menu remains usable even if profile details are unavailable.
+    }
+  }
+
+  Future<void> _loadUnreadNotifications() async {
+    try {
+      final count = await GetIt.I<NotificationRepository>().unreadCount();
+      if (mounted) setState(() => _unreadNotifications = count);
+    } catch (_) {
+      // Notifications must not block the rest of the application.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,38 +79,59 @@ class _AppShellPageState extends State<AppShellPage> {
             children: [
               IconButton(
                 tooltip: 'Notificaciones',
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('No tienes notificaciones nuevas'),
-                  ),
-                ),
+                onPressed: () => context.push(RouteNames.notificationsPath),
                 icon: const Icon(Icons.notifications_none_outlined),
               ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary,
-                    shape: BoxShape.circle,
+              if (_unreadNotifications > 0)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 4, right: 16),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                'CA',
-                style: TextStyle(
+            padding: const EdgeInsets.only(left: 4, right: 12),
+            child: PopupMenuButton<String>(
+              tooltip: 'Cuenta de usuario',
+              onSelected: _onAccountAction,
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  enabled: false,
+                  child: _AccountHeader(profile: _profile),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: 'profile',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.person_outline),
+                    title: Text('Perfil'),
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'logout',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(Icons.logout),
+                    title: Text('Cerrar sesión'),
+                  ),
+                ),
+              ],
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                child: Icon(
+                  Icons.person_outline,
+                  size: 19,
                   color: Theme.of(context).colorScheme.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -91,19 +147,14 @@ class _AppShellPageState extends State<AppShellPage> {
       ),
       body: IndexedStack(
         index: _selectedIndex,
-        children: const [
-          HomePage(),
+        children: [
+          HomePage(
+            onOpenSection: (index) => setState(() => _selectedIndex = index),
+            onOpenTeam: _openTeam,
+          ),
           AttendancePage(),
-          _SectionPlaceholder(
-            title: 'Permisos',
-            message: 'Gestiona vacaciones, permisos y otras solicitudes.',
-            icon: Icons.assignment_outlined,
-          ),
-          _SectionPlaceholder(
-            title: 'Archivos',
-            message: 'Encuentra tus documentos laborales.',
-            icon: Icons.folder_open_outlined,
-          ),
+          const RequestsPage(),
+          const FilesPage(),
           ProfilePage(),
         ],
       ),
@@ -118,6 +169,60 @@ class _AppShellPageState extends State<AppShellPage> {
       ),
     );
   }
+
+  void _onAccountAction(String action) {
+    if (action == 'profile') {
+      setState(() => _selectedIndex = 4);
+      return;
+    }
+    if (action == 'logout') _logout();
+  }
+
+  Future<void> _logout() async {
+    await GetIt.I<AuthRepository>().logout();
+    if (mounted) context.go(RouteNames.loginPath);
+  }
+
+  void _openTeam(List<Map<String, dynamic>> team) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mi equipo'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: team.isEmpty
+              ? const Text('No hay personas asignadas a tu equipo.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: team.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, index) {
+                    final person = team[index];
+                    final name =
+                        person['fullName']?.toString() ??
+                        person['name']?.toString() ??
+                        'Colaborador';
+                    final status =
+                        person['employmentStatus']?.toString() ??
+                        person['status']?.toString() ??
+                        '';
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(name),
+                      subtitle: status.isEmpty ? null : Text(status),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AppSection {
@@ -127,37 +232,62 @@ class _AppSection {
   final IconData icon;
 }
 
-class _SectionPlaceholder extends StatelessWidget {
-  const _SectionPlaceholder({
-    required this.title,
-    required this.message,
-    required this.icon,
-  });
+class _AccountHeader extends StatelessWidget {
+  const _AccountHeader({required this.profile});
 
-  final String title;
-  final String message;
-  final IconData icon;
+  final ProfileData? profile;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 48, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+    final name = profile?.account.fullName.isNotEmpty == true
+        ? profile!.account.fullName
+        : 'Usuario';
+    final email = profile?.account.email ?? '';
+    final tenant = profile?.account.tenantSlug ?? '';
+    final initials = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
+    return SizedBox(
+      width: 245,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            child: Text(initials.isEmpty ? 'U' : initials),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if (email.isNotEmpty)
+                  Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                if (tenant.isNotEmpty)
+                  Text(
+                    tenant,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(message, textAlign: TextAlign.center),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

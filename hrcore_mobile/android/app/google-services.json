@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "55060805540",
+    "project_id": "hrcore-20f60",
+    "storage_bucket": "hrcore-20f60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:55060805540:android:9d82e1f9ad863429203331",
+        "android_client_info": {
+          "package_name": "com.example.hrcore_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCmjsVJubNHEXyxX1poCfaUAUMwqQRmWHQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

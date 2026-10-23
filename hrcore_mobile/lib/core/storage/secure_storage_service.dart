@@ -8,11 +8,29 @@ class SecureStorageService {
   static const refreshTokenKey = 'refresh_token';
   static const accessExpiresAtKey = 'access_expires_at';
   static const tenantSlugKey = 'tenant_slug';
+  static const sessionLockedKey = 'session_locked';
   final FlutterSecureStorage _storage;
 
   Future<String?> readToken() => _storage.read(key: tokenKey);
 
+  Future<String?> readRefreshToken() => _storage.read(key: refreshTokenKey);
+
+  Future<DateTime?> readAccessExpiresAt() async {
+    final value = await _storage.read(key: accessExpiresAtKey);
+    if (value == null || value.isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  Future<bool> hasValidSession() async {
+    final token = await readToken();
+    final expiresAt = await readAccessExpiresAt();
+    return token != null && token.isNotEmpty && expiresAt != null && expiresAt.isAfter(DateTime.now());
+  }
+
   Future<String?> readTenantSlug() => _storage.read(key: tenantSlugKey);
+
+  Future<bool> isSessionLocked() async =>
+      (await _storage.read(key: sessionLockedKey)) == 'true';
 
   Future<void> saveToken(String token) =>
       _storage.write(key: tokenKey, value: token);
@@ -23,6 +41,15 @@ class SecureStorageService {
       _storage.delete(key: refreshTokenKey),
       _storage.delete(key: accessExpiresAtKey),
       _storage.delete(key: tenantSlugKey),
+      _storage.delete(key: sessionLockedKey),
+    ]);
+  }
+
+  Future<void> lockSessionForBiometric() async {
+    await Future.wait([
+      _storage.delete(key: tokenKey),
+      _storage.delete(key: accessExpiresAtKey),
+      _storage.write(key: sessionLockedKey, value: 'true'),
     ]);
   }
 
@@ -36,6 +63,7 @@ class SecureStorageService {
       _storage.write(key: tokenKey, value: accessToken),
       _storage.write(key: refreshTokenKey, value: refreshToken),
       _storage.write(key: tenantSlugKey, value: tenantSlug),
+      _storage.delete(key: sessionLockedKey),
       _storage.write(
         key: accessExpiresAtKey,
         value: DateTime.now()
