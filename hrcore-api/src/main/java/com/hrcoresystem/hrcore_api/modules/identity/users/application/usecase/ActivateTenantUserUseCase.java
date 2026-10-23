@@ -2,6 +2,11 @@ package com.hrcoresystem.hrcore_api.modules.identity.users.application.usecase;
 
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationCategory;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationPriority;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationType;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import com.hrcoresystem.hrcore_api.modules.identity.audit.IdentityAuditPayloads;
 import com.hrcoresystem.hrcore_api.modules.identity.users.application.dto.TenantUserResponse;
 import com.hrcoresystem.hrcore_api.modules.identity.users.application.mapper.TenantUserMapper;
@@ -11,6 +16,7 @@ import com.hrcoresystem.hrcore_api.modules.identity.users.domain.model.TenantUse
 import com.hrcoresystem.hrcore_api.modules.identity.users.domain.repository.TenantUserRepository;
 import com.hrcoresystem.hrcore_api.common.security.authorization.domain.repository.TenantAuthorizationStateRepository;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,18 +30,33 @@ public class ActivateTenantUserUseCase {
     private final AuditTrailService auditTrailService;
     private final TenantPlanEnforcementService tenantPlanEnforcementService;
     private final TenantAuthorizationStateRepository authorizationStateRepository;
+    private final NotificationPublisherPort notificationPublisher;
 
+    @Autowired
     public ActivateTenantUserUseCase(
             TenantUserRepository tenantUserRepository,
             TenantUserMapper tenantUserMapper,
             AuditTrailService auditTrailService,
-            TenantPlanEnforcementService tenantPlanEnforcementService, TenantAuthorizationStateRepository authorizationStateRepository
+            TenantPlanEnforcementService tenantPlanEnforcementService, TenantAuthorizationStateRepository authorizationStateRepository,
+            NotificationPublisherPort notificationPublisher
     ) {
         this.tenantUserRepository = tenantUserRepository;
         this.tenantUserMapper = tenantUserMapper;
         this.auditTrailService = auditTrailService;
         this.tenantPlanEnforcementService = tenantPlanEnforcementService;
         this.authorizationStateRepository = authorizationStateRepository;
+        this.notificationPublisher = notificationPublisher;
+    }
+
+    public ActivateTenantUserUseCase(
+            TenantUserRepository tenantUserRepository,
+            TenantUserMapper tenantUserMapper,
+            AuditTrailService auditTrailService,
+            TenantPlanEnforcementService tenantPlanEnforcementService,
+            TenantAuthorizationStateRepository authorizationStateRepository
+    ) {
+        this(tenantUserRepository, tenantUserMapper, auditTrailService, tenantPlanEnforcementService,
+                authorizationStateRepository, null);
     }
 
     @Transactional
@@ -92,6 +113,22 @@ public class ActivateTenantUserUseCase {
                 )
         );
 
+        if (!existingUser.active() || existingUser.status() != TenantUserStatus.ACTIVE) {
+            publishAccessNotification(savedUser.id());
+        }
+
         return tenantUserMapper.toResponse(savedUser);
+    }
+
+    private void publishAccessNotification(UUID userId) {
+        if (notificationPublisher == null) return;
+        try {
+            notificationPublisher.publish(new NotificationPublishRequest(
+                    userId, NotificationType.ACCOUNT_ACTIVATED, NotificationCategory.SECURITY,
+                    NotificationPriority.HIGH, "Acceso restaurado",
+                    "Tu acceso al sistema fue restaurado.", null, null, null, null));
+        } catch (Exception ignored) {
+            // La notificación nunca debe impedir la activación de la cuenta.
+        }
     }
 }

@@ -59,22 +59,9 @@ export class AbsenceRequestUseCase {
       return false;
     }
 
-    const neededDays = this.calculateBusinessDays(payload.startDate, payload.endDate, holidays);
-    if (neededDays <= 0) {
-      const msg = 'El período seleccionado no incluye ningún día hábil laborable.';
-      this.error.set(msg);
-      this.toastService.warning(msg);
-      return false;
-    }
-
-    if (isVacation && remainingDays !== undefined) {
-      if (neededDays > remainingDays) {
-        const msg = `Los días solicitados (${neededDays}) superan el saldo disponible (${remainingDays} días).`;
-        this.error.set(msg);
-        this.toastService.warning(msg);
-        return false;
-      }
-    }
+    // El backend es la fuente de verdad: calcula la duración según la jornada,
+    // descansos y calendario efectivo del empleado. El cálculo local solo sirve
+    // como vista previa y no debe rechazar solicitudes válidas.
 
     if (requiresAttachment && !payload.proofDocument) {
       const msg = 'Este tipo de ausencia requiere adjuntar un documento probatorio obligatorio.';

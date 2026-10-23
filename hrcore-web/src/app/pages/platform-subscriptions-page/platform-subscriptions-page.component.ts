@@ -138,7 +138,8 @@ type SubscriptionStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE' | 'TRIAL';
         <app-platform-subscription-table
           [subscriptions]="filteredSubscriptions()"
           [isLoading]="listUseCase.status() === 'loading'"
-          (viewDetails)="viewDetails($event)">
+            (viewDetails)="viewDetails($event)"
+            (edit)="editSubscription($event)">
         </app-platform-subscription-table>
 
         @if (listUseCase.page(); as page) {
@@ -214,9 +215,9 @@ type SubscriptionStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE' | 'TRIAL';
                 <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ subscription.remainingDays }} días</p>
               </div>
               <div class="rounded-2xl border border-border bg-muted p-4">
-                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Renovación actual</p>
-                <p class="mt-1 text-sm font-semibold text-accent-foreground">
-                  {{ subscription.currentSubscription ? 'Sí' : 'No' }}
+                <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Vigencia</p>
+                <p class="mt-1 text-sm font-semibold" [class.text-primary]="subscription.currentSubscription" [class.text-muted-foreground]="!subscription.currentSubscription">
+                  {{ subscription.currentSubscription ? 'Vigente en el tenant' : 'No vigente · reemplazada' }}
                 </p>
               </div>
               <div class="rounded-2xl border border-border bg-muted p-4">
@@ -246,8 +247,10 @@ type SubscriptionStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE' | 'TRIAL';
           <div class="app-modal-panel" (click)="$event.stopPropagation()">
             <div class="app-modal-header border-b border-border pb-5">
               <div>
-                <h2 class="app-modal-title">Asignar suscripción</h2>
-                <p class="app-modal-subtitle">Selecciona un tenant y el plan que deseas asignar.</p>
+                <h2 class="app-modal-title">{{ editingSubscription() ? 'Cambiar plan' : 'Asignar suscripción' }}</h2>
+                <p class="app-modal-subtitle">
+                  {{ editingSubscription() ? 'Actualiza el plan de este tenant. La suscripción anterior dejará de ser la vigente.' : 'Selecciona un tenant y el plan que deseas asignar.' }}
+                </p>
               </div>
               <button
                 type="button"
@@ -261,6 +264,7 @@ type SubscriptionStatusFilter = 'all' | 'ACTIVE' | 'INACTIVE' | 'TRIAL';
               <app-platform-subscription-assign-form
                 [isLoading]="assignUseCase.status() === 'loading'"
                 [error]="assignUseCase.error()"
+                [currentSubscription]="editingSubscription()"
                 (submitForm)="onAssignSubscription($event)"
                 (cancel)="closeAssignModal()">
               </app-platform-subscription-assign-form>
@@ -282,6 +286,7 @@ export class PlatformSubscriptionsPageComponent implements OnInit {
   readonly searchQuery = signal('');
   readonly statusFilter = signal<SubscriptionStatusFilter>('all');
   readonly showAssignModal = signal(false);
+  readonly editingSubscription = signal<PlatformSubscription | null>(null);
   readonly selectedSubscription = signal<PlatformSubscription | null>(null);
 
   readonly statusFilters: Array<{ label: string; value: SubscriptionStatusFilter }> = [
@@ -294,7 +299,7 @@ export class PlatformSubscriptionsPageComponent implements OnInit {
   readonly stats = computed(() => {
     const subscriptions = this.listUseCase.subscriptions();
     const active = subscriptions.filter((item) => item.status === 'ACTIVE').length;
-    const trial = subscriptions.filter((item) => item.trial).length;
+    const trial = subscriptions.filter((item) => item.currentSubscription && item.trial).length;
     return {
       total: subscriptions.length,
       active,
@@ -335,11 +340,18 @@ export class PlatformSubscriptionsPageComponent implements OnInit {
   }
 
   toggleAssignModal(): void {
+    this.editingSubscription.set(null);
     this.showAssignModal.update((current) => !current);
+  }
+
+  editSubscription(subscription: PlatformSubscription): void {
+    this.editingSubscription.set(subscription);
+    this.showAssignModal.set(true);
   }
 
   closeAssignModal(): void {
     this.showAssignModal.set(false);
+    this.editingSubscription.set(null);
     this.assignUseCase.resetState();
   }
 
@@ -352,6 +364,10 @@ export class PlatformSubscriptionsPageComponent implements OnInit {
   }
 
   async onAssignSubscription(data: { tenantId: string; planCode: string; overrideTrialDays?: number }): Promise<void> {
+    if (this.assignUseCase.status() === 'loading') {
+      return;
+    }
+
     const success = await this.assignUseCase.assignSubscription({
       tenantId: data.tenantId,
       planCode: data.planCode,
@@ -359,7 +375,7 @@ export class PlatformSubscriptionsPageComponent implements OnInit {
     });
 
     if (success) {
-      this.toastService.success('Suscripción asignada exitosamente');
+      this.toastService.success(this.editingSubscription() ? 'Plan cambiado exitosamente' : 'Suscripción asignada exitosamente');
       this.closeAssignModal();
       await this.reload();
       return;
@@ -402,9 +418,13 @@ export class PlatformSubscriptionsPageComponent implements OnInit {
     }
 
     if (filter === 'TRIAL') {
-      return subscription.trial;
+      return subscription.currentSubscription && subscription.trial;
     }
 
-    return subscription.status === filter;
+    if (filter === 'ACTIVE') {
+      return subscription.currentSubscription && subscription.status === filter;
+    }
+
+    return !subscription.currentSubscription || subscription.status === filter;
   }
 }

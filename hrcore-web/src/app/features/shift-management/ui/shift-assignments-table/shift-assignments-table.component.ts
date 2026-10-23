@@ -1,7 +1,8 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { EmployeeShiftAssignmentResponse } from '../../../../entities/shift';
+import { PermissionService } from '../../../../shared/lib/auth/permission.service';
 
 @Component({
   selector: 'app-shift-assignments-table',
@@ -11,7 +12,7 @@ import { EmployeeShiftAssignmentResponse } from '../../../../entities/shift';
     <div class="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
       <div class="p-4 border-b border-border flex items-center justify-between">
         <div>
-          <h3 class="text-base font-bold text-accent-foreground">Asignaciones Activas por Colaborador</h3>
+          <h3 class="text-base font-bold text-accent-foreground">Asignaciones por Colaborador</h3>
           <p class="text-xs text-muted-foreground mt-0.5">Control de cobertura y prevención de solapamientos de horario.</p>
         </div>
         <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -28,7 +29,7 @@ import { EmployeeShiftAssignmentResponse } from '../../../../entities/shift';
               <th class="px-5 py-3">Turno Asignado</th>
               <th class="px-5 py-3">Vigencia</th>
               <th class="px-5 py-3">Días</th>
-              <th class="px-5 py-3">Recurrencia</th>
+              <th class="px-5 py-3">Aplicación</th>
               <th class="px-5 py-3">Estado</th>
               <th class="px-5 py-3 text-right">Acciones</th>
             </tr>
@@ -60,7 +61,7 @@ import { EmployeeShiftAssignmentResponse } from '../../../../entities/shift';
               </td>
               <td class="px-5 py-3.5">
                 <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-muted text-muted-foreground">
-                  {{ asg.isRecurring ? 'Semanal' : 'Única' }}
+                  Semanal
                 </span>
               </td>
               <td class="px-5 py-3.5">
@@ -68,19 +69,19 @@ import { EmployeeShiftAssignmentResponse } from '../../../../entities/shift';
                   [class]="getStatusBadgeClass(asg.status)"
                   class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold">
                   <span class="h-1.5 w-1.5 rounded-full" [class]="getStatusDotClass(asg.status)"></span>
-                  {{ asg.status }}
+                  {{ getStatusLabel(asg.status) }}
                 </span>
               </td>
               <td class="px-5 py-3.5 text-right">
                 <div *ngIf="asg.status === 'ACTIVE'" class="inline-flex items-center gap-1.5">
-                  <button
+                  <button *ngIf="permissions.hasPermission('shifts.assignments.close')"
                     type="button"
                     (click)="onClose(asg.id)"
                     class="cursor-pointer rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                     title="Cerrar asignación por fin de ciclo">
                     Cerrar
                   </button>
-                  <button
+                  <button *ngIf="permissions.hasPermission('shifts.assignments.cancel')"
                     type="button"
                     (click)="onCancel(asg.id)"
                     class="cursor-pointer rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/10 transition-colors"
@@ -103,6 +104,7 @@ export class ShiftAssignmentsTableComponent {
   @Input() assignments: EmployeeShiftAssignmentResponse[] = [];
   @Output() cancel = new EventEmitter<string>();
   @Output() close = new EventEmitter<string>();
+  readonly permissions = inject(PermissionService);
 
   private readonly dayLabels: Record<number, string> = {
     1: 'Lun',
@@ -126,6 +128,8 @@ export class ShiftAssignmentsTableComponent {
         return 'bg-muted text-muted-foreground border border-border';
       case 'CANCELLED':
         return 'bg-rose-500/10 text-rose-600 border border-rose-500/20';
+      case 'INACTIVE':
+        return 'bg-muted text-muted-foreground border border-border';
       default:
         return 'bg-muted text-muted-foreground border border-border';
     }
@@ -139,8 +143,19 @@ export class ShiftAssignmentsTableComponent {
         return 'bg-muted-foreground';
       case 'CANCELLED':
         return 'bg-rose-500';
+      case 'INACTIVE':
+        return 'bg-muted-foreground';
       default:
         return 'bg-muted-foreground';
+    }
+  }
+
+  getStatusLabel(status: string): string {
+    switch (status) {
+      case 'ACTIVE': return 'Activa';
+      case 'INACTIVE': return 'Finalizada';
+      case 'CANCELLED': return 'Cancelada';
+      default: return status;
     }
   }
 

@@ -7,8 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collections;
+import java.util.HashMap;
 
 @Repository
 public class ShiftBreakRepositoryAdapter implements ShiftBreakRepository {
@@ -45,6 +48,16 @@ public class ShiftBreakRepositoryAdapter implements ShiftBreakRepository {
     @Override
     public Page<ShiftBreak> findAllByShiftId(UUID shiftId, Pageable pageable) {
         return jpa.findAllByShiftId(shiftId, pageable).map(this::toDomain);
+    }
+
+    @Override
+    public Map<UUID, Integer> sumUnpaidMinutesByShiftIds(List<UUID> shiftIds) {
+        if (shiftIds == null || shiftIds.isEmpty()) return Collections.emptyMap();
+        Map<UUID, Integer> result = new HashMap<>();
+        for (Object[] row : jpa.sumUnpaidMinutesByShiftIds(shiftIds)) {
+            result.put((UUID) row[0], ((Number) row[1]).intValue());
+        }
+        return result;
     }
 
     @Override

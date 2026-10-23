@@ -60,6 +60,10 @@ public class EmployeeDocumentRepositoryAdapter implements EmployeeDocumentReposi
     return jpa.findAll(spec, pageable).map(this::map);
   }
 
+  public List<EmployeeDocument> findExpiring(java.time.LocalDate until, Pageable pageable) {
+    return jpa.findExpiring(until, pageable).stream().map(this::map).toList();
+  }
+
   private EmployeeDocument map(EmployeeDocumentEntity e) {
     return new EmployeeDocument(
         e.getId(),

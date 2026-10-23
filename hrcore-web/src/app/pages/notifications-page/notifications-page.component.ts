@@ -2,7 +2,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
-import { NotificationsService, NotificationResponse, PageResponse } from '../../entities/notifications';
+import { NotificationsService, NotificationDeviceResponse, NotificationResponse, PageResponse, PushNotificationsService } from '../../entities/notifications';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 
 @Component({
@@ -46,6 +46,85 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
             </button>
           </div>
         </div>
+      </section>
+
+      <section class="rounded-[24px] border border-border bg-card p-4 shadow-sm sm:p-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="flex items-start gap-3">
+            <div class="rounded-2xl bg-accent p-3 text-primary">
+              <lucide-icon name="bell-ring" class="h-5 w-5"></lucide-icon>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-accent-foreground">Estado de notificaciones push</h2>
+              <p class="mt-1 max-w-2xl text-sm leading-5 text-muted-foreground">
+                Registra este navegador para recibir avisos importantes aunque no estés mirando la bandeja.
+              </p>
+            </div>
+          </div>
+          <span class="inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold"
+            [ngClass]="pushStatus() === 'active' ? 'border-secondary/40 bg-secondary/10 text-secondary-foreground' : 'border-border bg-muted text-muted-foreground'">
+            <span class="h-2 w-2 rounded-full" [ngClass]="pushStatus() === 'active' ? 'bg-secondary' : 'bg-muted-foreground'"></span>
+            {{ pushStatusLabel() }}
+          </span>
+        </div>
+
+        <div class="mt-5 grid gap-3 md:grid-cols-3">
+          <div class="rounded-2xl border border-border bg-muted p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Permiso del navegador</p>
+            <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ browserPermissionLabel() }}</p>
+          </div>
+          <div class="rounded-2xl border border-border bg-muted p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Dispositivos activos</p>
+            <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ activePushDevices().length }}</p>
+          </div>
+          <div class="rounded-2xl border border-border bg-muted p-4">
+            <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Preferencia push</p>
+            <p class="mt-1 text-sm font-semibold text-accent-foreground">{{ pushPreferenceEnabled() === false ? 'Desactivada' : 'Activada' }}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-3">
+          <button type="button" (click)="activatePush()" [disabled]="pushActionLoading()"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
+            <lucide-icon name="bell-plus" [size]="16"></lucide-icon>
+            {{ pushActionLoading() ? 'Activando...' : 'Activar este navegador' }}
+          </button>
+          <button type="button" (click)="loadPushStatus()" [disabled]="pushLoading()"
+            class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60">
+            <lucide-icon name="refresh-cw" [size]="16"></lucide-icon>
+            Actualizar estado
+          </button>
+        </div>
+
+        @if (pushActionMessage()) {
+          <p class="mt-3 rounded-2xl border border-secondary/30 bg-secondary/10 px-4 py-3 text-sm font-medium text-accent-foreground">{{ pushActionMessage() }}</p>
+        }
+        @if (pushActionError()) {
+          <p class="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-foreground">{{ pushActionError() }}</p>
+        }
+
+        @if (pushDevices().length > 0) {
+          <div class="mt-5 space-y-2">
+            <p class="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Dispositivos registrados</p>
+            @for (device of pushDevices(); track device.id) {
+              <div class="flex flex-col gap-3 rounded-2xl border border-border bg-muted p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-start gap-3">
+                  <lucide-icon name="monitor" class="mt-0.5 h-4 w-4 text-primary"></lucide-icon>
+                  <div>
+                    <p class="text-sm font-semibold text-accent-foreground">{{ device.deviceName || 'Navegador web' }}</p>
+                    <p class="mt-1 text-xs text-muted-foreground">{{ device.platform }} · {{ device.status === 'ACTIVE' ? 'Activo' : 'Inactivo' }}</p>
+                  </div>
+                </div>
+                @if (device.status === 'ACTIVE') {
+                  <button type="button" (click)="deactivatePushDevice(device)" [disabled]="pushActionLoading()"
+                    class="inline-flex cursor-pointer items-center gap-2 self-start rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-accent disabled:opacity-60 sm:self-auto">
+                    Desactivar
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
       </section>
 
       <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -276,6 +355,7 @@ import { PlatformPaginationComponent } from '../../features/platform/ui/platform
 })
 export class NotificationsPageComponent implements OnInit {
   private readonly notificationsService = inject(NotificationsService);
+  private readonly pushNotifications = inject(PushNotificationsService);
 
   readonly pageSize = 20;
   readonly status = signal<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -285,6 +365,12 @@ export class NotificationsPageComponent implements OnInit {
   readonly unreadCount = signal(0);
   readonly filter = signal<'all' | 'unread' | 'read' | 'archived'>('all');
   readonly searchTerm = signal('');
+  readonly pushDevices = signal<NotificationDeviceResponse[]>([]);
+  readonly pushPreferenceEnabled = signal<boolean | null>(null);
+  readonly pushLoading = signal(false);
+  readonly pushActionLoading = signal(false);
+  readonly pushActionMessage = signal('');
+  readonly pushActionError = signal('');
 
   readonly filters = [
     { label: 'Todas', value: 'all' as const },
@@ -340,8 +426,81 @@ export class NotificationsPageComponent implements OnInit {
   async refreshAll(): Promise<void> {
     await Promise.all([
       this.loadUnreadCount(),
-      this.loadNotifications(this.currentPage())
+      this.loadNotifications(this.currentPage()),
+      this.loadPushStatus()
     ]);
+  }
+
+  readonly activePushDevices = computed(() => this.pushDevices().filter(device => device.status === 'ACTIVE'));
+  readonly pushStatus = computed(() => this.activePushDevices().length > 0 && this.pushPreferenceEnabled() !== false ? 'active' : 'inactive');
+
+  pushStatusLabel(): string {
+    if (this.pushLoading()) return 'Consultando...';
+    if (this.pushStatus() === 'active') return 'Push activo';
+    if (this.browserPermission() === 'denied') return 'Permiso bloqueado';
+    return 'Sin dispositivo activo';
+  }
+
+  browserPermission(): NotificationPermission | 'unsupported' {
+    return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
+  }
+
+  browserPermissionLabel(): string {
+    const permission = this.browserPermission();
+    if (permission === 'granted') return 'Concedido';
+    if (permission === 'denied') return 'Bloqueado';
+    if (permission === 'unsupported') return 'No disponible';
+    return 'Pendiente';
+  }
+
+  async loadPushStatus(): Promise<void> {
+    this.pushLoading.set(true);
+    this.pushActionError.set('');
+    try {
+      const [devicesResponse, preferencesResponse] = await Promise.all([
+        firstValueFrom(this.notificationsService.listDevices()),
+        firstValueFrom(this.notificationsService.listPreferences())
+      ]);
+      this.pushDevices.set(devicesResponse.data?.content ?? []);
+      const systemPreference = preferencesResponse.data?.content?.find(preference => preference.category === 'SYSTEM');
+      this.pushPreferenceEnabled.set(systemPreference?.pushEnabled ?? true);
+    } catch {
+      this.pushActionError.set('No se pudo consultar el estado de las notificaciones push.');
+    } finally {
+      this.pushLoading.set(false);
+    }
+  }
+
+  async activatePush(): Promise<void> {
+    this.pushActionLoading.set(true);
+    this.pushActionMessage.set('');
+    this.pushActionError.set('');
+    try {
+      await this.pushNotifications.registerCurrentDevice();
+      await this.loadPushStatus();
+      this.pushActionMessage.set(this.pushStatus() === 'active'
+        ? 'Este navegador ya está registrado para recibir notificaciones.'
+        : 'No se pudo registrar el navegador. Revisa el permiso de notificaciones.');
+    } catch {
+      this.pushActionError.set('No se pudo activar este navegador para notificaciones push.');
+    } finally {
+      this.pushActionLoading.set(false);
+    }
+  }
+
+  async deactivatePushDevice(device: NotificationDeviceResponse): Promise<void> {
+    this.pushActionLoading.set(true);
+    this.pushActionMessage.set('');
+    this.pushActionError.set('');
+    try {
+      await firstValueFrom(this.notificationsService.deactivateDevice(device.id));
+      await this.loadPushStatus();
+      this.pushActionMessage.set('Dispositivo desactivado.');
+    } catch {
+      this.pushActionError.set('No se pudo desactivar el dispositivo.');
+    } finally {
+      this.pushActionLoading.set(false);
+    }
   }
 
   async loadNotifications(page = 0): Promise<void> {

@@ -93,11 +93,11 @@ public class ChangePasswordUseCase {
                 NotificationType.PASSWORD_CHANGED,
                 NotificationCategory.SECURITY,
                 NotificationPriority.HIGH,
-                "Password changed",
-                "Your password was changed successfully.",
+                "Contraseña cambiada",
+                "Tu contraseña fue cambiada correctamente.",
                 data,
                 null,
-                "/security/password",
+                "/security/password?changedAt=" + changedAt,
                 Instant.now().plusSeconds(3600)
         ));
 

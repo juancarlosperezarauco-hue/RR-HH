@@ -3,6 +3,7 @@ package com.hrcoresystem.hrcore_api.modules.governance.audit.infrastructure.pers
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.Immutable;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.net.InetAddress;
@@ -11,6 +12,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tenant_audit_events")
+@Immutable
 public class TenantAuditEventEntity {
 
     @Id

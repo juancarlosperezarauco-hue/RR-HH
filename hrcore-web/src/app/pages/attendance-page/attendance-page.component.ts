@@ -83,6 +83,9 @@ import { firstValueFrom } from 'rxjs';
             class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
         </div>
       </div>
+      <div *ngIf="listUseCase.error()" class="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">
+        {{ listUseCase.error() }}
+      </div>
 
       <!-- Live Clock Widget (Entrada / Salida & Anti-Debounce) -->
       <app-clock-in-widget
@@ -95,7 +98,7 @@ import { firstValueFrom } from 'rxjs';
         <!-- Puntualidad -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-emerald-500/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Puntualidad</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Puntualidad · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <lucide-icon name="check-circle" class="h-5 w-5"></lucide-icon>
             </div>
@@ -110,7 +113,7 @@ import { firstValueFrom } from 'rxjs';
         <!-- Retrasos -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-amber-500/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Retrasos Hoy</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Retrasos · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <lucide-icon name="clock" class="h-5 w-5"></lucide-icon>
             </div>
@@ -125,7 +128,7 @@ import { firstValueFrom } from 'rxjs';
         <!-- Inasistencias -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-rose-500/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Inasistencias</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Inasistencias · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <lucide-icon name="alert-triangle" class="h-5 w-5"></lucide-icon>
             </div>
@@ -140,7 +143,7 @@ import { firstValueFrom } from 'rxjs';
         <!-- Horas Computadas -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-xs transition-all hover:border-primary/40">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Horas Computadas</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Horas · página</span>
             <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <lucide-icon name="clipboard-list" class="h-5 w-5"></lucide-icon>
             </div>
@@ -164,6 +167,16 @@ import { firstValueFrom } from 'rxjs';
         (refresh)="listUseCase.loadRecords()"
         (regularize)="openRegularizeDialog($event)"
       ></app-attendance-table>
+
+      <div class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+        <span>Mostrando página {{ listUseCase.page() + 1 }} de {{ listUseCase.totalPages() }} · {{ listUseCase.totalElements() }} registros</span>
+        <div class="flex items-center gap-2">
+          <button type="button" (click)="listUseCase.previousPage()" [disabled]="listUseCase.page() === 0 || listUseCase.loading()"
+            class="rounded-lg border border-border px-3 py-1.5 font-semibold disabled:opacity-40">Anterior</button>
+          <button type="button" (click)="listUseCase.nextPage()" [disabled]="listUseCase.page() + 1 >= listUseCase.totalPages() || listUseCase.loading()"
+            class="rounded-lg border border-border px-3 py-1.5 font-semibold disabled:opacity-40">Siguiente</button>
+        </div>
+      </div>
 
       <!-- Regularize Modal Dialog -->
       <app-attendance-regularize-dialog
@@ -192,10 +205,16 @@ export class AttendancePageComponent implements OnInit {
 
   async loadEmployees(): Promise<void> {
     try {
-      const response = await firstValueFrom(this.employeesService.list(0, 100));
-      this.employees = Array.isArray(response.data)
-        ? (response.data as EmployeeSummary[])
-        : (response.data?.content || []);
+      const loaded: EmployeeSummary[] = [];
+      for (let page = 0; page < 100; page++) {
+        const response = await firstValueFrom(this.employeesService.list(page, 100));
+        const content = Array.isArray(response.data)
+          ? response.data as EmployeeSummary[]
+          : (response.data?.content || []);
+        loaded.push(...content);
+        if (content.length < 100 || response.data?.last === true) break;
+      }
+      this.employees = loaded;
     } catch {
       this.employees = [];
     }

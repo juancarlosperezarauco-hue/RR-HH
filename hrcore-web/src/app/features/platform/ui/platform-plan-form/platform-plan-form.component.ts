@@ -31,6 +31,30 @@ import { LucideAngularModule } from 'lucide-angular';
             <span *ngIf="isFieldInvalid('name')" class="text-xs text-destructive mt-1">Nombre requerido</span>
           </div>
         </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1">Precio mensual <span class="text-muted-foreground">(PAID)</span></label>
+            <input type="number" min="0" step="0.01" formControlName="monthlyAmount" placeholder="Ej: 19.99"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1">Precio anual <span class="text-muted-foreground">(PAID)</span></label>
+            <input type="number" min="0" step="0.01" formControlName="yearlyAmount" placeholder="Ej: 199.99"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1">Moneda</label>
+            <input type="text" maxlength="10" formControlName="currency" placeholder="USD"
+                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <input id="plan-public-visible" type="checkbox" formControlName="publicVisible"
+                 class="h-4 w-4 rounded border-border text-primary focus:ring-primary">
+          <label for="plan-public-visible" class="text-sm text-primary">Mostrar en el registro público</label>
+        </div>
         
         <div>
           <label class="block text-sm font-medium text-primary mb-1">Descripción</label>
@@ -98,13 +122,32 @@ export class PlatformPlanFormComponent {
     planType: ['PAID', Validators.required],
     maxUsers: [10, [Validators.required, Validators.min(1)]],
     maxRoles: [5, [Validators.required, Validators.min(1)]],
-    trialDays: [null]
+    trialDays: [null],
+    monthlyAmount: [null, [Validators.min(0)]],
+    yearlyAmount: [null, [Validators.min(0)]],
+    currency: ['USD'],
+    publicVisible: [true]
   });
+
+  constructor() {
+    this.planForm.get('planType')?.valueChanges.subscribe((planType) => this.updatePriceValidators(planType));
+    this.updatePriceValidators(this.planForm.get('planType')?.value);
+  }
 
   onSubmit(): void {
     if (this.planForm.valid) {
       this.submitForm.emit(this.planForm.value);
     }
+  }
+
+  private updatePriceValidators(planType: string | null | undefined): void {
+    const validators = planType === 'PAID'
+      ? [Validators.required, Validators.min(0.01)]
+      : [Validators.min(0)];
+    this.planForm.get('monthlyAmount')?.setValidators(validators);
+    this.planForm.get('yearlyAmount')?.setValidators(validators);
+    this.planForm.get('monthlyAmount')?.updateValueAndValidity({ emitEvent: false });
+    this.planForm.get('yearlyAmount')?.updateValueAndValidity({ emitEvent: false });
   }
 
   isFieldInvalid(fieldName: string): boolean {

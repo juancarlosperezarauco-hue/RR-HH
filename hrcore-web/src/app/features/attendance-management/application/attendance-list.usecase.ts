@@ -15,12 +15,20 @@ export class AttendanceListUseCase {
   readonly records = signal<AttendanceRecordResponse[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
+  readonly page = signal(0);
+  readonly pageSize = signal(20);
+  readonly totalPages = signal(1);
+  readonly totalElements = signal(0);
 
   // Filtros reactivos
   readonly statusFilter = signal<AttendanceStatus | 'ALL'>('ALL');
   readonly searchTerm = signal<string>('');
-  readonly startDate = signal<string>(new Date().toISOString().substring(0, 10));
-  readonly endDate = signal<string>(new Date().toISOString().substring(0, 10));
+  private localDate(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+  readonly startDate = signal<string>(this.localDate());
+  readonly endDate = signal<string>(this.localDate());
   readonly employeeFilter = signal<string>('');
 
   // Registros filtrados localmente por buscador de texto (nombre / código)
@@ -86,22 +94,20 @@ export class AttendanceListUseCase {
     }
   }
 
-  async loadRecords(): Promise<void> {
+  async loadRecords(page = this.page()): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const [res, employeesRes] = await Promise.all([
+      const [res, employees] = await Promise.all([
         firstValueFrom(this.attendanceService.listRecords(
           this.startDate(),
           this.endDate(),
           this.employeeFilter() || undefined,
-          this.statusFilter()
+          this.statusFilter(), page, this.pageSize()
         )),
-        firstValueFrom(this.employeesService.list(0, 100)).catch(() => null)
+        this.loadEmployeeDirectory()
       ]);
-      const rawEmployees: EmployeeSummary[] = Array.isArray(employeesRes?.data)
-        ? (employeesRes.data as EmployeeSummary[])
-        : (employeesRes?.data?.content || []);
+      const rawEmployees: EmployeeSummary[] = employees;
       const rawRecords: AttendanceRecordResponse[] = Array.isArray(res?.data)
         ? (res.data as AttendanceRecordResponse[])
         : (res?.data?.content || []);
@@ -115,6 +121,10 @@ export class AttendanceListUseCase {
           employeeCode: employee?.employeeNumber || record.employeeCode
         };
       }));
+      this.page.set(res.data?.page ?? page);
+      this.pageSize.set(res.data?.size ?? this.pageSize());
+      this.totalPages.set(Math.max(1, res.data?.totalPages ?? 1));
+      this.totalElements.set(res.data?.totalElements ?? rawRecords.length);
     } catch (err: any) {
       this.error.set(err?.error?.message || err?.message || 'Error al cargar registros');
     } finally {
@@ -122,22 +132,42 @@ export class AttendanceListUseCase {
     }
   }
 
+  private async loadEmployeeDirectory(): Promise<EmployeeSummary[]> {
+    const result: EmployeeSummary[] = [];
+    for (let page = 0; page < 100; page++) {
+      const response = await firstValueFrom(this.employeesService.list(page, 100));
+      const content = Array.isArray(response.data) ? response.data as EmployeeSummary[] : (response.data?.content || []);
+      result.push(...content);
+      if (content.length < 100 || response.data?.last === true) break;
+    }
+    return result;
+  }
+
   setStatusFilter(status: AttendanceStatus | 'ALL'): void {
     this.statusFilter.set(status);
+    void this.loadRecords(0);
   }
 
   setDateRange(start: string, end: string): void {
     this.startDate.set(start);
     this.endDate.set(end);
-    this.loadRecords();
+    void this.loadRecords(0);
   }
 
   setEmployeeFilter(employeeId: string): void {
     this.employeeFilter.set(employeeId);
-    this.loadRecords();
+    void this.loadRecords(0);
   }
 
   setSearch(term: string): void {
     this.searchTerm.set(term);
+  }
+
+  nextPage(): void {
+    if (this.page() + 1 < this.totalPages()) void this.loadRecords(this.page() + 1);
+  }
+
+  previousPage(): void {
+    if (this.page() > 0) void this.loadRecords(this.page() - 1);
   }
 }

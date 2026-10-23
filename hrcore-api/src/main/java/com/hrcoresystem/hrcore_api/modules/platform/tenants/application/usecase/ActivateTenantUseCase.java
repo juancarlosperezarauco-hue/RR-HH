@@ -9,7 +9,10 @@ import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.exception.Pla
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenant;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.model.PlatformTenantStatus;
 import com.hrcoresystem.hrcore_api.modules.platform.tenants.domain.repository.PlatformTenantRepository;
+import com.hrcoresystem.hrcore_api.modules.platform.tenants.application.service.TenantNotificationDispatcher;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.*;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -20,15 +23,22 @@ public class ActivateTenantUseCase {
     private final PlatformTenantRepository platformTenantRepository;
     private final PlatformTenantMapper platformTenantMapper;
     private final AuditTrailService auditTrailService;
+    private final TenantNotificationDispatcher notifications;
 
+    public ActivateTenantUseCase(PlatformTenantRepository repository, PlatformTenantMapper mapper, AuditTrailService audit) {
+        this(repository, mapper, audit, null);
+    }
+
+    @Autowired
     public ActivateTenantUseCase(
             PlatformTenantRepository platformTenantRepository,
             PlatformTenantMapper platformTenantMapper,
-            AuditTrailService auditTrailService
+            AuditTrailService auditTrailService, TenantNotificationDispatcher notifications
     ) {
         this.platformTenantRepository = platformTenantRepository;
         this.platformTenantMapper = platformTenantMapper;
         this.auditTrailService = auditTrailService;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -69,6 +79,7 @@ public class ActivateTenantUseCase {
                 PlatformAuditPayloads.tenantState(beforeState),
                 PlatformAuditPayloads.tenantState(saved)
         );
+        if (notifications != null) notifications.toOwner(saved, NotificationType.ACCOUNT_ACTIVATED, "Tenant reactivado", "El acceso al tenant ha sido reactivado.", NotificationCategory.SECURITY, NotificationPriority.HIGH, null);
 
         return platformTenantMapper.toResponse(saved);
     }

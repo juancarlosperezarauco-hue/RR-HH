@@ -72,11 +72,15 @@ public class EmployeeRepositoryAdapter implements EmployeeRepository {
             if (filter.employeeNumber() != null && !filter.employeeNumber().isBlank())
                 conditions.add(cb.equal(root.get("employeeNumber"), filter.employeeNumber().trim()));
             if (filter.name() != null && !filter.name().isBlank()) {
-                String pattern = "%" + escapeLike(filter.name().trim().toLowerCase()) + "%";
-                conditions.add(cb.or(cb.like(cb.lower(root.get("firstName")), pattern, '\\'),
-                        cb.like(cb.lower(root.get("lastName")), pattern, '\\'),
-                        cb.like(cb.lower(root.get("middleName")), pattern, '\\'),
-                        cb.like(cb.lower(root.get("secondLastName")), pattern, '\\')));
+                // Cada término debe coincidir con alguna parte del nombre para
+                // que búsquedas como "Ana Pérez" funcionen igual que "Ana".
+                for (String term : filter.name().trim().toLowerCase().split("\\s+")) {
+                    String pattern = "%" + escapeLike(term) + "%";
+                    conditions.add(cb.or(cb.like(cb.lower(root.get("firstName")), pattern, '\\'),
+                            cb.like(cb.lower(root.get("lastName")), pattern, '\\'),
+                            cb.like(cb.lower(root.get("middleName")), pattern, '\\'),
+                            cb.like(cb.lower(root.get("secondLastName")), pattern, '\\')));
+                }
             }
             if (filter.departmentId() != null || filter.positionId() != null) {
                 var sub = query.subquery(UUID.class);

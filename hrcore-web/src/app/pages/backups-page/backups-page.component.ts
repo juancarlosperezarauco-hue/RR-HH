@@ -239,7 +239,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               </button>
             </div>
 
-            <form class="mt-6 grid gap-4" [formGroup]="createForm" (ngSubmit)="submitCreate()">
+            <form class="mt-6 grid gap-4 px-6 pb-6" [formGroup]="createForm" (ngSubmit)="submitCreate()">
               <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Este respaldo se crea sobre el tenant actual. Puedes agregar un motivo opcional.
               </div>
@@ -249,7 +249,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary" placeholder="Opcional"></textarea>
               </label>
 
-              <div class="app-modal-footer">
+              <div class="app-modal-footer -mx-6">
                 <button type="button" (click)="closeCreateModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
@@ -337,7 +337,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               </button>
             </div>
 
-            <form class="mt-6 grid gap-4" [formGroup]="restoreForm" (ngSubmit)="submitRestore()">
+            <form class="mt-6 grid gap-4 px-6 pb-6" [formGroup]="restoreForm" (ngSubmit)="submitRestore()">
               <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Estás por restaurar: <strong>{{ backup.fileName || backup.id }}</strong>
               </div>
@@ -356,7 +356,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"></textarea>
               </label>
 
-              <div class="app-modal-footer">
+              <div class="app-modal-footer -mx-6">
                 <button type="button" (click)="closeRestoreModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>
@@ -382,7 +382,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
               </button>
             </div>
 
-            <form class="mt-6 grid gap-4" [formGroup]="restoreFromFileForm" (ngSubmit)="submitRestoreFromFile()">
+            <form class="mt-6 grid gap-4 px-6 pb-6" [formGroup]="restoreFromFileForm" (ngSubmit)="submitRestoreFromFile()">
               <div class="rounded-2xl border border-border bg-muted p-4 text-sm text-accent-foreground">
                 Selecciona el archivo descargado y confirma antes de iniciar.
               </div>
@@ -413,7 +413,7 @@ import { ToastService } from '../../shared/ui/toast/toast.service';
                 <textarea formControlName="reason" rows="3" class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-accent-foreground outline-none focus:border-primary"></textarea>
               </label>
 
-              <div class="app-modal-footer">
+              <div class="app-modal-footer -mx-6">
                 <button type="button" (click)="closeRestoreFromFileModal()" class="cursor-pointer rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
                   Cancelar
                 </button>

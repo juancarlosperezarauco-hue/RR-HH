@@ -13,6 +13,7 @@ import {
 } from '../../features/shift-management';
 import { PlatformPaginationComponent } from '../../features/platform/ui/platform-pagination/platform-pagination.component';
 import { ShiftResponse } from '../../entities/shift';
+import { PermissionService } from '../../shared/lib/auth/permission.service';
 
 @Component({
   selector: 'app-shifts-page',
@@ -43,13 +44,13 @@ import { ShiftResponse } from '../../entities/shift';
                 Parametrización y Asignación de Turnos
               </h1>
               <p class="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Configura horarios laborales con validación estricta de la Ley General del Trabajo (LGT Bolivia) y asigna turnos a colaboradores previniendo solapamientos.
+                Configura horarios laborales con validación de tiempos, tolerancias y cruces de medianoche; luego asígnalos a colaboradores previniendo solapamientos.
               </p>
             </div>
           </div>
 
           <div class="flex flex-wrap gap-3">
-            <button
+            <button *ngIf="permissions.hasPermission('shifts.list')"
               type="button"
               (click)="reload()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-accent">
@@ -57,7 +58,7 @@ import { ShiftResponse } from '../../entities/shift';
               Recargar
             </button>
 
-            <button
+            <button *ngIf="permissions.hasPermission('shifts.create')"
               type="button"
               (click)="openCreateModal()"
               class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90">
@@ -95,7 +96,7 @@ import { ShiftResponse } from '../../entities/shift';
         <!-- KPI 3 -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
           <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Turnos Nocturnos (7h)</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Turnos nocturnos</p>
             <p class="text-2xl font-black text-indigo-600">{{ shiftListUseCase.kpis().night }}</p>
           </div>
           <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
@@ -106,7 +107,7 @@ import { ShiftResponse } from '../../entities/shift';
         <!-- KPI 4 -->
         <div class="rounded-2xl border border-border bg-card p-5 shadow-sm flex items-center justify-between">
           <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Continuos (8h)</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Turnos continuos</p>
             <p class="text-2xl font-black text-blue-600">{{ shiftListUseCase.kpis().continuous }}</p>
           </div>
           <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600">
@@ -134,9 +135,9 @@ import { ShiftResponse } from '../../entities/shift';
 
           <!-- Selector de Modo de Vista -->
           <div class="inline-flex rounded-full border border-border bg-muted/30 p-1">
-            <button
+            <button *ngIf="permissions.hasPermission('shifts.list')"
               type="button"
-              (click)="activeView = 'CATALOG'"
+              (click)="setView('CATALOG')"
               [class.bg-card]="activeView === 'CATALOG'"
               [class.text-primary]="activeView === 'CATALOG'"
               [class.shadow-sm]="activeView === 'CATALOG'"
@@ -145,16 +146,16 @@ import { ShiftResponse } from '../../entities/shift';
               <lucide-icon name="clock" [size]="14"></lucide-icon>
               Catálogo de Turnos
             </button>
-            <button
+            <button *ngIf="permissions.hasPermission('shifts.assignments.list')"
               type="button"
-              (click)="activeView = 'ASSIGNMENTS'"
+              (click)="setView('ASSIGNMENTS')"
               [class.bg-card]="activeView === 'ASSIGNMENTS'"
               [class.text-primary]="activeView === 'ASSIGNMENTS'"
               [class.shadow-sm]="activeView === 'ASSIGNMENTS'"
               [class.text-muted-foreground]="activeView !== 'ASSIGNMENTS'"
               class="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer">
               <lucide-icon name="users" [size]="14"></lucide-icon>
-              Asignaciones Activas
+              Asignaciones
             </button>
           </div>
         </div>
@@ -196,7 +197,17 @@ import { ShiftResponse } from '../../entities/shift';
 
       <!-- Vista 1: Catálogo de Turnos (Grilla de Tarjetas) -->
       <div *ngIf="activeView === 'CATALOG'" class="space-y-4">
-        <div *ngIf="shiftListUseCase.filteredShifts().length === 0" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center bg-card/50">
+        <div *ngIf="shiftListUseCase.loading()" class="rounded-2xl border border-dashed border-border p-12 text-center bg-card/50 text-sm text-muted-foreground">
+          Cargando catálogo de turnos...
+        </div>
+
+        <div *ngIf="!shiftListUseCase.loading() && shiftListUseCase.error()" class="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive">
+          <p class="font-bold">No se pudo cargar el catálogo de turnos</p>
+          <p class="mt-1">{{ shiftListUseCase.error() }}</p>
+          <button type="button" (click)="shiftListUseCase.loadShifts()" class="mt-3 rounded-full border border-destructive/30 px-4 py-2 text-xs font-semibold hover:bg-destructive/10">Reintentar</button>
+        </div>
+
+        <div *ngIf="!shiftListUseCase.loading() && !shiftListUseCase.error() && shiftListUseCase.filteredShifts().length === 0" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center bg-card/50">
           <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-3">
             <lucide-icon name="clock" [size]="28"></lucide-icon>
           </div>
@@ -204,7 +215,7 @@ import { ShiftResponse } from '../../entities/shift';
           <p class="text-xs text-muted-foreground max-w-sm mt-1">Crea un nuevo turno o ajusta los filtros de búsqueda.</p>
         </div>
 
-        <div *ngIf="shiftListUseCase.filteredShifts().length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div *ngIf="!shiftListUseCase.loading() && !shiftListUseCase.error() && shiftListUseCase.filteredShifts().length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <app-shift-card
             *ngFor="let s of shiftListUseCase.filteredShifts()"
             [shift]="s"
@@ -228,16 +239,26 @@ import { ShiftResponse } from '../../entities/shift';
 
       <!-- Vista 2: Tabla de Asignaciones de Trabajadores -->
       <div *ngIf="activeView === 'ASSIGNMENTS'" class="space-y-4">
-        <div *ngIf="assignments.length === 0" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center bg-card/50">
+        <div *ngIf="shiftAssignmentUseCase.loading()" class="rounded-2xl border border-dashed border-border p-12 text-center bg-card/50 text-sm text-muted-foreground">
+          Cargando asignaciones...
+        </div>
+
+        <div *ngIf="!shiftAssignmentUseCase.loading() && shiftAssignmentUseCase.error()" class="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-center text-sm text-destructive">
+          <p class="font-bold">No se pudieron cargar las asignaciones</p>
+          <p class="mt-1">{{ shiftAssignmentUseCase.error() }}</p>
+          <button type="button" (click)="loadAssignmentsAgain()" class="mt-3 rounded-full border border-destructive/30 px-4 py-2 text-xs font-semibold hover:bg-destructive/10">Reintentar</button>
+        </div>
+
+        <div *ngIf="!shiftAssignmentUseCase.loading() && !shiftAssignmentUseCase.error() && assignments.length === 0" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border p-12 text-center bg-card/50">
           <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-3">
             <lucide-icon name="calendar" [size]="28"></lucide-icon>
           </div>
-          <h4 class="text-base font-bold text-accent-foreground">No hay asignaciones de turnos activas</h4>
+          <h4 class="text-base font-bold text-accent-foreground">No hay asignaciones de turnos</h4>
           <p class="text-xs text-muted-foreground max-w-sm mt-1">Actualmente no existen asignaciones de turno registradas en la base de datos para los colaboradores.</p>
         </div>
 
         <app-shift-assignments-table
-          *ngIf="assignments.length > 0"
+          *ngIf="!shiftAssignmentUseCase.loading() && !shiftAssignmentUseCase.error() && assignments.length > 0"
           [assignments]="assignments"
           (cancel)="onCancelAssignment($event)"
           (close)="onCloseAssignment($event)">
@@ -272,6 +293,7 @@ import { ShiftResponse } from '../../entities/shift';
 export class ShiftsPageComponent implements OnInit {
   readonly shiftListUseCase = inject(ShiftListUseCase);
   readonly shiftAssignmentUseCase = inject(ShiftAssignmentUseCase);
+  readonly permissions = inject(PermissionService);
 
   activeView: 'CATALOG' | 'ASSIGNMENTS' = 'CATALOG';
   isFormOpen = false;
@@ -280,6 +302,7 @@ export class ShiftsPageComponent implements OnInit {
   selectedShiftToEdit: ShiftResponse | null = null;
   selectedShiftToAssign: ShiftResponse | null = null;
   selectedShiftForBreaks: ShiftResponse | null = null;
+  private assignmentsLoaded = false;
 
   get assignments() {
     return this.shiftAssignmentUseCase.assignments();
@@ -287,12 +310,13 @@ export class ShiftsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.shiftListUseCase.loadShifts();
-    this.shiftAssignmentUseCase.loadAssignments();
+    this.shiftListUseCase.loadKpis();
   }
 
   reload(): void {
     this.shiftListUseCase.loadShifts();
-    this.shiftAssignmentUseCase.loadAssignments();
+    this.shiftListUseCase.loadKpis();
+    if (this.activeView === 'ASSIGNMENTS') void this.loadAssignments();
   }
 
   openCreateModal(): void {
@@ -315,12 +339,18 @@ export class ShiftsPageComponent implements OnInit {
     this.isBreaksOpen = true;
   }
 
+  setView(view: 'CATALOG' | 'ASSIGNMENTS'): void {
+    this.activeView = view;
+    if (view === 'ASSIGNMENTS' && !this.assignmentsLoaded) void this.loadAssignments();
+  }
+
   onShiftSaved(): void {
     this.shiftListUseCase.loadShifts();
+    this.shiftListUseCase.loadKpis();
   }
 
   onShiftAssigned(): void {
-    this.shiftAssignmentUseCase.loadAssignments();
+    void this.loadAssignments();
   }
 
   async onCancelAssignment(id: string): Promise<void> {
@@ -329,5 +359,15 @@ export class ShiftsPageComponent implements OnInit {
 
   async onCloseAssignment(id: string): Promise<void> {
     await this.shiftAssignmentUseCase.closeAssignment(id);
+  }
+
+  private async loadAssignments(): Promise<void> {
+    await this.shiftAssignmentUseCase.loadAssignments();
+    this.assignmentsLoaded = true;
+  }
+
+  loadAssignmentsAgain(): void {
+    this.assignmentsLoaded = false;
+    this.setView('ASSIGNMENTS');
   }
 }

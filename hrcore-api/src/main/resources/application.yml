@@ -110,7 +110,6 @@ app:
       enabled: ${NOTIFICATIONS_PUSH_ENABLED:false}
       provider: ${NOTIFICATIONS_PROVIDER:FIREBASE}
       firebase:
-        credentials-path: ${FIREBASE_CREDENTIALS_PATH:classpath:firebase/service-account.example.json}
         type: ${FIREBASE_TYPE:service_account}
         project-id: ${FIREBASE_PROJECT_ID:hrcore-system-dev}
         private-key-id: ${FIREBASE_PRIVATE_KEY_ID:}

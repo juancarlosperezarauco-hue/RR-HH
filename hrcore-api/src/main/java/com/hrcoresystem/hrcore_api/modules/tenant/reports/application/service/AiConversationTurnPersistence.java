@@ -12,12 +12,16 @@ import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persist
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiMessageJpaRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiReportRunEntity;
 import com.hrcoresystem.hrcore_api.modules.tenant.reports.infrastructure.persistence.AiReportRunJpaRepository;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.*;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -52,12 +56,15 @@ public class AiConversationTurnPersistence {
     private final AiReportRunJpaRepository reportRuns;
     private final ObjectMapper mapper;
     private final int maxContextMessages;
+    private final NotificationPublisherPort notifications;
 
+    @Autowired
     public AiConversationTurnPersistence(AiConversationJpaRepository conversations,
                                          AiMessageJpaRepository messages,
                                          AiReportRunJpaRepository reportRuns,
                                          ObjectMapper mapper,
-                                         @Value("${app.ai.conversations.context-message-count:4}") int maxContextMessages) {
+                                         @Value("${app.ai.conversations.context-message-count:4}") int maxContextMessages,
+                                         NotificationPublisherPort notifications) {
         if (maxContextMessages < 0 || maxContextMessages > 20)
             throw new IllegalArgumentException("AI conversation context message count must be between 0 and 20");
         this.conversations = conversations;
@@ -65,6 +72,14 @@ public class AiConversationTurnPersistence {
         this.reportRuns = reportRuns;
         this.mapper = mapper;
         this.maxContextMessages = maxContextMessages;
+        this.notifications = notifications;
+    }
+
+    public AiConversationTurnPersistence(AiConversationJpaRepository conversations,
+                                         AiMessageJpaRepository messages,
+                                         AiReportRunJpaRepository reportRuns,
+                                         ObjectMapper mapper, int maxContextMessages) {
+        this(conversations, messages, reportRuns, mapper, maxContextMessages, null);
     }
 
     @Transactional
@@ -143,6 +158,15 @@ public class AiConversationTurnPersistence {
         conversations.save(conversation);
         messages.flush();
         if (run != null) reportRuns.flush();
+        try {
+            if (notifications == null) return new Reservation(request, response, run == null ? null : run.getId(), conversation.getVersion(), false);
+            String event = FAILED.equals(requestState) ? "FAILED" : "COMPLETED";
+            notifications.publish(new NotificationPublishRequest(ownerId, FAILED.equals(requestState) ? NotificationType.SYSTEM_NOTICE : NotificationType.SYSTEM_NOTICE,
+                    NotificationCategory.SYSTEM, FAILED.equals(requestState) ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
+                    FAILED.equals(requestState) ? "Reporte no disponible" : "Reporte generado",
+                    FAILED.equals(requestState) ? "No se pudo completar el reporte solicitado." : "Tu reporte está disponible para consultar.",
+                    null, null, "/dashboard/reports?conversationId=" + conversationId + "&requestId=" + requestId + "&event=" + event, null));
+        } catch (Exception ignored) { }
         return new Reservation(request, response, run == null ? null : run.getId(),
                 conversation.getVersion(), false);
     }

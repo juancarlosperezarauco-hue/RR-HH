@@ -2,6 +2,7 @@ package com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.reposito
 
 import com.hrcoresystem.hrcore_api.modules.tenant.employeefiles.domain.model.*;
 import java.util.*;
+import java.time.LocalDate;
 import org.springframework.data.domain.*;
 
 public interface EmployeeDocumentRepository {
@@ -12,4 +13,6 @@ public interface EmployeeDocumentRepository {
   Optional<EmployeeDocument> findByIdForUpdate(UUID id);
 
   Page<EmployeeDocument> findAll(UUID fileId, EmployeeDocumentFilter filter, Pageable pageable);
+
+  List<EmployeeDocument> findExpiring(LocalDate until, Pageable pageable);
 }

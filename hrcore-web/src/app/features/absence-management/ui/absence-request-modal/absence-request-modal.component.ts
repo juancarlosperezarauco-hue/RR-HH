@@ -97,7 +97,7 @@ import { AbsenceRequestUseCase } from '../../application/absence-request.usecase
                 <input
                   type="file"
                   (change)="onFileSelected($event)"
-                  accept=".pdf,.png,.jpg,.jpeg,.docx"
+                  accept=".pdf,.png,.jpg,.jpeg"
                   class="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
                 <p *ngIf="selectedType?.requiresAttachment && !proofFile" class="mt-1 text-xs text-rose-500 font-medium">
@@ -148,7 +148,7 @@ import { AbsenceRequestUseCase } from '../../application/absence-request.usecase
                 </span>
               </div>
               <p class="text-[11px] text-muted-foreground">
-                * Descuenta sábados, domingos y feriados nacionales oficiales (LGT).
+                * Estimación visual. El backend confirma los días según la jornada y el calendario del empleado.
               </p>
 
               <!-- Alerta: Saldo insuficiente de vacación -->
@@ -294,6 +294,7 @@ export class AbsenceRequestModalComponent implements OnChanges {
     this.reason = '';
     this.proofFile = null;
     this.computedDays = 0;
+    this.selectedTypeId = '';
     this.selectedEmployeeId = this.employeeId || '';
     this.closeModal.emit();
   }

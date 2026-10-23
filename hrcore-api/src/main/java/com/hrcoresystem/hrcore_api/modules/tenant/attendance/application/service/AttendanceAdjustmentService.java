@@ -6,6 +6,11 @@ import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationCategory;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationPriority;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.NotificationType;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.AttendanceRequests;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.AttendanceResponses;
@@ -17,9 +22,12 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 import org.springframework.data.domain.Page;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AttendanceAdjustmentService {
@@ -36,14 +44,22 @@ public class AttendanceAdjustmentService {
     private final TenantPlanEnforcementService plans;
     private final AuditTrailService audit;
     private final ObjectMapper json;
+    private final NotificationPublisherPort notificationPublisher;
 
+    @Autowired
+    public AttendanceAdjustmentService(AttendanceStore store, EmployeeRepository employees,
+            AttendanceCalculationService calculations, AttendanceActor actor, AttendanceZone zones,
+            AttendanceMapper mapper, TenantPlanEnforcementService plans, AuditTrailService audit,
+            ObjectMapper json, NotificationPublisherPort notificationPublisher) {
+        this.store = store; this.employees = employees; this.calculations = calculations;
+        this.actor = actor; this.zones = zones; this.mapper = mapper; this.plans = plans;
+        this.audit = audit; this.json = json; this.notificationPublisher = notificationPublisher;
+    }
     public AttendanceAdjustmentService(AttendanceStore store, EmployeeRepository employees,
             AttendanceCalculationService calculations, AttendanceActor actor, AttendanceZone zones,
             AttendanceMapper mapper, TenantPlanEnforcementService plans, AuditTrailService audit,
             ObjectMapper json) {
-        this.store = store; this.employees = employees; this.calculations = calculations;
-        this.actor = actor; this.zones = zones; this.mapper = mapper; this.plans = plans;
-        this.audit = audit; this.json = json;
+        this(store, employees, calculations, actor, zones, mapper, plans, audit, json, null);
     }
 
     @Transactional
@@ -135,7 +151,37 @@ public class AttendanceAdjustmentService {
         };
         audit.recordTenantEvent(eventType, "ATTENDANCE_ADJUSTMENT", id.toString(),
                 Map.of("recordId", record.id().toString()), mapper.toResponse(pending), mapper.toResponse(saved));
+        if (decision == ReviewStatus.APPROVED || decision == ReviewStatus.REJECTED) {
+            publishDecision(pending.requestedBy(), decision, id);
+        }
         return mapper.toResponse(saved);
+    }
+
+    private void publishDecision(UUID userId, ReviewStatus decision, UUID id) {
+        if (notificationPublisher == null || userId == null) return;
+        String title = decision == ReviewStatus.APPROVED ? "Ajuste de asistencia aprobado" : "Ajuste de asistencia rechazado";
+        String body = decision == ReviewStatus.APPROVED
+                ? "Tu solicitud de corrección de asistencia fue aprobada."
+                : "Tu solicitud de corrección de asistencia fue rechazada.";
+        try {
+            notifyAfterCommit(new NotificationPublishRequest(userId, NotificationType.ATTENDANCE_ADJUSTMENT_REVIEW,
+                    NotificationCategory.SYSTEM, NotificationPriority.NORMAL, title, body, null, null,
+                    "/dashboard/attendance/adjustments?id=" + id, null));
+        } catch (Exception ignored) { }
+    }
+
+    private void notifyAfterCommit(NotificationPublishRequest payload) {
+        if (notificationPublisher == null) return;
+        Runnable publish = () -> {
+            try { notificationPublisher.publish(payload); } catch (Exception ignored) { }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publish.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { publish.run(); }
+        });
     }
 
     private JsonNode validate(AdjustmentType type, JsonNode values, AttendanceRecord record) {

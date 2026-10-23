@@ -29,14 +29,14 @@ export class AttendanceRegularizeUseCase {
     this.error.set(null);
 
     try {
-      await firstValueFrom(
-        this.attendanceService.regularizeAttendance({
-          ...request,
-          reason: trimmedReason
-        })
+      const record = await firstValueFrom(this.attendanceService.getRecordById(request.attendanceRecordId));
+      return await this.regularizeTimes(
+        request.attendanceRecordId,
+        record.data.workDate,
+        request.correctedCheckIn,
+        request.correctedCheckOut,
+        trimmedReason
       );
-      this.toastService.success('Regularización enviada exitosamente con registro inmutable de auditoría.');
-      return true;
     } catch (err: any) {
       const msg = err?.error?.message || err?.message || 'Error al procesar la regularización.';
       this.error.set(msg);
@@ -83,12 +83,37 @@ export class AttendanceRegularizeUseCase {
     workDate: string,
     correctedCheckIn: string | undefined,
     correctedCheckOut: string | undefined,
-    reason: string
+    reason: string,
+    adjustmentType: 'TIME_CORRECTION' | 'MISSING_PUNCH' | 'STATUS_CORRECTION' | 'OTHER' = 'TIME_CORRECTION',
+    status: string = 'JUSTIFIED'
   ): Promise<boolean> {
     const trimmedReason = reason.trim();
     if (trimmedReason.length < 10) {
       this.toastService.warning('La justificación debe tener al menos 10 caracteres.');
       return false;
+    }
+    if (adjustmentType === 'TIME_CORRECTION' && (!!correctedCheckIn === !!correctedCheckOut)) {
+      this.toastService.warning(correctedCheckIn && correctedCheckOut
+        ? 'Solicite una sola corrección por vez: entrada o salida.'
+        : 'Ingrese la hora de entrada o la hora de salida que desea corregir.');
+      return false;
+    }
+    if (adjustmentType === 'MISSING_PUNCH' && (!!correctedCheckIn === !!correctedCheckOut)) {
+      this.toastService.warning('Para una marcación omitida indique una sola hora.');
+      return false;
+    }
+    if (adjustmentType === 'STATUS_CORRECTION' || adjustmentType === 'OTHER') {
+      try {
+        await firstValueFrom(this.attendanceService.createAdjustment({
+          attendanceRecordId, adjustmentType, reason: trimmedReason,
+          requestedValues: { status: adjustmentType === 'OTHER' ? 'JUSTIFIED' : status }
+        }));
+        this.toastService.success('Regularización enviada para revisión.');
+        return true;
+      } catch (err: any) {
+        const message = err?.error?.message || err?.message || 'No se pudo solicitar la regularización.';
+        this.error.set(message); this.toastService.error(message); return false;
+      } finally { this.submitting.set(false); }
     }
     if (!correctedCheckIn && !correctedCheckOut) {
       this.toastService.warning('Ingrese al menos una hora corregida.');
@@ -112,14 +137,14 @@ export class AttendanceRegularizeUseCase {
       const requests: CreateAdjustmentRequest[] = [];
       if (correctedCheckIn) {
         const punchedAt = this.toInstant(workDate, correctedCheckIn, false);
-        requests.push(firstIn ? {
+        requests.push(adjustmentType === 'TIME_CORRECTION' && firstIn ? {
           attendanceRecordId,
-          adjustmentType: 'TIME_CORRECTION',
+          adjustmentType,
           reason: trimmedReason,
           requestedValues: { punchId: firstIn.id, punchedAt }
         } : {
           attendanceRecordId,
-          adjustmentType: 'MISSING_PUNCH',
+          adjustmentType,
           reason: trimmedReason,
           requestedValues: { punchType: 'IN', punchedAt }
         });
@@ -127,22 +152,20 @@ export class AttendanceRegularizeUseCase {
       if (correctedCheckOut) {
         const overnight = !!correctedCheckIn && correctedCheckOut <= correctedCheckIn;
         const punchedAt = this.toInstant(workDate, correctedCheckOut, overnight);
-        requests.push(lastOut ? {
+        requests.push(adjustmentType === 'TIME_CORRECTION' && lastOut ? {
           attendanceRecordId,
-          adjustmentType: 'TIME_CORRECTION',
+          adjustmentType,
           reason: trimmedReason,
           requestedValues: { punchId: lastOut.id, punchedAt }
         } : {
           attendanceRecordId,
-          adjustmentType: 'MISSING_PUNCH',
+          adjustmentType,
           reason: trimmedReason,
           requestedValues: { punchType: 'OUT', punchedAt }
         });
       }
 
-      for (const request of requests) {
-        await firstValueFrom(this.attendanceService.createAdjustment(request));
-      }
+      await firstValueFrom(this.attendanceService.createAdjustment(requests[0]));
       this.toastService.success('Regularización enviada para revisión con trazabilidad de auditoría.');
       return true;
     } catch (err: any) {

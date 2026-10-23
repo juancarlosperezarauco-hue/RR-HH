@@ -20,9 +20,6 @@ public class ShiftAssignmentConflictPolicy {
                 short existingDay = (short) (Math.floorMod(requestedDay - 1 + dayDifference, 7) + 1);
                 if (!existing.weekdays().contains(existingDay)
                         || !commonOccurrenceDate(requested, existing, requestedDay, dayDifference)) continue;
-                // El MVP permite una sola jornada efectiva por día ISO, aunque
-                // las horas declaradas no se superpongan.
-                if (dayDifference == 0) return true;
                 var existingInterval = ShiftTimeRules.shiftInterval(existingShift,
                         anchor.plusDays(dayDifference));
                 if (requestedInterval.overlaps(existingInterval)) return true;

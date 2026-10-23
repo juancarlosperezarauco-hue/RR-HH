@@ -18,7 +18,8 @@ public record TenantUserResponse(
         List<AssignedRoleResponse> roles,
         UUID employeeId,
         String employeeNumber,
-        String employeeFullName
+        String employeeFullName,
+        boolean owner
 ) {
     public TenantUserResponse(
             UUID id,
@@ -44,7 +45,8 @@ public record TenantUserResponse(
                 roles,
                 null,
                 null,
-                null
+                null,
+                false
         );
     }
 }

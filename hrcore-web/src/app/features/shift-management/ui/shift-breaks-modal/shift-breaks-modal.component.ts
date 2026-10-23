@@ -5,6 +5,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 import { ShiftBreakResponse, ShiftResponse, ShiftService } from '../../../../entities/shift';
 import { ToastService } from '../../../../shared/ui/toast/toast.service';
+import { PermissionService } from '../../../../shared/lib/auth/permission.service';
 
 @Component({
   selector: 'app-shift-breaks-modal',
@@ -29,14 +30,15 @@ import { ToastService } from '../../../../shared/ui/toast/toast.service';
               <p class="text-sm text-muted-foreground">{{ formatTime(item.startTime) }}–{{ formatTime(item.endTime) }} · {{ item.durationMinutes }} min · {{ item.paid ? 'Remunerado' : 'No remunerado' }}</p>
             </div>
             <div class="flex gap-2">
-              <button type="button" (click)="edit(item)" class="rounded-full border border-border px-3 py-1.5 text-xs font-bold text-primary">Editar</button>
-              <button type="button" (click)="remove(item)" class="rounded-full border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700">Eliminar</button>
+              <button *ngIf="canUpdate" type="button" (click)="edit(item)" class="rounded-full border border-border px-3 py-1.5 text-xs font-bold text-primary">Editar</button>
+              <button *ngIf="canDelete" type="button" (click)="remove(item)" class="rounded-full border border-red-200 px-3 py-1.5 text-xs font-bold text-red-700">Eliminar</button>
             </div>
           </div>
-          <p *ngIf="!loading && !breaks.length" class="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">El turno todavía no tiene descansos registrados.</p>
+          <p *ngIf="!loading && loadError" class="rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-center text-sm text-destructive">{{ loadError }}</p>
+          <p *ngIf="!loading && !loadError && canList && !breaks.length" class="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">El turno todavía no tiene descansos registrados.</p>
         </div>
 
-        <form (ngSubmit)="save()" class="mt-6 rounded-2xl bg-muted/40 p-4">
+        <form *ngIf="canCreate || canUpdate" (ngSubmit)="save()" class="mt-6 rounded-2xl bg-muted/40 p-4">
           <h4 class="mb-4 font-black">{{ editingId ? 'Editar descanso' : 'Nuevo descanso' }}</h4>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="space-y-1 sm:col-span-2"><span class="text-xs font-bold">Nombre *</span><input name="breakName" [(ngModel)]="name" required maxlength="100" placeholder="Almuerzo" class="h-11 w-full rounded-xl border border-border bg-background px-3"></label>
@@ -62,6 +64,7 @@ export class ShiftBreaksModalComponent implements OnChanges {
 
   private readonly service = inject(ShiftService);
   private readonly toast = inject(ToastService);
+  readonly permissions = inject(PermissionService);
 
   breaks: ShiftBreakResponse[] = [];
   loading = false;
@@ -71,6 +74,12 @@ export class ShiftBreaksModalComponent implements OnChanges {
   startTime = '12:00';
   endTime = '12:45';
   paid = false;
+  loadError: string | null = null;
+
+  get canList(): boolean { return this.permissions.hasPermission('shifts.breaks.list'); }
+  get canCreate(): boolean { return this.permissions.hasPermission('shifts.breaks.create'); }
+  get canUpdate(): boolean { return this.permissions.hasPermission('shifts.breaks.update'); }
+  get canDelete(): boolean { return this.permissions.hasPermission('shifts.breaks.delete'); }
 
   ngOnChanges(changes: SimpleChanges): void {
     if ((changes['isOpen'] || changes['shift']) && this.isOpen && this.shift) this.load();
@@ -88,11 +97,17 @@ export class ShiftBreaksModalComponent implements OnChanges {
   async load(): Promise<void> {
     if (!this.shift) return;
     this.loading = true;
+    this.loadError = null;
     try {
+      if (!this.canList) {
+        this.breaks = [];
+        return;
+      }
       const response = await firstValueFrom(this.service.listBreaks(this.shift.id, 0, 100));
       this.breaks = response.data.content;
     } catch (error: unknown) {
       this.breaks = [];
+      this.loadError = 'No se pudieron cargar los descansos. Verifica tus permisos o inténtalo nuevamente.';
       this.handleError(error, 'No se pudieron cargar los descansos.');
     } finally {
       this.loading = false;
@@ -108,7 +123,7 @@ export class ShiftBreaksModalComponent implements OnChanges {
   }
 
   async save(): Promise<void> {
-    if (!this.shift || !this.name.trim() || this.durationMinutes <= 0) return;
+    if (!this.shift || !this.name.trim() || this.durationMinutes <= 0 || (this.editingId ? !this.canUpdate : !this.canCreate)) return;
     this.saving = true;
     const request = {
       name: this.name.trim(),
@@ -132,7 +147,7 @@ export class ShiftBreaksModalComponent implements OnChanges {
   }
 
   async remove(item: ShiftBreakResponse): Promise<void> {
-    if (!this.shift || !window.confirm(`¿Eliminar el descanso ${item.name}?`)) return;
+    if (!this.shift || !this.canDelete || !window.confirm(`¿Eliminar el descanso ${item.name}?`)) return;
     try {
       await firstValueFrom(this.service.deleteBreak(this.shift.id, item.id));
       this.toast.success('Descanso eliminado correctamente.');

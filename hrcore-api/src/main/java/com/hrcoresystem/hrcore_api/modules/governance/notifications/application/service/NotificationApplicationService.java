@@ -13,6 +13,7 @@ import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.
 import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.PushNotificationProviderPort;
 import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.repository.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -52,7 +53,7 @@ public class NotificationApplicationService implements NotificationPublisherPort
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void publish(NotificationPublishRequest request) {
         if (request.actionUrl() != null && notificationRepository.existsByUserIdAndActionUrl(request.userId(), request.actionUrl())) {
             return;
@@ -146,8 +147,10 @@ public class NotificationApplicationService implements NotificationPublisherPort
                             notification.id(),
                             notification.userId(),
                             device.fcmToken(),
-                            notification.title(),
-                            notification.body(),
+                            request.pushTitle() == null || request.pushTitle().isBlank()
+                                    ? notification.title() : request.pushTitle(),
+                            request.pushBody() == null || request.pushBody().isBlank()
+                                    ? notification.body() : request.pushBody(),
                             notification.data(),
                             notification.imageUrl(),
                             notification.actionUrl()
@@ -174,6 +177,7 @@ public class NotificationApplicationService implements NotificationPublisherPort
             );
         }
     }
+
 
     @Transactional(readOnly = true)
     public List<Notification> listNotifications(UUID userId) {

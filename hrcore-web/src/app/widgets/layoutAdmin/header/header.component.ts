@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Output, HostListener, ElementRef, effect, inject, OnDestroy, OnInit, signal, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { trigger, transition, style, animate } from '@angular/animations';
@@ -12,6 +12,8 @@ import { AuthService } from '../../../entities/auth/api/auth.service';
 import { NavigationScope } from '../../../shared/lib/navigation';
 import { TenantLanguageStateService } from '../../../shared/lib/i18n/tenant-language-state.service';
 import { TenantTextKey } from '../../../shared/lib/i18n/keys';
+import { AppearanceSettingsService } from '../../../entities/company/api/appearance-settings.service';
+import { TenantAppearanceStateService } from '../../../entities/company/model/tenant-appearance-state.service';
 
 interface MenuItem {
   label: string;
@@ -64,27 +66,30 @@ interface MenuItem {
         <!-- Píldoras informativas empresariales (Desktop) -->
         <div class="hidden xl:flex items-center gap-2.5 mr-1">
           <div class="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span class="text-foreground font-bold">{{ isPlatformRoute ? 'Nodo Global Activo' : 'Entorno Corporativo' }}</span>
-          </div>
-
-          <div class="inline-flex items-center gap-2 rounded-xl border border-border/80 bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs">
             <lucide-icon name="calendar" class="h-3.5 w-3.5 text-primary"></lucide-icon>
             <span class="capitalize text-foreground font-semibold">{{ getFormattedToday() }}</span>
           </div>
+
         </div>
+        <button
+          type="button"
+          (click)="toggleTheme()"
+          class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border/80 bg-background/80 text-primary shadow-2xs transition-all duration-200 hover:bg-accent"
+          [attr.aria-label]="themeIsDark() ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'"
+          [attr.title]="themeIsDark() ? 'Modo claro' : 'Modo oscuro'"
+          [attr.aria-pressed]="themeIsDark()">
+          <lucide-icon [name]="themeIsDark() ? 'sun' : 'moon'" class="h-5 w-5"></lucide-icon>
+        </button>
         @if (!isPlatformRoute) {
           <div class="relative">
             <button
               type="button"
               (click)="toggleNotificationsMenu()"
-              class="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-transparent text-primary transition-all duration-200 hover:border-border hover:bg-accent"
+              class="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border/80 bg-background/80 text-primary shadow-2xs transition-all duration-200 hover:bg-accent"
               [class.bg-accent]="isNotificationsOpen"
               [class.border-border]="isNotificationsOpen"
-              aria-label="Notificaciones">
+              aria-label="Notificaciones"
+              title="Notificaciones">
               <lucide-icon name="bell" class="h-5 w-5"></lucide-icon>
               @if (unreadNotifications() > 0) {
                 <span class="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-primary-foreground shadow-xs">
@@ -305,6 +310,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   notificationsLoading = false;
   readonly notificationPreview = signal<NotificationResponse[]>([]);
   readonly unreadNotifications = signal(0);
+  private notificationRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly platformMenuOptions: MenuItem[] = [
     { label: 'Mi perfil', description: 'Datos de cuenta SuperAdmin', route: '/platform/profile', icon: 'user-circle-2' },
@@ -327,8 +333,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   readonly platformSuperadmin = this.platformFacade.currentSuperadmin;
   readonly tenantUser = this.authFacade.currentUser;
+  readonly themeIsDark = signal(false);
+  private readonly document = inject(DOCUMENT);
+  private readonly appearanceApi = inject(AppearanceSettingsService, { optional: true });
+  private readonly appearanceState = inject(TenantAppearanceStateService);
 
   constructor() {
+    this.themeIsDark.set(this.document.documentElement.classList.contains('dark'));
+    effect(() => {
+      const appearance = this.appearanceState.confirmedForCurrentSession();
+      this.themeIsDark.set(appearance?.mode === 'dark' || (!appearance && this.document.documentElement.classList.contains('dark')));
+    });
     effect(() => {
       const user = this.tenantUser();
       const photoUrl = user?.profilePhotoUrl ?? null;
@@ -363,7 +378,20 @@ export class HeaderComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.loadNotificationPreview();
+    void this.loadNotificationPreview();
+    this.notificationRefreshTimer = setInterval(() => {
+      if (!this.isNotificationsOpen) {
+        void this.loadNotificationPreview();
+      }
+    }, 30000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.notificationRefreshTimer !== null) {
+      clearInterval(this.notificationRefreshTimer);
+      this.notificationRefreshTimer = null;
+    }
+    this.clearProfilePhotoSource();
   }
 
   get isPlatformRoute(): boolean {
@@ -439,7 +467,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (url.includes('/users') || url.includes('/employees') || url.includes('/my-team')) return 'users';
     if (url.includes('/departments') || url.includes('/tenants') || url.includes('/company-settings')) return 'building-2';
     if (url.includes('/positions') || url.includes('/contracts') || url.includes('/my-employment')) return 'briefcase';
-    if (url.includes('/shifts') || url.includes('/attendance') || url.includes('/absences')) return 'calendar-clock';
+    if (url.includes('/shifts') || url.includes('/attendance') || url.includes('/absences')) return 'calendar';
     if (url.includes('/roles') || url.includes('/permissions') || url.includes('/security') || url.includes('/audit')) return 'shield-check';
     if (url.includes('/dossiers') || url.includes('/hr-reports')) return 'file-text';
     if (url.includes('/notifications')) return 'bell';
@@ -501,10 +529,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
     return this.profilePhotoSource();
   }
 
-  ngOnDestroy(): void {
-    this.clearProfilePhotoSource();
-  }
-
   private async loadProfilePhoto(photoUrl: string, requestKey: string): Promise<void> {
     try {
       const photo = await firstValueFrom(this.authService.getProfilePhoto());
@@ -553,6 +577,28 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.isProfileOpen = false;
       void this.loadNotificationPreview();
     }
+  }
+
+  toggleTheme(): void {
+    const current = this.appearanceState.confirmedForCurrentSession();
+    const nextMode = this.themeIsDark() ? 'light' : 'dark';
+    this.themeIsDark.set(nextMode === 'dark');
+    this.appearanceState.applyMode(nextMode);
+
+    // Appearance settings are tenant-wide and only the owner can persist them.
+    // Other users still get an immediate, local visual toggle without a forbidden request.
+    if (!current || !this.isOwnerAdmin || !this.appearanceApi) return;
+
+    const identity = this.appearanceState.currentSessionIdentity();
+    this.appearanceApi.save({ ...current, mode: nextMode }).subscribe({
+      next: response => {
+        this.appearanceState.confirmSaved(identity, response.data);
+      },
+      error: () => {
+        this.themeIsDark.set(current.mode === 'dark');
+        this.appearanceState.applyMode(current.mode);
+      }
+    });
   }
 
   async loadNotificationPreview(): Promise<void> {

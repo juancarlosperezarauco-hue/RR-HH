@@ -173,7 +173,8 @@ export class RoleFormComponent implements OnInit, OnChanges {
   }
 
   selectedCountForGroup(group: PermissionGroup): number {
-    return group.permissions.filter(permission => permission.includedInPlan !== false && this.isPermissionSelected(permission.code)).length;
+    const fullGroup = this.fullPermissionGroup(group.module) ?? group;
+    return fullGroup.permissions.filter(permission => permission.includedInPlan !== false && this.isPermissionSelected(permission.code)).length;
   }
 
   private get permissionsArray(): FormArray {
@@ -204,7 +205,8 @@ export class RoleFormComponent implements OnInit, OnChanges {
   }
 
   isModuleDisabled(group: PermissionGroup): boolean {
-    return !group.includedInPlan || group.permissions.every(p => p.includedInPlan === false);
+    const fullGroup = this.fullPermissionGroup(group.module) ?? group;
+    return !fullGroup.includedInPlan || fullGroup.permissions.every(p => p.includedInPlan === false);
   }
 
   isPermissionSelected(code: string): boolean {
@@ -252,26 +254,31 @@ export class RoleFormComponent implements OnInit, OnChanges {
   }
 
   isModuleFullySelected(group: PermissionGroup): boolean {
-    const valid = group.permissions.filter(p => p.includedInPlan !== false);
+    const fullGroup = this.fullPermissionGroup(group.module) ?? group;
+    const valid = fullGroup.permissions.filter(p => p.includedInPlan !== false);
     if (valid.length === 0) return false;
     return valid.every(p => this.isPermissionSelected(p.code));
   }
 
   isModuleIndeterminate(group: PermissionGroup): boolean {
-    const valid = group.permissions.filter(p => p.includedInPlan !== false);
+    const fullGroup = this.fullPermissionGroup(group.module) ?? group;
+    const valid = fullGroup.permissions.filter(p => p.includedInPlan !== false);
     if (valid.length === 0) return false;
     const selectedCount = valid.filter(p => this.isPermissionSelected(p.code)).length;
     return selectedCount > 0 && selectedCount < valid.length;
   }
 
   toggleModule(group: PermissionGroup, event: Event): void {
-    if (this.isModuleDisabled(group)) {
+    event.preventDefault();
+    event.stopPropagation();
+    const fullGroup = this.fullPermissionGroup(group.module) ?? group;
+    if (this.isModuleDisabled(fullGroup)) {
       (event.target as HTMLInputElement).checked = false;
       return;
     }
 
-    const isChecked = (event.target as HTMLInputElement).checked;
-    const validCodes = group.permissions
+    const isChecked = !this.isModuleFullySelected(fullGroup);
+    const validCodes = fullGroup.permissions
       .filter(p => p.includedInPlan !== false)
       .map(p => p.code);
 
@@ -284,6 +291,10 @@ export class RoleFormComponent implements OnInit, OnChanges {
     const codesToRemove = new Set(validCodes);
     const remaining = this.permissionsArray.value.filter((code: string) => !codesToRemove.has(code));
     this.syncPermissionCodes(remaining);
+  }
+
+  private fullPermissionGroup(module: string): PermissionGroup | undefined {
+    return this.groupedPermissions.find(group => group.module === module);
   }
 
   onSubmit(): void {

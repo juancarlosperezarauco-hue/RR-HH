@@ -81,8 +81,10 @@ export class ShiftService {
    * Consultar detalle de un turno por ID
    * GET /api/shifts/{id}
    */
-  getShiftById(id: string): Observable<ApiResponse<WorkShiftResponse>> {
-    return this.http.get<ApiResponse<WorkShiftResponse>>(`${this.baseUrl}/${id}`);
+  getShiftById(id: string): Observable<ApiResponse<ShiftResponse>> {
+    return this.http.get<ApiResponse<WorkShiftResponse>>(`${this.baseUrl}/${id}`).pipe(
+      map((res) => ({ ...res, data: this.toShiftResponse(res.data) }))
+    );
   }
 
   /**
@@ -129,7 +131,9 @@ export class ShiftService {
    * PATCH /api/shifts/{id}/activate
    */
   activateShift(id: string): Observable<ApiResponse<ShiftResponse>> {
-    return this.http.patch<ApiResponse<ShiftResponse>>(`${this.baseUrl}/${id}/activate`, {});
+    return this.http.patch<ApiResponse<WorkShiftResponse>>(`${this.baseUrl}/${id}/activate`, {}).pipe(
+      map((res) => ({ ...res, data: this.toShiftResponse(res.data) }))
+    );
   }
 
   /**
@@ -137,7 +141,9 @@ export class ShiftService {
    * PATCH /api/shifts/{id}/deactivate
    */
   deactivateShift(id: string): Observable<ApiResponse<ShiftResponse>> {
-    return this.http.patch<ApiResponse<ShiftResponse>>(`${this.baseUrl}/${id}/deactivate`, {});
+    return this.http.patch<ApiResponse<WorkShiftResponse>>(`${this.baseUrl}/${id}/deactivate`, {}).pipe(
+      map((res) => ({ ...res, data: this.toShiftResponse(res.data) }))
+    );
   }
 
   /**
@@ -465,7 +471,7 @@ export class ShiftService {
     return {
       ...shift,
       shiftType,
-      breakMinutes: 0,
+      breakMinutes: shift.unpaidBreakMinutes ?? 0,
       gracePeriodMinutes: shift.lateToleranceMinutes,
       isOvernight
     };

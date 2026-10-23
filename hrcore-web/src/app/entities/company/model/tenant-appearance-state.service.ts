@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { inject, Injectable, signal } from '@angular/core';
 import { AuthStorageService } from '../../../shared/lib/storage/auth-storage.service';
 import { AppearanceSettings } from '../api/appearance-settings.service';
@@ -5,6 +6,7 @@ import { AppearanceSettings } from '../api/appearance-settings.service';
 @Injectable({ providedIn: 'root' })
 export class TenantAppearanceStateService {
   private readonly authStorage = inject(AuthStorageService);
+  private readonly document = inject(DOCUMENT);
   private activeIdentity: string | null = null;
   private layoutActive = false;
   private layoutGeneration = 0;
@@ -18,6 +20,7 @@ export class TenantAppearanceStateService {
     this.activeIdentity = null;
     this.revision++;
     this.value.set(null);
+    this.applyMode(null);
     return this.layoutGeneration;
   }
 
@@ -26,6 +29,7 @@ export class TenantAppearanceStateService {
     this.activeIdentity = identity;
     this.revision = 0;
     this.value.set(null);
+    this.applyMode(null);
     return true;
   }
 
@@ -47,6 +51,7 @@ export class TenantAppearanceStateService {
   confirmFetched(identity: string, revision: number, appearance: AppearanceSettings): void {
     if (this.activeIdentity === identity && this.currentSessionIdentity() === identity && this.revision === revision) {
       this.value.set({ ...appearance });
+      this.applyMode(appearance.mode);
     }
   }
 
@@ -56,7 +61,15 @@ export class TenantAppearanceStateService {
     this.activeIdentity = identity;
     this.revision++;
     this.value.set({ ...appearance });
+    this.applyMode(appearance.mode);
     return true;
+  }
+
+  /** Applies the configured mode to the document without changing persisted settings. */
+  applyMode(mode: AppearanceSettings['mode'] | null): void {
+    const dark = mode === 'dark';
+    this.document.documentElement.classList.toggle('dark', dark);
+    this.document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
   }
 
   deactivate(layoutGeneration: number): void {
@@ -65,5 +78,6 @@ export class TenantAppearanceStateService {
     this.activeIdentity = null;
     this.revision++;
     this.value.set(null);
+    this.applyMode(null);
   }
 }

@@ -106,11 +106,11 @@ public class ResetPasswordUseCase {
                 NotificationType.PASSWORD_RESET_COMPLETED,
                 NotificationCategory.SECURITY,
                 NotificationPriority.HIGH,
-                "Password reset completed",
-                "Your password was reset successfully.",
+                "Contraseña restablecida",
+                "Tu contraseña fue restablecida correctamente.",
                 data,
                 null,
-                "/security/password-reset",
+                "/security/password-reset?completedAt=" + now,
                 now.plusSeconds(3600)
         ));
 

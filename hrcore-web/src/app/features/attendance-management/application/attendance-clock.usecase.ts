@@ -8,7 +8,6 @@ export class AttendanceClockUseCase {
   private readonly attendanceService = inject(AttendanceService);
   private readonly toastService = inject(ToastService);
 
-  private readonly DEBOUNCE_KEY = 'hrcore_last_clock_timestamp';
   private readonly DEBOUNCE_MS = 10 * 1000; // 10 segundos anti-doble marcación
   private debounceTimerInterval: any = null;
 
@@ -17,17 +16,33 @@ export class AttendanceClockUseCase {
   readonly remainingDebounceSeconds = signal<number>(0);
   readonly lastPunchResult = signal<AttendanceRecordResponse | null>(null);
   readonly gpsAvailable = signal<boolean | null>(null);
+  readonly gpsError = signal<string | null>(null);
 
   readonly isDebounced = computed(() => this.remainingDebounceSeconds() > 0);
 
-  constructor() {
-    this.checkDebounceTimer();
+  constructor() { }
+
+  private debounceKey(employeeId: string, punchType: string): string {
+    return `hrcore_last_clock_timestamp:${employeeId}:${punchType}`;
   }
 
-  checkDebounceTimer(): void {
+  isDebouncedFor(employeeId: string, punchType: string): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    const last = Number(localStorage.getItem(this.debounceKey(employeeId, punchType)) || 0);
+    return Date.now() - last < this.DEBOUNCE_MS;
+  }
+
+  remainingFor(employeeId: string, punchType: string): number {
+    if (!this.isDebouncedFor(employeeId, punchType)) return 0;
+    const last = Number(localStorage.getItem(this.debounceKey(employeeId, punchType)) || 0);
+    return Math.ceil((this.DEBOUNCE_MS - (Date.now() - last)) / 1000);
+  }
+
+  checkDebounceTimer(key?: string): void {
     if (typeof window === 'undefined' || !window.localStorage) return;
     
-    const lastTimestamp = Number(localStorage.getItem(this.DEBOUNCE_KEY) || 0);
+    const storageKey = key || this.debounceKey('self', 'ALL');
+    const lastTimestamp = Number(localStorage.getItem(storageKey) || 0);
     const elapsed = Date.now() - lastTimestamp;
 
     if (this.debounceTimerInterval) {
@@ -41,7 +56,7 @@ export class AttendanceClockUseCase {
         const remaining = this.remainingDebounceSeconds() - 1;
         if (remaining <= 0) {
           this.remainingDebounceSeconds.set(0);
-          localStorage.removeItem(this.DEBOUNCE_KEY);
+          localStorage.removeItem(storageKey);
           clearInterval(this.debounceTimerInterval);
           this.debounceTimerInterval = null;
         } else {
@@ -50,13 +65,14 @@ export class AttendanceClockUseCase {
       }, 1000);
     } else {
       this.remainingDebounceSeconds.set(0);
-      localStorage.removeItem(this.DEBOUNCE_KEY);
+      localStorage.removeItem(storageKey);
     }
   }
 
   async captureCoordinates(): Promise<{ latitude?: number; longitude?: number }> {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
       this.gpsAvailable.set(false);
+      this.gpsError.set('Este navegador no ofrece geolocalización.');
       return {};
     }
 
@@ -64,14 +80,17 @@ export class AttendanceClockUseCase {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           this.gpsAvailable.set(true);
+          this.gpsError.set(null);
           resolve({
             latitude: Number(pos.coords.latitude.toFixed(7)),
             longitude: Number(pos.coords.longitude.toFixed(7))
           });
         },
-        () => {
-          // Fallback silencioso y amigable sin romper la experiencia si se deniegan permisos
+        (error) => {
           this.gpsAvailable.set(false);
+          this.gpsError.set(error.code === 1
+            ? 'Permiso de ubicación denegado.'
+            : 'No se pudo obtener la ubicación a tiempo.');
           resolve({});
         },
         { timeout: 4000, enableHighAccuracy: true, maximumAge: 30000 }
@@ -84,6 +103,8 @@ export class AttendanceClockUseCase {
     punchType: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END' | 'BREAK_OUT' | 'BREAK_IN',
     notes?: string
   ): Promise<AttendanceRecordResponse | null> {
+    const key = this.debounceKey(employeeId, punchType);
+    this.checkDebounceTimer(key);
     if (this.isDebounced()) {
       this.toastService.warning(
         `Protección activa: Espere ${this.remainingDebounceSeconds()}s antes de volver a marcar.`
@@ -96,6 +117,7 @@ export class AttendanceClockUseCase {
 
     try {
       const coords = await this.captureCoordinates();
+      if (this.gpsError()) this.toastService.warning(`${this.gpsError()} Si el tenant exige geolocalización, la marcación será rechazada.`);
       const res = await firstValueFrom(
         this.attendanceService.registerClock({
           employeeId,
@@ -110,9 +132,9 @@ export class AttendanceClockUseCase {
 
       // Iniciar bloqueo preventivo de debounce
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(this.DEBOUNCE_KEY, Date.now().toString());
+        localStorage.setItem(key, Date.now().toString());
       }
-      this.checkDebounceTimer();
+      this.checkDebounceTimer(key);
 
       let label = 'Marcación';
       if (punchType === 'IN') label = 'Entrada';
@@ -150,6 +172,8 @@ export class AttendanceClockUseCase {
   async registerSelfClock(
     punchType: 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END', notes?: string
   ): Promise<boolean> {
+    const key = this.debounceKey('self', punchType);
+    this.checkDebounceTimer(key);
     if (this.isDebounced()) {
       this.toastService.warning(`Espere ${this.remainingDebounceSeconds()}s antes de volver a marcar.`);
       return false;
@@ -158,9 +182,10 @@ export class AttendanceClockUseCase {
     this.error.set(null);
     try {
       const coords = await this.captureCoordinates();
+      if (this.gpsError()) this.toastService.warning(`${this.gpsError()} Si el tenant exige geolocalización, la marcación será rechazada.`);
       await firstValueFrom(this.attendanceService.createSelfPunch({ punchType, ...coords, notes }));
-      localStorage.setItem(this.DEBOUNCE_KEY, Date.now().toString());
-      this.checkDebounceTimer();
+      localStorage.setItem(key, Date.now().toString());
+      this.checkDebounceTimer(key);
       this.toastService.success('Marcación registrada correctamente.');
       return true;
     } catch (err: any) {

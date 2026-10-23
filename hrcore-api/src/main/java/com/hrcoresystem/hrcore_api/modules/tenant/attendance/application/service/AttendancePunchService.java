@@ -3,6 +3,9 @@ package com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.servic
 import com.hrcoresystem.hrcore_api.common.exception.BusinessException;
 import com.hrcoresystem.hrcore_api.common.exception.ResourceNotFoundException;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.application.service.AuditTrailService;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.application.dto.NotificationPublishRequest;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.model.*;
+import com.hrcoresystem.hrcore_api.modules.governance.notifications.domain.port.NotificationPublisherPort;
 import com.hrcoresystem.hrcore_api.modules.governance.audit.domain.model.AuditEventTypes;
 import com.hrcoresystem.hrcore_api.modules.platform.subscriptions.application.service.TenantPlanEnforcementService;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.application.dto.AttendanceRequests;
@@ -11,6 +14,7 @@ import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.model.*;
 import com.hrcoresystem.hrcore_api.modules.tenant.attendance.domain.repository.AttendanceStore;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.domain.repository.EmployeeRepository;
 import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.EmploymentPeriodService;
+import com.hrcoresystem.hrcore_api.modules.tenant.employees.application.service.OrganizationalReportingService;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.dto.ScheduleDetermination;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.EffectiveScheduleService;
 import com.hrcoresystem.hrcore_api.modules.tenant.shifts.application.service.ShiftTimeRules;
@@ -24,6 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class AttendancePunchService {
@@ -42,6 +48,8 @@ public class AttendancePunchService {
     private final AuditTrailService audit;
     private final EmploymentPeriodService periods;
     private final AttendancePolicyService policies;
+    private final NotificationPublisherPort notifications;
+    private final OrganizationalReportingService reporting;
 
     @Autowired
     public AttendancePunchService(AttendanceStore store, EmployeeRepository employees,
@@ -49,12 +57,12 @@ public class AttendancePunchService {
             ShiftAssignmentRepository assignments, WorkShiftRepository shifts, ShiftBreakRepository breaks,
             AttendanceZone zones, AttendanceActor actor, AttendanceMapper mapper,
             TenantPlanEnforcementService plans, AuditTrailService audit, EmploymentPeriodService periods,
-            AttendancePolicyService policies) {
+            AttendancePolicyService policies, NotificationPublisherPort notifications, OrganizationalReportingService reporting) {
         this.store = store; this.employees = employees; this.calculations = calculations;
         this.schedules = schedules; this.assignments = assignments; this.shifts = shifts;
         this.breaks = breaks; this.zones = zones; this.actor = actor;
         this.mapper = mapper; this.plans = plans; this.audit = audit;
-        this.periods = periods; this.policies = policies;
+        this.periods = periods; this.policies = policies; this.notifications = notifications; this.reporting = reporting;
     }
 
     /** Constructor de compatibilidad para pruebas aisladas del módulo. */
@@ -64,7 +72,7 @@ public class AttendancePunchService {
             AttendanceZone zones, AttendanceActor actor, AttendanceMapper mapper,
             TenantPlanEnforcementService plans, AuditTrailService audit) {
         this(store, employees, calculations, schedules, assignments, shifts, breaks, zones, actor, mapper,
-                plans, audit, null, null);
+                plans, audit, null, null, null, null);
     }
 
     @Transactional
@@ -120,8 +128,53 @@ public class AttendancePunchService {
         audit.recordTenantEvent(AuditEventTypes.ATTENDANCE_PUNCH_RECORDED, "ATTENDANCE_PUNCH",
                 saved.id().toString(), Map.of("employeeId", employeeId.toString(), "type", saved.punchType().name(),
                         "source", saved.source().name(), "recordId", record == null ? "" : record.id().toString()));
-        if (record != null) calculations.recalculateLocked(record);
+        if (record != null) {
+            AttendanceRecord calculated = calculations.recalculateLocked(record);
+            if (notifications != null && (calculated.status() == AttendanceStatus.LATE || calculated.status() == AttendanceStatus.INCOMPLETE)) {
+                try {
+                    employees.findById(employeeId).map(e -> e.tenantUserId()).ifPresent(target ->
+                        notifyAfterCommit(new NotificationPublishRequest(target, NotificationType.SYSTEM_NOTICE,
+                            NotificationCategory.SYSTEM, NotificationPriority.NORMAL, "Novedad en tu asistencia",
+                            "Tu registro del " + calculated.workDate() + " presenta una novedad: " + attendanceStatusLabel(calculated.status()) + ".",
+                            null, null, "/dashboard/attendance?recordId=" + calculated.id(), null)));
+                    if (reporting != null) {
+                        UUID supervisorId = reporting.resolveEffectiveSupervisor(employeeId, calculated.workDate());
+                        if (supervisorId != null) employees.findById(supervisorId).map(e -> e.tenantUserId()).ifPresent(target ->
+                            notifyAfterCommit(new NotificationPublishRequest(target, NotificationType.SYSTEM_NOTICE,
+                                NotificationCategory.SYSTEM, NotificationPriority.NORMAL, "Novedad de asistencia",
+                                "El registro del colaborador presenta una novedad: " + attendanceStatusLabel(calculated.status()) + ".",
+                                null, null, "/dashboard/attendance?recordId=" + calculated.id(), null)));
+                    }
+                } catch (Exception ignored) { }
+            }
+        }
         return mapper.toResponse(saved);
+    }
+
+    private void notifyAfterCommit(NotificationPublishRequest payload) {
+        if (notifications == null) return;
+        Runnable publish = () -> {
+            try { notifications.publish(payload); } catch (Exception ignored) { }
+        };
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publish.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { publish.run(); }
+        });
+    }
+
+    private String attendanceStatusLabel(AttendanceStatus status) {
+        return switch (status) {
+            case PENDING -> "pendiente";
+            case PRESENT -> "presente";
+            case LATE -> "atraso";
+            case ABSENT -> "ausente";
+            case JUSTIFIED -> "justificada";
+            case INCOMPLETE -> "incompleta";
+            case DAY_OFF -> "día libre";
+        };
     }
 
     private Optional<LocalDate> workDateFor(UUID employeeId, PunchType type, Instant at,

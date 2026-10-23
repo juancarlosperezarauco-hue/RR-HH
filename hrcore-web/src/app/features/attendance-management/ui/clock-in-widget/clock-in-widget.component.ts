@@ -227,10 +227,7 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy, OnChanges {
       name: `${employee.firstName} ${employee.lastName}`.trim(),
       code: employee.employeeNumber
     }));
-    if (!this.selectedEmployeeId && this.employeeOptions.length > 0) {
-      this.selectedEmployeeId = this.employeeOptions[0].id;
-      this.onEmployeeChange();
-    }
+    // No seleccionar automáticamente: evita marcar por accidente al primer colaborador.
   }
 
   async loadEmployees(): Promise<void> {
@@ -288,6 +285,8 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy, OnChanges {
       const punchesRes = await firstValueFrom(
         this.attendanceService.listPunches({
           employeeId: this.selectedEmployeeId,
+          from: this.startOfLocalDay().toISOString(),
+          to: this.startOfLocalDay(1).toISOString(),
           size: 10,
           sort: 'punchedAt',
           direction: 'desc'
@@ -316,23 +315,30 @@ export class ClockInWidgetComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  private startOfLocalDay(offsetDays = 0): Date {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + offsetDays);
+    return date;
+  }
+
   canPunchIn(): boolean {
-    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebouncedFor(this.selectedEmployeeId, 'IN')) return false;
     return this.lastPunchState() === 'NONE' || this.lastPunchState() === 'OUT';
   }
 
   canPunchBreakStart(): boolean {
-    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebouncedFor(this.selectedEmployeeId, 'BREAK_START')) return false;
     return this.lastPunchState() === 'IN' || this.lastPunchState() === 'BREAK_END';
   }
 
   canPunchBreakEnd(): boolean {
-    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebouncedFor(this.selectedEmployeeId, 'BREAK_END')) return false;
     return this.lastPunchState() === 'BREAK_START';
   }
 
   canPunchOut(): boolean {
-    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebounced()) return false;
+    if (!this.selectedEmployeeId || this.clockUseCase.clocking() || this.clockUseCase.isDebouncedFor(this.selectedEmployeeId, 'OUT')) return false;
     return this.lastPunchState() === 'IN' || this.lastPunchState() === 'BREAK_END';
   }
 

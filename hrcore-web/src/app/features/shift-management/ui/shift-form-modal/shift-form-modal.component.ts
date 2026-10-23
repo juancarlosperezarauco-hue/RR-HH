@@ -23,7 +23,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
               {{ shiftToEdit ? 'Editar Turno Laboral' : 'Nuevo Turno de Trabajo' }}
             </h3>
             <p class="text-xs text-muted-foreground mt-0.5">
-              Parametrización conforme a la Ley General del Trabajo (LGT Bolivia).
+              Define horarios, cruces de medianoche y tolerancias de marcación.
             </p>
           </div>
           <button
@@ -183,7 +183,7 @@ import { ShiftFormUseCase } from '../../application/shift-form.usecase';
 
             <div *ngIf="lawValidation.isValid" class="flex items-center gap-2 text-xs font-semibold text-emerald-600">
               <lucide-icon name="shield-check" [size]="16" class="shrink-0"></lucide-icon>
-              <span>Jornada conforme a la Ley General del Trabajo de Bolivia.</span>
+              <span>Configuración válida para las reglas de horario y tolerancias.</span>
             </div>
           </div>
 

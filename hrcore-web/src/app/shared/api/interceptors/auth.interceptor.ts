@@ -41,7 +41,15 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
           switchMap(() => next(req.clone({ context: req.context.set(AUTH_RETRIED, true), setHeaders: headers })))
         );
       }),
-      catchError(refreshError => { sessions.clearSession(target.scope, session.loginId); return throwError(() => refreshError); })
+      catchError(refreshError => {
+        // Solo se invalida la sesión cuando el backend confirma que el refresh
+        // token ya no es válido. Errores de red, 5xx o bloqueos temporales no
+        // deben convertir una incidencia de disponibilidad en un logout.
+        if (refreshError instanceof HttpErrorResponse && (refreshError.status === 401 || refreshError.status === 403)) {
+          sessions.clearSession(target.scope, session.loginId);
+        }
+        return throwError(() => refreshError);
+      })
     );
   }));
 };
